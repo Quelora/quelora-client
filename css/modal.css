@@ -1,0 +1,271 @@
+.quelora-modal {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: none;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+    transition: opacity 0.4s ease;
+    flex-direction: column;
+    user-select: none;
+}
+
+.quelora-modal input,
+.quelora-modal textarea,
+.quelora-modal .comment-input,
+.quelora-modal [contenteditable="true"] {
+    user-select: auto;
+}
+
+
+@media (max-width: 768px) {
+  .quelora-modal {
+    width: 100%;
+    right: 0;
+  }
+}
+
+@media (min-width: 769px) {
+  .quelora-modal {
+    width: 500px;
+    right: 0;
+  }
+}
+
+.quelora-modal .quelora-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.quelora-modal .quelora-modal-content {
+    padding: var(--spacing-display);
+    text-align: left;
+}
+
+.quelora-modal .quelora-body {
+    background-color: var(--quelora-secondary-color);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    color: var(--quelora-primary-text-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: var(--spacing-xl);
+    margin: var(--spacing-xl);
+    width: 94%;
+}
+
+.quelora-modal .quelora-modal-footer {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    background-color: var(--quelora-secondary-color);
+    border-radius: 10px;
+    gap: var(--spacing-sm);
+    width: 50%;
+    padding: var(--spacing-display);
+}
+
+.quelora-modal .report-options-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    background-color: var(--quelora-background-color);
+    border: 1px solid var(--quelora-border-color);
+    border-radius: 5px;
+}
+
+.quelora-modal .report-option {
+    padding: var(--spacing-xl) var(--spacing-xxxl);
+    border-bottom: 1px solid var(--quelora-border-color);
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-size: var(--font-size-md);
+}
+
+.quelora-modal .report-option:last-child {
+    border-bottom: none;
+}
+
+.quelora-modal .report-option:hover {
+    background-color: var(--quelora-light-background-color);
+    color: var(--quelora-primary-text-color);
+}
+
+.quelora-modal .report-content {
+    text-align: center;
+}
+
+.quelora-modal .report-content p {
+    text-align: center;
+    font-weight: bold;
+    font-size: var(--font-size-xl);
+}
+
+.quelora-modal .report-content .interaction-icon {
+    font-size: 50px;
+}
+
+.quelora-modal .close-modal {
+    position: relative;
+    float: right;
+    top: -25px;
+}
+
+.quelora-modal .report-content .close-button {
+    display: inline;
+    padding-left: var(--spacing-xxxl);
+    padding-right: var(--spacing-xxxl);
+}
+
+.quelora-modal .report-content .adv {
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--quelora-text-color);
+    padding: var(--spacing-xl);
+}
+
+.quelora-modal .quelora-to-work,
+.quelora-modal .comment-to-edit {
+    background-color: var(--quelora-secondary-color);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    color: var(--quelora-primary-text-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: var(--spacing-xl);
+}
+
+.quelora-modal .delete-button {
+    background-color: var(--quelora-warning-color);
+    color: var(--quelora-background-color);
+    border: none;
+    padding: var(--spacing-lg);
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.quelora-modal .close-button,
+.quelora-modal .save-button,
+.quelora-modal .send-button {
+    background-color: var(--quelora-success-color);
+    color: var(--quelora-background-color);
+    border: none;
+    padding: var(--spacing-lg);
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.quelora-modal label {
+    color: var(--quelora-primary-text-color);
+    font-size: var(--font-size-sm);
+    padding: 0 0 var(--spacing-sm) 0;
+}
+
+.quelora-modal .report-button {
+    background-color: var(--quelora-warning-color);
+    color: var(--quelora-background-color);
+    border: none;
+    padding: var(--spacing-lg);
+    border-radius: 5px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+}
+
+.quelora-modal .confirm-delete-button:hover {
+    background-color: var(--quelora-hover-warning-color);
+}
+
+.quelora-modal .edit-container {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap:4px;
+    width: -webkit-fill-available;
+}
+
+.quelora-modal .edit-container .input-container{
+    display: flex;
+    flex-direction: column;
+    align-items:baseline;
+    position: relative;
+    width: 100%;
+}
+
+.quelora-modal .edit-container .quelora-icons-outlined {
+    cursor:pointer;
+}
+
+.quelora-modal .send-button {
+    padding-left: var(--spacing-xl);
+}
+
+
+.quelora-modal .comment-input {
+    background-color: var(--quelora-light-background-color);
+    flex: 1;
+    padding: var(--spacing-md);
+    font-size: var(--font-size-xl);
+    outline: none;
+    transition: background-color 0.3s, box-shadow 0.3s;
+    color: var(--quelora-text-color);
+    border: solid 1px var(--quelora-light-border-color);
+    width: -webkit-fill-available;
+}
+
+.quelora-modal .comment-to-edit .quelora-icons-outlined {
+    font-size: var(--icon-size-xxxl);
+}
+
+.quelora-modal .progress-bar {
+    height: 4px;
+    background-color: #4caf50;
+    width: 0%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.quelora-modal .progress-bar.full {
+    background-color: #f44336;
+}
+
+.quelora-modal .comment-input::placeholder {
+    color: var(--quelora-placeholder-color);
+}
+
+.quelora-modal .edit-comment-container{
+    display: flex;
+    flex-direction: column;
+    margin: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-radius: 5px;
+}
+
+.quelora-modal .transcript-text{
+    flex: 1;
+    margin-left: var(--spacing-md);
+    font-size: var(--font-size-md);
+    color: var(--quelora-primary-text-color);
+    white-space: pre-wrap;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.quelora-modal .avatar{
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}

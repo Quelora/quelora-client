@@ -1,0 +1,199 @@
+/* Main container for toasts */
+.quelora-toast-container {
+  position: fixed;
+  top: var(--spacing-display);
+  right: var(--spacing-display);
+  width: 100%;
+  max-width: 450px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+}
+
+/* Base toast styling - Efecto acrílico fumé */
+.quelora-toast {
+  background: rgba(var(--quelora-bg-rgb), 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  padding: var(--spacing-xl);
+  display: flex;
+  gap: var(--spacing-lg);
+  opacity: 0;
+  transform: translateX(20px);
+  transition: all 0.3s ease-out;
+  align-items: center;
+  border: 1px solid var(--quelora-border-color);
+  cursor: default;
+}
+
+/* Variables RGB para el efecto acrílico */
+:root {
+  --quelora-bg-rgb: 255, 255, 255;
+}
+
+[data-theme="dark"] {
+  --quelora-bg-rgb: 30, 30, 30;
+}
+
+/* Visible state */
+.quelora-toast-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Toast elements */
+.quelora-toast-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background-color: rgba(var(--quelora-icon-bg-rgb), 0.3);
+}
+
+.quelora-toast-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.quelora-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.quelora-toast-title {
+  font-weight: 600;
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--spacing-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quelora-toast-body {
+  font-size: var(--font-size-md);
+  color: var(--quelora-text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.quelora-toast-link {
+  color: var(--quelora-primary-text-color);
+  text-decoration: none;
+}
+
+.quelora-toast-link:hover {
+  text-decoration: underline;
+}
+
+/* Close button */
+.quelora-toast-close {
+  background: none;
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  color: var(--quelora-text-color);
+  flex-shrink: 0;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.quelora-toast-close:hover {
+  opacity: 1;
+}
+
+/* Toast types - Colores más intensos pero conservando el acrílico */
+.quelora-toast-success {
+  --quelora-icon-bg-rgb: 52, 199, 89;
+  border-left: 1px solid rgba(var(--quelora-icon-bg-rgb), 0.3);
+}
+
+.quelora-toast-error {
+  --quelora-icon-bg-rgb: 255, 59, 48;
+  border-left: 1px solid rgba(var(--quelora-icon-bg-rgb), 0.3);
+}
+
+.quelora-toast-warning {
+  --quelora-icon-bg-rgb: 255, 149, 0;
+  border-left: 1px solid rgba(var(--quelora-icon-bg-rgb), 0.3);
+}
+
+.quelora-toast-info {
+  --quelora-icon-bg-rgb: 0, 122, 255;
+  border-left: 1px solid rgba(var(--quelora-icon-bg-rgb), 0.3);
+}
+
+.quelora-toast-success .quelora-toast-icon {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-error .quelora-toast-icon {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-warning .quelora-toast-icon {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-info .quelora-toast-icon {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-success .quelora-toast-title {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-error .quelora-toast-title {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-warning .quelora-toast-title {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+.quelora-toast-info .quelora-toast-title {
+  color: rgb(var(--quelora-icon-bg-rgb));
+}
+
+/* Dark mode adjustments */
+[data-theme="dark"] .quelora-toast {
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+/* Animations */
+@keyframes quelora-slide-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes quelora-slide-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .quelora-toast-container {
+    width: calc(100% - 40px);
+    left: 20px;
+    right: auto;
+    max-width: none;
+  }
+  
+  .quelora-toast {
+    padding: var(--spacing-lg);
+  }
+}

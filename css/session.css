@@ -1,0 +1,163 @@
+#QueloraSession {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
+}
+
+#QueloraSession .quelora-modal-content {
+    background-color: var(--quelora-bw-background-color, #ffffff);
+    padding: var(--spacing-display, 24px);
+    border-radius: 12px;
+    box-shadow: var(--avatar-shadow-1, 0 4px 12px rgba(0, 0, 0, 0.15));
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+    position: relative;
+}
+
+#QueloraSession .quelora-close-button {
+    position: absolute;
+    top: var(--spacing-xl, 16px);
+    right: var(--spacing-xl, 16px);
+    background: none;
+    border: none;
+    font-size: var(--font-size-xl, 24px);
+    cursor: pointer;
+    color: var(--quelora-medium-gray-color, #666666);
+}
+
+#QueloraSession .quelora-close-button:hover {
+    color: var(--quelora-dark-gray-color, #333333);
+}
+
+#QueloraSession .quelora-title {
+    margin-bottom: var(--spacing-xxxl, 32px);
+    color: var(--quelora-primary-text-color, #333333);
+    font-size: var(--font-size-xl, 20px);
+    font-weight: 600;
+}
+
+#QueloraSession .quelora-providers-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md, 12px);
+    margin-bottom: var(--spacing-lg, 20px);
+}
+
+#QueloraSession .quelora-provider-button {
+    display: flex;
+    justify-content: center;
+    border-radius: 4px;
+    overflow: hidden;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+#QueloraSession .quelora-provider-button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+#QueloraSession .quelora-provider-button button {
+    width: 90%;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    cursor: pointer;
+    color: white;
+}
+
+#QueloraSession .quelora-provider-button.google button {
+    background: #4285F4;
+}
+
+#QueloraSession .quelora-provider-button.facebook button {
+    background: #1877F2;
+}
+
+#QueloraSession .quelora-provider-button.apple button {
+    background: #000000;
+}
+
+#QueloraSession .quelora-provider-button.x button {
+    background: #000000;
+}
+
+#QueloraSession .quelora-provider-button svg {
+    width: 20px;
+    height: 20px;
+}
+
+#QueloraSession .quelora-terms {
+    font-size: var(--font-size-sm, 12px);
+    color: var(--quelora-medium-gray-color, #666666);
+    margin-bottom: var(--spacing-xxxl, 32px);
+    line-height: 1.5;
+}
+
+#QueloraSession .quelora-register-section {
+    margin-top: var(--spacing-xxxl, 32px);
+    border-top: 1px solid var(--quelora-light-border-color, #e0e0e0);
+    padding-top: var(--spacing-xxxl, 32px);
+}
+
+#QueloraSession .quelora-register-title {
+    font-size: var(--font-size-md, 14px);
+    color: var(--quelora-primary-text-color, #333333);
+    margin-bottom: var(--spacing-lg, 20px);
+    font-weight: 500;
+}
+
+#QueloraSession .quelora-register-buttons-container {
+    margin-bottom: var(--spacing-lg, 20px);
+}
+
+#QueloraSession .quelora-register-button {
+    display: flex;
+    justify-content: center;
+    transition: opacity 0.2s;
+}
+
+#QueloraSession .quelora-disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+#QueloraSession .quelora-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm, 12px);
+    color: var(--quelora-medium-gray-color, #666666);
+    gap: var(--spacing-sm, 8px);
+    cursor: pointer;
+}
+
+#QueloraSession .quelora-checkbox-input {
+    margin: 0;
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+#QueloraSession .quelora-link {
+    color: var(--quelora-primary-color, #4285F4);
+    text-decoration: none;
+}
+
+#QueloraSession .quelora-link:hover {
+    text-decoration: underline;
+}

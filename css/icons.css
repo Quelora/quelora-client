@@ -1,0 +1,33 @@
+
+.quelora-svg-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    vertical-align: middle;
+    fill: currentColor;
+    line-height: 1;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.community-threads .like-icon{
+    width: 18px;
+    height: 18px;
+}
+
+.quelora-icons-outlined svg,
+.quelora-svg-icon svg {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.quelora-icons-outlined:not(:has(svg)) {
+  display: none;
+}
+
+[data-theme="dark"] {
+    .quelora-svg-icon svg{
+        fill: #666;
+    }
+}

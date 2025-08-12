@@ -1,0 +1,516 @@
+
+.quelora-comments,
+.quelora-likes {
+    font-weight: 500;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    position: fixed;
+    bottom: -100%;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--quelora-secondary-color);
+    transition: bottom 0.8s ease, height 0.8s ease;
+    z-index: 9000;
+    color: var(--quelora-primary-text-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.quelora-likes {
+    bottom: -70%;
+    height: 70%;
+}
+
+.quelora-comments .reply-header .reply-close{
+    width: 20px!important;
+    height: 20px!important;
+    float: right;
+    cursor: pointer;
+}
+
+.quelora-comments.active,
+.quelora-likes.active {
+    bottom: 0;
+}
+
+.quelora-comments .quelora-community-header,
+.quelora-likes .quelora-community-header,
+.quelora-to-work .quelora-community-header {
+    cursor: grab;
+    user-select: none;
+    padding: var(--spacing-xl);
+    border-bottom: 1px solid var(--quelora-dark-background-color);
+    background-color: var(--quelora-secondary-color);
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quelora-comments .quelora-community-header::before,
+.quelora-likes .quelora-community-header::before,
+.quelora-to-work .quelora-community-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background-color: var(--quelora-gray-color);
+    border-radius: 2px;
+}
+
+.quelora-comments .quelora-community-header {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+}
+
+.quelora-comments .quelora-community-header .t {
+    flex-grow: 1;
+    text-align: center;
+}
+
+.quelora-comments .load-more-comments {
+    font-size: var(--font-size-sm);
+    text-align: right;
+    color: var(--quelora-light-gray-color);
+    padding-left: 60px;
+}
+
+.quelora-comments .community-threads {
+    overflow-y: auto;
+    padding: var(--spacing-xl);
+    margin-bottom: 110px;
+}
+
+.quelora-comments .comment-bar-container {
+    padding-bottom: var(--spacing-xl);
+    border-top: 1px solid var(--quelora-dark-background-color);
+    background-color: var(--quelora-secondary-color);
+    position: fixed;
+    bottom: 0;
+    z-index: 1000;
+    display: none;
+    width: -webkit-fill-available;
+    padding-left: revert-layer;
+}
+
+.quelora-comments .login-button {
+    padding-right: 10px;
+}
+
+.quelora-comments .comment-bar-container .profile-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+}
+
+.quelora-comments.active .comment-bar-container {
+    display: flex;
+}
+
+.quelora-comments .comment-disable-container {
+    padding: var(--spacing-display);
+    text-align: center;
+    font-size: var(--font-size-md);
+    display: none;
+    border-top: 1px solid var(--quelora-dark-background-color);
+    color: var(--quelora-text-color);
+    position: fixed;
+    bottom: 0px;
+    width:100%;
+}
+
+.quelora-comments .profile-settings{
+    margin-right: 0px!important;
+}
+
+.quelora-comments .input-container {
+    display: flex;
+    align-items: center;
+    padding: 0 var(--spacing-xl);
+    position: relative;
+    gap: var(--spacing-md);
+}
+
+.quelora-comments .emoji-button{
+    cursor:pointer;
+}
+
+.quelora-comments .comment-input {
+    background-color: var(--quelora-light-background-color);
+    flex: 1;
+    padding: var(--spacing-md);
+    font-size: var(--font-size-xl);
+    outline: none;
+    transition: background-color 0.3s, box-shadow 0.3s;
+    width: 100%;
+    border: solid 1px var(--quelora-light-border-color);
+    position: relative;
+}
+
+.quelora-comments .voice-button {
+    cursor: pointer;
+    z-index: 10000;
+}
+
+.quelora-comments .voice-button:hover {
+    color: var(--quelora-primary-color);
+}
+
+.quelora-comments #quelora-send {
+    cursor: pointer;
+}
+
+.quelora-comments .progress-bar {
+    position: absolute;
+    bottom: 0;
+    left: 55px;
+    height: 4px;
+    background-color: #4caf50;
+    width: 0%;
+    transition: width 0.3s ease, background-color 0.3s ease;
+
+}
+
+.quelora-comments .progress-bar.full {
+    background-color: #f44336;
+}
+
+.quelora-comments .comment-input::placeholder {
+    color: var(--quelora-placeholder-color);
+}
+
+.quelora-comments .reply-preview {
+    background-color: var(--quelora-dark-background-color);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.quelora-comments .reply-preview-content {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    overflow: hidden;
+}
+
+.quelora-comments .reply-preview-author {
+    font-weight: bold;
+    color: var(--quelora-primary-text-color);
+    margin-right: var(--spacing-sm);
+}
+
+.quelora-comments .reply-preview-text {
+    font-size: var(--font-size-sm);
+    color: var(--quelora-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+.quelora-comments .reply-preview-close {
+    cursor: pointer;
+    color: var(--quelora-icon-color);
+    font-size: var(--icon-size-md);
+    margin-left: var(--spacing-sm);
+}
+
+.quelora-comments .reply-preview-close:hover {
+    color: var(--quelora-warning-color);
+}
+
+.quelora-comments .community-thread{
+    position: relative;
+    padding: var(--spacing-sm);
+}
+
+#likes-list {
+    width: 100%;
+}
+
+.quelora-comments .comment-header,
+.quelora-likes .comment-header,
+.quelora-modal .quelora-to-work .comment-header,
+.quelora-likes-list .comment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quelora-comments .comment-avatar,
+.quelora-likes .comment-avatar,
+.quelora-modal .quelora-to-work .comment-avatar,
+.quelora-likes-list .comment-avatar {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background-color: var(--quelora-gray-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-xxl);
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-right: var(--spacing-xl);
+    border: var(--avatar-small-border-width) solid var(--avatar-border-color);
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+
+.quelora-likes .community-user {
+    display: flex;
+    padding: var(--spacing-xl);
+    justify-content: left;
+}
+
+.quelora-likes .comment-avatar {
+    width: 50px;
+    height: 50px;
+}
+
+.quelora-comments .comment-info,
+.quelora-modal .quelora-to-work .comment-info,
+#profile .comment-info {
+    flex-grow: 1;
+}
+
+.quelora-comments .comment-author,
+.quelora-likes .comment-author,
+#profile .comment-author,
+.quelora-likes-list .comment-author,
+.quelora-modal .quelora-to-work .comment-author {
+    font-size: var(--font-size-md);
+    font-weight: bold;
+}
+
+.quelora-comments .comment-time,
+.quelora-modal .quelora-to-work .comment-time,
+#profile .comment-time,
+.quelora-likes-list .comment-time {
+    padding-left: var(--spacing-display);
+    color: var(--quelora-light-gray-color);
+    font-size: var(--font-size-xs);
+}
+
+.quelora-comments .comment-like,
+.quelora-modal .quelora-to-work .comment-like {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-left: var(--spacing-xl);
+    padding-right: var(--spacing-sm);
+}
+
+.quelora-comments .comment-like .quelora-icons-outlined,
+.quelora-modal .quelora-to-work .comment-like .quelora-icons-outlined {
+    cursor: pointer;
+    font-size: var(--font-size-xl);
+}
+
+.quelora-comments .comment-like .like-count,
+.quelora-modal .quelora-to-work .like-count {
+    font-size: var(--font-size-xs);
+    color: var(--quelora-medium-gray-color);
+}
+
+.quelora-comments .comment-text,
+.quelora-modal .quelora-to-work .comment-text {
+    margin-top: -8px;
+    padding-left: 48px;
+    font-size: var(--font-size-md);
+}
+
+.quelora-comments .comment-text a,
+.quelora-modal .quelora-to-work .comment-text a{
+    text-decoration: none;
+    color: var(--quelora-primary-text-color);
+    font-size: var(--font-size-md);
+}
+
+.quelora-comments .comment-actions {
+    padding-left: 48px;
+    padding-top: 4px;
+    padding-bottom: 0px;
+    font-size: var(--font-size-xxs);
+}
+
+.quelora-comments .reply-text,
+.quelora-comments .translate-text,
+.quelora-comments .view-replies,
+.quelora-comments .share-text {
+    color: var(--quelora-success-color);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    padding-bottom: var(--spacing-sm);
+    padding-right: var(--spacing-xl);
+}
+
+.quelora-comments .setting-comment,
+.quelora-modal .setting-comment {
+    color: var(--quelora-success-color);
+    cursor: pointer;
+    font-size: var(--font-size-md);
+    padding-right: var(--spacing-xl);
+}
+
+.quelora-comments .setting-comment svg,
+.quelora-modal .setting-comment svg {
+    width: 18px!important;
+    height: 18px!important;
+}
+.quelora-comments .member-icon svg{
+    top:-6px;
+    width: 20px!important;
+    height: 20px!important;
+    color:var(--quelora-primary-color)
+}
+
+.quelora-comments .view-replies {
+    padding-left: var(--spacing-xxxl);
+}
+
+.quelora-comments .comment-replies {
+    padding-left: var(--spacing-xl);
+}
+
+.quelora-comments .comment-replies .comment-replies {
+    margin-top: var(--spacing-xs);
+    margin-left: var(--spacing-xs);
+    margin-bottom: var(--spacing-xs);
+    padding-left: 0;
+}
+
+.quelora-comments .comment-replies .comment-replies .community-thread {
+    padding: var(--spacing-xxs);
+}
+
+.community-interaction-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xs) var(--spacing-xl);
+}
+
+.community-interaction-bar .interaction-actions {
+    display: flex;
+    align-items: center;
+}
+
+.community-interaction-bar .interaction-actions .interaction-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    margin-right: var(--spacing-sm);
+    cursor: pointer;
+    flex: 1;
+}
+
+.community-interaction-bar .interaction-actions .interaction-item .interaction-icon,
+.community-interaction-bar .bookmark {
+    margin-right: var(--spacing-sm);
+    cursor: pointer;
+    font-size: var(--icon-size-xxl);
+}
+
+.community-interaction-bar .interaction-actions .interaction-item .interaction-count {
+    font-size: var(--font-size-sm);
+    color: var(--quelora-interaction-count-color);
+    margin-top: 0;
+}
+
+.community-interaction-bar .interaction-actions .interaction-item .interaction-icon.active,
+.community-threads .comment-header .comment-like .quelora-icons-outlined.active {
+    color: var(--quelora-active-icon-color);
+}
+
+.community-interaction-bar .bookmark.active {
+    color: var(--quelora-success-color) !important;
+}
+
+.community-interaction-bar .save-action {
+    cursor: pointer;
+    color: var(--quelora-icon-color);
+    font-size: var(--icon-size-xxl);
+}
+
+.quelora-comments .comment-error-message {
+    background-color: var(--quelora-light-background-color);
+    color: var(--quelora-warning-color);
+    padding: var(--spacing-xl);
+    border-radius: 4px;
+    margin-bottom: var(--spacing-xl);
+    border: 1px solid var(--quelora-warning-color);
+    font-size: var(--font-size-sm);
+    text-align: center;
+}
+
+.quelora-comments .comment-bar-container {
+    flex-direction: column;
+}
+
+.quelora-comments .reply-header {
+    background-color: var(--quelora-dark-background-color);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    border-radius: 5px;
+    margin: 8px;
+}
+
+.quelora-comments .reply-header .comment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.quelora-comments .reply-header .comment-text {
+    margin-top: var(--spacing-sm);
+    color: var(--quelora-text-color);
+}
+
+.quelora-comments .reply-header .reply-close {
+    font-size: var(--icon-size-md);
+    color: var(--quelora-icon-color);
+    cursor: pointer;
+    width: 100%;
+    text-align: right;
+    padding-right: 4px;
+}
+
+.quelora-comments .reply-header .reply-close:hover {
+    color: var(--quelora-primary-color);
+}
+
+.quelora-comments .comment-audio-container {
+    margin-top: var(--spacing-sm);
+    padding-left: 48px;
+    display: flex;
+    align-items: center;
+}
+
+.quelora-comments .comment-audio-container.loading {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.quelora-comments .comment-audio-container.loading .audio-play-button {
+    color: var(--quelora-gray-color);
+}

@@ -1,0 +1,96 @@
+.quelora-notification-list {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    transition: right 0.5s ease-in-out;
+    z-index: 9003;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    padding-inline-start: 0px;
+    width: 100%;
+}
+
+.quelora-notification-item {
+    display: flex;
+    align-items: flex-start;
+    padding: var(--spacing-xxl);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    gap: var(--spacing-md);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.quelora-notification-item:hover {
+    background-color: var(--quelora-hover-bg-color);
+}
+
+.comment-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--quelora-gray-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    border: 1px solid var(--avatar-border-color);
+    flex-shrink: 0;
+}
+
+.notification-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.notification-preview {
+    font-size: var(--font-size-xs);
+    color: var(--quelora-light-gray-color);
+    line-height: 1.5;
+}
+
+.error-message {
+    color: var(--quelora-error-color);
+    padding: var(--spacing-lg);
+    text-align: center;
+    font-size: var(--font-size-sm);
+}
+
+.notification-text-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    width: 100%;
+    gap: var(--spacing-md);
+}
+
+.notification-message {
+    margin: 0;
+    font-size: var(--font-size-md);
+    line-height: 1.4;
+    flex-grow: 1;
+    /* Permite que el texto se ajuste */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color:var(--quelora-primary-text-color)
+}
+
+.notification-message strong {
+    font-weight: 600;
+    padding-right: 6px;
+}
+
+
+.notification-time {
+    font-size: var(--font-size-sm);
+    color: var(--quelora-light-gray-color);
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: var(--spacing-md);
+}

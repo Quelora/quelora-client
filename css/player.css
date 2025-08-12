@@ -1,0 +1,169 @@
+.quelora-audio-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.quelora-audio-main-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.quelora-audio-element {
+    display: none;
+}
+
+.quelora-audio-play {
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.quelora-audio-play svg {
+    fill: var(--quelora-primary-text-color);
+}
+
+.quelora-audio-play:hover svg {
+    fill: var(--quelora-primary-color);
+}
+
+.quelora-audio-progress-wrapper {
+    flex-grow: 1;
+    height: 4px;
+    background-color: var(--quelora-light-border-color);
+    cursor: pointer;
+    position: relative;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.quelora-audio-progress-bar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    background-color: var(--quelora-primary-color);
+    width: 0%;
+    transition: width 0.1s;
+}
+
+.quelora-audio-time {
+    font-size: var(--font-size-sm);
+    color: var(--quelora-primary-text-color);
+    min-width: 40px;
+    text-align: center;
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.quelora-audio-marquee-wrapper {
+    overflow: hidden;
+    position: relative;
+    margin-top: -15px;
+    margin-left: 30px;
+    margin-right: 50px;
+}
+
+.quelora-audio-transcript {
+    display: inline-block;
+    padding-left: 100%;
+    white-space: nowrap;
+    will-change: transform;
+    font-size: var(--font-size-xs);
+    color: var(--quelora-primary-text-color);
+    opacity: 0.8;
+}
+
+/* Estilos base del timer */
+.quelora_base-timer {
+  position: fixed;
+  width: 100px;
+  height: 100px;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+@media (max-width: 768px) {
+  .quelora_base-timer {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+}
+
+@media (min-width: 769px) {
+  .quelora_base-timer {
+    top: 50%;
+    left: initial;
+    right: 200px;
+    transform: translateY(-50%);
+  }
+}
+
+
+.quelora_base-timer__svg {
+  transform: scaleX(-1);
+}
+
+.quelora_base-timer__circle {
+  fill: none;
+  stroke: none;
+}
+
+.quelora_base-timer__path-elapsed {
+  stroke-width: 4px;
+  stroke: #e0e0e0;
+}
+
+.quelora_base-timer__path-remaining {
+  stroke-width: 4px;
+  stroke-linecap: round;
+  transform: rotate(90deg);
+  transform-origin: center;
+  transition: 1s linear all;
+  fill-rule: nonzero;
+  stroke: currentColor;
+}
+
+.quelora_base-timer__path-remaining.green {
+  color: #41b883;
+}
+
+.quelora_base-timer__path-remaining.orange {
+  color: orange;
+}
+
+.quelora_base-timer__path-remaining.red {
+  color: #e53935;
+}
+
+.quelora_base-timer__label {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+

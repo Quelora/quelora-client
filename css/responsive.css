@@ -1,0 +1,68 @@
+@media (min-width: 769px) {
+    .quelora-comments,
+    .quelora-likes,
+    .quelora-community-profile {
+        max-width: 500px;
+        left: unset !important;
+        border-top-left-radius: unset !important;
+        border-top-right-radius: unset !important;
+        box-shadow: -4px 0 10px rgba(0, 0, 0, 0.2);
+        right: 0;
+    }
+
+    .quelora-comments .setting-comment,
+    .quelora-modal .setting-comment {
+        display: initial;
+    }
+
+    .quelora-modal {
+        left: unset;
+        right: 0;
+    }
+
+    .quelora-community-header::before {
+        position: unset !important;
+        top: unset !important;
+        left: unset !important;
+        transform: unset !important;
+        width: unset !important;
+        height: unset !important;
+        background-color: unset !important;
+        border-radius: unset !important;
+    }
+
+    .drawer {
+        left: unset;
+        right: 0;
+        border-radius: 0;
+        box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.3)!important;
+        width: 500px;
+    }
+
+    .drawer-header::before {
+        position: unset;
+    }
+
+ 
+}
+
+@media (max-width: 768px) {
+    .quelora-comments .setting-comment {
+        display: none;
+    }
+
+    .drawer{
+        width: 100%;
+        min-width: none;
+        max-width:none;
+        box-shadow: 0 -10px 20px rgba(0, 0, 0, 0.3)!important;
+    }
+    
+    .quelora-comments #quelora-send{
+        display: none;
+    }
+
+    .quelora-comments .emoji-button{
+        display: none!important;
+    }
+}
