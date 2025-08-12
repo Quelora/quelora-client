@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
- Licensed under the GNU Affero General Public License v3.0
+* @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -69,6 +69,8 @@ const AnchorModule = (function () {
             ? `#QUELORA-L-${entity}-${commentId}-${replyId}`
             : `#QUELORA-L-${entity}-${commentId}`
           : '#';
+      case 'entity':
+          return entity ? `#QUELORA-E-${entity}` : '#';
       default:
         return '#';
     }

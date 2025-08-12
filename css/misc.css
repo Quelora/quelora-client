@@ -103,6 +103,7 @@ body.drawer-scroll-locked {
     -ms-user-select: none;
     user-select: none;
     will-change: transform, height;
+    overscroll-behavior: contain;
     transition: height var(--transition-speed) ease, 
             bottom var(--transition-speed) ease,
             right var(--transition-speed) ease,

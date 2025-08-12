@@ -157,6 +157,7 @@
     "noFollowRequests": "没有待处理的请求",
     "profileNotFound": "未找到个人资料",
     "profileNotFoundDescription": "你寻找的个人资料不存在或已被删除。",
+    "emptyComments": "还没有评论！成为第一个分享你意见的人。",
     "searchAccounts": "搜索账户",
     "copy":"复制",
     "copied":"已复制！",

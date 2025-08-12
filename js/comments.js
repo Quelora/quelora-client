@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
- Licensed under the GNU Affero General Public License v3.0
+* @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -42,6 +42,7 @@ import I18n from './i18n.js';
 import SessionModule from './session.js';
 import AudioRecorderModule from './audioRecorder.js';
 import MentionModule from './mention.js';
+import AnchorModule from './anchor.js';
 
 // ==================== MODULE CONSTANTS ====================
 const TOUCH_MOVE_THRESHOLD = 10; // pixels
@@ -96,14 +97,17 @@ function setupGlobalCommentHandlers() {
  */
 async function handleShare(entityId, commentId, replyId = '') {
     try {
-        // Construct share URL with hash fragment
-        let shareUrl = `${window.location.href}#QUELORA-Q-${entityId}-${commentId}`;
-        
-        if (replyId) {
-            shareUrl += `-${replyId}`;
-        }
+        const shareHash = AnchorModule.generateLink({
+            type: replyId ? 'reply' : 'comment',
+            ids: {
+                entity: entityId,
+                commentId,
+                replyId
+            }
+        });
 
-        // Use Web Share API if available
+        const shareUrl = `${window.location.href.split('#')[0]}${shareHash}`;
+
         if (navigator.share) {
             await navigator.share({
                 title: I18n.getTranslation('shareTitle'),
@@ -113,7 +117,7 @@ async function handleShare(entityId, commentId, replyId = '') {
             return;
         }
 
-        // Fallback for browsers without Web Share API
+        // Fallback
         const toastContent = `
             <div class="share-url-container">${shareUrl}</div>
             <button class="quelora-btn active" id="copy-share-url-btn">
@@ -121,7 +125,6 @@ async function handleShare(entityId, commentId, replyId = '') {
             </button>
         `;
 
-        // Setup toast with copy functionality
         ToastModule.info(
             'share',
             I18n.getTranslation('copy'),
@@ -130,7 +133,6 @@ async function handleShare(entityId, commentId, replyId = '') {
             8000
         );
 
-        // Add click handler after toast is rendered
         UtilsModule.startTimeout(() => {
             const copyBtn = document.getElementById('copy-share-url-btn');
             if (copyBtn) {
@@ -138,7 +140,7 @@ async function handleShare(entityId, commentId, replyId = '') {
                     try {
                         await navigator.clipboard.writeText(shareUrl);
                         copyBtn.textContent = I18n.getTranslation('copied');
-                        
+
                         const toast = copyBtn.closest('.quelora-toast');
                         if (toast) {
                             toast.classList.remove('quelora-toast-visible');
@@ -1102,22 +1104,32 @@ function renderCommentList(entity, comments, container) {
                 : 'level-default';
         };
 
-        comments.forEach(comment => {
-            const replyCount = countCommentRepliesAbove(container);
-            const commentElement = createCommentElement(comment, entity, replyCount !== 0);
-            
-            if (!commentElement) return;
+        // Check if rendering main thread with no comments and no existing elements
+        if (!container.classList.contains('comment-replies') && 
+            comments.length === 0 && 
+            container.children.length === 0) {
+            const emptyContainer = document.createElement('div');
+            emptyContainer.classList.add('comment-empty-container', 't');
+            emptyContainer.textContent = '{{emptyComments}}';
+            fragment.appendChild(emptyContainer);
+        } else {
+            comments.forEach(comment => {
+                const replyCount = countCommentRepliesAbove(container);
+                const commentElement = createCommentElement(comment, entity, replyCount !== 0);
+                
+                if (!commentElement) return;
 
-            // Apply nesting level styling
-            const levelColor = getColorByLevel(replyCount);
-            const replyDiv = commentElement.querySelector('.comment-replies');
-            
-            if (replyDiv) {
-                replyDiv.classList.add(levelColor);
-            }
+                // Apply nesting level styling
+                const levelColor = getColorByLevel(replyCount);
+                const replyDiv = commentElement.querySelector('.comment-replies');
+                
+                if (replyDiv) {
+                    replyDiv.classList.add(levelColor);
+                }
 
-            fragment.appendChild(commentElement);
-        });
+                fragment.appendChild(commentElement);
+            });
+        }
 
         container.appendChild(fragment);
     } catch (error) {

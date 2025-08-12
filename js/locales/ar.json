@@ -157,6 +157,7 @@
     "noFollowRequests": "لا توجد طلبات متابعة معلقة",
     "profileNotFound": "الملف الشخصي غير موجود",
     "profileNotFoundDescription": "الملف الشخصي الذي تبحث عنه غير موجود أو تم إزالته.",
+    "emptyComments": "لا توجد تعليقات بعد! كن الأول في مشاركة رأيك.",
     "copy":"نسخ",
     "copied": "تم النسخ!",
     "spanish": "إسباني",

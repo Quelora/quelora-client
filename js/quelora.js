@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2025
- Licensed under the GNU Affero General Public License v3.0
+* @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 

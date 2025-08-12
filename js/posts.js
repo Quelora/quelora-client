@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
- Licensed under the GNU Affero General Public License v3.0
+* @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -38,7 +38,7 @@ import UiModule from './ui.js';
 import EntityModule from './entity.js';
 import ToastModule from './toast.js';
 import I18n from './i18n.js';
-
+import AnchorModule from './anchor.js';
 /**
  * Posts Module - Handles post interactions, events, and UI updates
  * @module PostsModule
@@ -220,14 +220,21 @@ async function handleShare(entityId) {
     try {
         const interactionElement = document.querySelector(`[data-entity-interaction="${entityId}"]`);
         const shareButton = interactionElement?.querySelector('.share-icon');
-        const shareUrl = window.location.href+'#QUELORA-E-'+entityId;
+
+        const shareHash = AnchorModule.generateLink({
+            type: 'entity',
+            ids: { entity: entityId }
+        });
+
+        // Evitar duplicar hashes en la URL
+        const shareUrl = `${window.location.href.split('#')[0]}${shareHash}`;
+
         if (!shareButton) {
             console.error(`Share button not found for entity: ${entityId}`);
             return;
         }
 
         if (navigator.share) {
-            // Use native share API if available
             await navigator.share({
                 title: I18n.getTranslation('shareTitle'),
                 text: I18n.getTranslation('shareText'),
@@ -236,7 +243,6 @@ async function handleShare(entityId) {
             await setShare(entityId);
             updateShareCount(interactionElement);
         } else {
-            // Fallback to custom toast with copy functionality
             const toastContent = `
                 <div style="word-break: break-all; margin-bottom: 10px;">${shareUrl}</div>
                 <button 

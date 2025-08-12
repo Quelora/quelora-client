@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
- Licensed under the GNU Affero General Public License v3.0
+ * @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -35,8 +35,14 @@
 import PostsModule from './posts.js';
 import EntityModule from './entity.js';
 
+// Cache for storing post statistics
 const postStatsCache = new Map();
 
+/**
+ * Formats a date string into a localized short date (e.g., "Jan 1, 2023").
+ * @param {string} dateString - Date in string format.
+ * @returns {string} Formatted date or empty string if invalid.
+ */
 function formatDate(dateString) {
     try {
         const date = new Date(dateString);
@@ -49,6 +55,11 @@ function formatDate(dateString) {
     }
 }
 
+/**
+ * Calculates time elapsed since a timestamp, returning a human-readable string (e.g., "5 minutes ago").
+ * @param {string} timestamp - Timestamp to compare.
+ * @returns {string} Human-readable time difference or '{{justNow}}' if invalid.
+ */
 function getTimeAgo(timestamp) {
     try {
         const now = new Date();
@@ -59,7 +70,6 @@ function getTimeAgo(timestamp) {
         }
 
         const diff = now - commentDate;
-
         const minutes = Math.floor(diff / 60000);
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
@@ -74,6 +84,12 @@ function getTimeAgo(timestamp) {
     }
 }
 
+/**
+ * Starts a timeout with error handling.
+ * @param {Function} callback - Function to execute after delay.
+ * @param {number} time - Delay in milliseconds.
+ * @returns {number|null} Timeout ID or null if error occurs.
+ */
 function startTimeout(callback, time) {
     try {
         return setTimeout(() => {
@@ -89,6 +105,10 @@ function startTimeout(callback, time) {
     }
 }
 
+/**
+ * Cancels a timeout.
+ * @param {number} timeoutId - ID of the timeout to cancel.
+ */
 function cancelTimeout(timeoutId) {
     try {
         if (timeoutId) {
@@ -99,6 +119,13 @@ function cancelTimeout(timeoutId) {
     }
 }
 
+/**
+ * Debounces a function, delaying its execution until after a specified wait period.
+ * @param {Function} func - Function to debounce.
+ * @param {number} delay - Delay in milliseconds.
+ * @param {boolean} [immediate=false] - Whether to execute immediately on first call.
+ * @returns {Function} Debounced function.
+ */
 function debounce(func, delay, immediate = false) {
     let timeoutId;
     
@@ -117,10 +144,17 @@ function debounce(func, delay, immediate = false) {
     };
 }
 
+/**
+ * Debounced version of PostsModule.fetchStats, delayed by 250ms.
+ */
 const debouncedFetchStats = debounce(() => {
      PostsModule.fetchStats();
 }, 250);
 
+/**
+ * Observes DOM for new entities matching the config selector and triggers stats fetching.
+ * @returns {MutationObserver|null} Observer instance or null if error occurs.
+ */
 function observeNewEntities() {
     try {
         const observer = new MutationObserver(async (mutations) => {
@@ -157,6 +191,10 @@ function observeNewEntities() {
     }
 }
 
+/**
+ * Stores stats configuration in the cache.
+ * @param {Object} stat - Stats object with entity and config properties.
+ */
 function setStatsCache(stat) {
     try {
         if (stat && stat.entity) {
@@ -167,6 +205,11 @@ function setStatsCache(stat) {
     }
 }
 
+/**
+ * Retrieves configuration from cache for a given entity ID.
+ * @param {string} entityId - ID of the entity.
+ * @returns {Object|null} Cached configuration or null if not found/error.
+ */
 function getConfig(entityId) {
     try {
         return postStatsCache.get(entityId) || null;
@@ -176,6 +219,10 @@ function getConfig(entityId) {
     }
 }
 
+/**
+ * Sets character limit for the QUELORA input element.
+ * @param {number} [limits=200] - Maximum number of characters.
+ */
 function setInputLimit(limits = 200) {
     try {
         const inputElement = document.getElementById('quelora-input');
@@ -187,6 +234,11 @@ function setInputLimit(limits = 200) {
     }
 }
 
+/**
+ * Formats a number into an abbreviated string (e.g., 1000 -> "1K", 1000000 -> "1M").
+ * @param {number} number - Number to format.
+ * @returns {string} Abbreviated number string.
+ */
 function formatNumberAbbreviated(number) {
     if (number >= 1000000) {
         return (number / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
@@ -197,8 +249,17 @@ function formatNumberAbbreviated(number) {
     }
 }
 
+/**
+ * Creates a promise that resolves after a specified delay.
+ * @param {number} ms - Delay in milliseconds.
+ * @returns {Promise} Promise that resolves after the delay.
+ */
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Detects the base path of the QUELORA script.
+ * @returns {string} Base path of the script or empty string if not found.
+ */
 function getCurrentScriptPath() {
     try {
         const scripts = document.getElementsByTagName('script');
@@ -215,8 +276,16 @@ function getCurrentScriptPath() {
     }
 }
 
+/**
+ * Checks if the user agent indicates a mobile device.
+ * @type {boolean}
+ */
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+/**
+ * Utility module for QUELORA platform.
+ * @type {Object}
+ */
 const UtilsModule = {
     getTimeAgo,
     startTimeout,
