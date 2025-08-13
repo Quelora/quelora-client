@@ -125,6 +125,7 @@
     "privacySettings": "账户隐私",
     "showActivity": "显示活动",
     "showActivityDescription": "允许其他成员看到你的评论、点赞和分享",
+    "emptyActivity": "没有可用的活动",
     "approveFollowers": "授权关注者",
     "approveFollowersDescription": "你必须手动批准想关注你的人",
     "notificationSettings": "通知设置",

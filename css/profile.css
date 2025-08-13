@@ -35,8 +35,18 @@
   gap: var(--spacing-xl);
   justify-content: center;
   padding: var(--spacing-xl);
-  border-bottom: 1px solid var(--quelora-border-color);
 }
+
+
+.profile-stats .comment-empty-container {
+    padding: var(--spacing-display);
+    text-align: center;
+    font-size: var(--font-size-md);
+    color: var(--quelora-text-color);
+    bottom: 0px;
+    width:100%;
+}
+
 
 .stat-item {
   display: flex;

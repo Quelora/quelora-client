@@ -125,6 +125,7 @@
     "privacySettings": "خصوصية الحساب",
     "showActivity": "إظهار النشاط",
     "showActivityDescription": "يسمح للأعضاء الآخرين برؤية تعليقاتك، إعجاباتك، ومشاركاتك",
+    "emptyActivity": "لا توجد أنشطة متاحة",
     "approveFollowers": "الموافقة على المتابعين",
     "approveFollowersDescription": "يجب عليك الموافقة يدويًا على من يريدون متابعتك",
     "notificationSettings": "إعدادات الإشعارات",

@@ -125,6 +125,7 @@
     "privacySettings": "Confidentialité du compte",
     "showActivity": "Afficher activité",
     "showActivityDescription": "Permet aux autres membres de voir vos commentaires, likes et partages",
+    "emptyActivity": "Aucune activité disponible",
     "approveFollowers": "Approuver les abonnés",
     "approveFollowersDescription": "Vous devez approuver manuellement ceux qui veulent vous suivre",
     "notificationSettings": "Paramètres de notification",

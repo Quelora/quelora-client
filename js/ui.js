@@ -547,59 +547,71 @@ const closeModalUI = () => {
 function renderActivitiesUI(activities) {
     try {
         const notificationList = document.querySelector('#community-quelora-notification-list');
-        if (!notificationList || !activities || activities.status !== "ok" || !activities.activities?.length) {
-        const notificationFloat = document.querySelector('.notification-float');
-        if (notificationFloat) notificationFloat.style.display = 'none';
-        return;
+        if (!notificationList) return;
+
+        // Clear existing empty container if present
+        const existingEmptyContainer = notificationList.querySelector('.comment-empty-container');
+        if (existingEmptyContainer) existingEmptyContainer.remove();
+
+        if (!activities || activities.status !== "ok" || !activities.activities?.length) {
+            const notificationFloat = document.querySelector('.notification-float');
+            if (notificationFloat) notificationFloat.style.display = 'none';
+
+            // Create empty container if no activities
+            const emptyContainer = document.createElement('div');
+            emptyContainer.classList.add('comment-empty-container', 't');
+            emptyContainer.textContent = '{{emptyActivity}}';
+            notificationList.appendChild(emptyContainer);
+            return;
         }
 
         let storedActivities = JSON.parse(StorageModule.getSessionItem('quelora_notifications_activities')) || [];
         let lastActivityTime = StorageModule.getSessionItem('quelora_notifications_last_activity_time') || 0;
 
         const newActivities = activities.activities.filter(activity => 
-        new Date(activity.created_at).getTime() > new Date(lastActivityTime).getTime()
+            new Date(activity.created_at).getTime() > new Date(lastActivityTime).getTime()
         );
 
         const allActivities = [...new Map([...storedActivities, ...activities.activities]
-        .map(item => [item._id, item])).values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            .map(item => [item._id, item])).values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
         const latestActivityTime = activities.activities.reduce((max, activity) => 
-        Math.max(max, new Date(activity.created_at).getTime()), new Date(lastActivityTime).getTime()
+            Math.max(max, new Date(activity.created_at).getTime()), new Date(lastActivityTime).getTime()
         );
 
         StorageModule.setSessionItem('quelora_notifications_activities', JSON.stringify(allActivities));
         StorageModule.setSessionItem('quelora_notifications_last_activity_time', new Date(latestActivityTime).toISOString());
 
         notificationList.innerHTML = `<ul class="quelora-notification-list">${allActivities.map(activity => {
-        const ids = {
-            entity: activity.references?.entity,
-            commentId: activity.references?.commentId,
-            replyId: activity.references?.replyId,
-            follow: activity.references?.profileId
-        };
-        const link = AnchorModule.generateLink({ type: activity.action_type, ids });
-        const avatarStyle = activity.author?.picture ? `style="background-image: url('${activity.author.picture}'); background-size: cover;"` : '';
-        const avatarContent = activity.author?.picture ? '' : activity.author?.author_username?.charAt(0)?.toUpperCase() || '';
-        const actionText = {
-            share: I18n.getTranslation('sharedPost'),
-            like: activity.entity?.type === 'comment' ? I18n.getTranslation('likedYourComment') : I18n.getTranslation('likedPost'),
-            comment: I18n.getTranslation('commentedOnPost'),
-            reply: I18n.getTranslation('repliedToYourComment'),
-            follow: I18n.getTranslation('isFollow'),
-            default: I18n.getTranslation('performedAnAction')
-        }[activity.action_type] || I18n.getTranslation('performedAnAction');
-        const preview = activity.entity?.preview ? `<span class="notification-preview">${activity.entity.preview}</span>` : '';
+            const ids = {
+                entity: activity.references?.entity,
+                commentId: activity.references?.commentId,
+                replyId: activity.references?.replyId,
+                follow: activity.references?.profileId
+            };
+            const link = AnchorModule.generateLink({ type: activity.action_type, ids });
+            const avatarStyle = activity.author?.picture ? `style="background-image: url('${activity.author.picture}'); background-size: cover;"` : '';
+            const avatarContent = activity.author?.picture ? '' : activity.author?.author_username?.charAt(0)?.toUpperCase() || '';
+            const actionText = {
+                share: I18n.getTranslation('sharedPost'),
+                like: activity.entity?.type === 'comment' ? I18n.getTranslation('likedYourComment') : I18n.getTranslation('likedPost'),
+                comment: I18n.getTranslation('commentedOnPost'),
+                reply: I18n.getTranslation('repliedToYourComment'),
+                follow: I18n.getTranslation('isFollow'),
+                default: I18n.getTranslation('performedAnAction')
+            }[activity.action_type] || I18n.getTranslation('performedAnAction');
+            const preview = activity.entity?.preview ? `<span class="notification-preview">${activity.entity.preview}</span>` : '';
 
-        return `<li class="quelora-notification-item" data-link="${link}">
-                    <div class="comment-avatar" ${avatarStyle} data-visibility="${activity.author?.visibility}">${avatarContent}</div>
-                    <div class="notification-content">
-                    <div class="notification-text-container">
-                        <span class="notification-message"><strong>${activity.author?.author_username || ''}</strong><span class="t">${actionText}</span></span>
-                        <span class="notification-time t">${UtilsModule.getTimeAgo(activity.created_at)}</span>
-                    </div>
-                    ${preview}
-                    </div>
-                </li>`;
+            return `<li class="quelora-notification-item" data-link="${link}">
+                        <div class="comment-avatar" ${avatarStyle} data-visibility="${activity.author?.visibility}">${avatarContent}</div>
+                        <div class="notification-content">
+                        <div class="notification-text-container">
+                            <span class="notification-message"><strong>${activity.author?.author_username || ''}</strong><span class="t">${actionText}</span></span>
+                            <span class="notification-time t">${UtilsModule.getTimeAgo(activity.created_at)}</span>
+                        </div>
+                        ${preview}
+                        </div>
+                    </li>`;
         }).join('')}</ul>`;
 
         const handleNotificationClick = (item) => () => {
@@ -624,7 +636,7 @@ function renderActivitiesUI(activities) {
         console.error('Error rendering activities:', error);
         const notificationList = document.querySelector('#community-quelora-notification-list');
         if (notificationList) {
-        notificationList.innerHTML = `<li class="error-message">${I18n.getTranslation('errorLoadingNotifications')}</li>`;
+            notificationList.innerHTML = `<li class="error-message">${I18n.getTranslation('errorLoadingNotifications')}</li>`;
         }
     }
 }

@@ -125,6 +125,7 @@
     "privacySettings": "アカウントのプライバシー",
     "showActivity": "アクティビティを表示",
     "showActivityDescription": "他のメンバーにあなたのコメント、いいね、共有を表示します",
+    "emptyActivity": "利用可能なアクティビティがありません",
     "approveFollowers": "フォロワーを承認",
     "approveFollowersDescription": "フォローしたい人を手動で承認する必要があります",
     "notificationSettings": "通知設定",

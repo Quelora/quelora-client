@@ -125,6 +125,7 @@
     "privacySettings": "Конфиденциальность аккаунта",
     "showActivity": "Показывать активность",
     "showActivityDescription": "Позволяет другим участникам видеть ваши комментарии, лайки и поделиться",
+    "emptyActivity": "Нет доступных активностей",
     "approveFollowers": "Одобрять подписчиков",
     "approveFollowersDescription": "Вы должны вручную одобрять тех, кто хочет на вас подписаться",
     "notificationSettings": "Настройки уведомлений",

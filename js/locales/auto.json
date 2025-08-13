@@ -125,6 +125,7 @@
     "privacySettings": "Account Privacy",
     "showActivity": "Show activity",
     "showActivityDescription": "Allows other members to see your comments, likes, and shares",
+    "emptyActivity": "No activities available",
     "approveFollowers": "Authorize followers",
     "approveFollowersDescription": "You must manually approve those who want to follow you",
     "notificationSettings": "Notification settings",

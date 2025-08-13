@@ -125,6 +125,7 @@
     "privacySettings": "Kontodatenschutz",
     "showActivity": "Meine Aktivität anzeigen",
     "showActivityDescription": "Erlaubt anderen Mitgliedern, deine Kommentare, Likes und Teilungen zu sehen",
+    "emptyActivity": "Keine Aktivitäten verfügbar",
     "approveFollowers": "Follower genehmigen",
     "approveFollowersDescription": "Du musst Follower manuell genehmigen",
     "notificationSettings": "Benachrichtigungseinstellungen",

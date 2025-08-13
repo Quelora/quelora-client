@@ -125,6 +125,7 @@
     "privacySettings": "Privacy dell'account",
     "showActivity": "Mostra attività",
     "showActivityDescription": "Consente agli altri membri di vedere i tuoi commenti, mi piace e condivisioni",
+    "emptyActivity": "Nessuna attività disponibile",
     "approveFollowers": "Autorizza seguaci",
     "approveFollowersDescription": "Devi approvare manualmente chi vuole seguirti",
     "notificationSettings": "Impostazioni notifiche",

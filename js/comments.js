@@ -472,6 +472,13 @@ async function fetchComment(entityId, comment, replyId = null, audioBase64 = nul
             ? container.querySelector(`.comment-replies[data-reply-id="${replyId}"]`)
             : container.querySelector('.community-threads');
 
+        // Remove existing comment-empty-container
+        const emptyContainer = container.querySelector('.comment-empty-container');
+        if (emptyContainer) {
+            emptyContainer.remove();
+        }
+
+
         // Add loading indicator
         if (threadsContainer) {
             const position = replyId ? 'after' : 'before';
