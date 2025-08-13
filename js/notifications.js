@@ -222,14 +222,14 @@ async function getPushSubscription() {
 
         // Register service worker if not already done
         if (!serviceWorkerRegistration) {
-            const registration = await navigator.serviceWorker.getRegistration('/js/quelora/');
+            const registration = await navigator.serviceWorker.getRegistration('/quelora/js/');
             
             if (registration) {
                 serviceWorkerRegistration = registration;
             } else {
                 serviceWorkerRegistration = await navigator.serviceWorker.register(
-                    '/js/quelora/sw.js', 
-                    { scope: '/js/quelora/' }
+                    '/quelora/js/sw.js', 
+                    { scope: '/quelora/js/' }
                 );
                 console.log('🔧 Registered Service Worker');
             }
