@@ -282,6 +282,184 @@ function getCurrentScriptPath() {
  */
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+
+/**
+ * makeEditableDivInput
+ * --------------------
+ * Transforms a standard <div> into a pseudo-input element with enhanced behavior.
+ * 
+ * Features:
+ *  - Forces plain text on paste (no formatting).
+ *  - Allows only letters, numbers, spaces, and emojis.
+ *  - Provides value, selectionStart, selectionEnd properties like an <input>.
+ *  - Supports setRangeText for inserting text at the current cursor (useful for mentions or emojis).
+ *  - Prevents input beyond maxLength if set on the div.
+ * 
+ * @param {string|HTMLElement} editable - The ID of the div or the div element itself to make editable.
+ */
+const makeEditableDivInput = (editable) => {
+    if (typeof editable === 'string') {
+        editable = document.getElementById(editable);
+    }
+    if (!editable) return;
+
+    // Helper function to get maxLength from attribute
+    const getMaxLength = () => {
+        const max = parseInt(editable.getAttribute('maxlength'));
+        return isNaN(max) ? -1 : max;
+    };
+
+    // Prevent input when maxLength is reached
+    editable.addEventListener('beforeinput', (e) => {
+        const maxLength = getMaxLength();
+        if (maxLength >= 0 && editable.innerText.length >= maxLength) {
+            if (!e.inputType.startsWith('delete')) {
+                e.preventDefault();
+            }
+        }
+    });
+
+    // Handle paste with maxLength validation
+    editable.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+        const currentLength = editable.innerText.length;
+        const maxLength = getMaxLength();
+        const allowedMaxLength = maxLength > 0 ? maxLength : text.length + currentLength;
+        if (currentLength < allowedMaxLength) {
+            const allowedText = text.substring(0, allowedMaxLength - currentLength);
+            document.execCommand('insertText', false, allowedText);
+        }
+    });
+
+    // Validate allowed characters and enforce maxLength
+    editable.addEventListener('input', () => {
+        let text = editable.innerText;
+        const maxLength = getMaxLength();
+        if (maxLength >= 0 && text.length > maxLength) {
+            text = text.substring(0, maxLength);
+        }
+        const validText = text.replace(/[^\p{L}\p{N}\s\p{Emoji}\u200D]/gu, '');
+        if (text !== validText || (maxLength >= 0 && text.length > maxLength)) {
+            editable.innerText = validText;
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(editable);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    });
+
+    // Define value property
+    Object.defineProperty(editable, 'value', {
+        get() {
+            return this.innerText;
+        },
+        set(v) {
+            const maxLength = getMaxLength();
+            const allowedMaxLength = maxLength > 0 ? maxLength : v.length;
+            this.innerText = v.substring(0, allowedMaxLength);
+        }
+    });
+
+    // Define selectionStart property
+    Object.defineProperty(editable, 'selectionStart', {
+        get() {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return this.innerText.length;
+            return sel.getRangeAt(0).startOffset;
+        },
+        set(pos) {
+            const range = document.createRange();
+            const sel = window.getSelection();
+            const node = this.firstChild || this;
+            range.setStart(node, Math.min(pos, this.innerText.length));
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    });
+
+    // Define selectionEnd property
+    Object.defineProperty(editable, 'selectionEnd', {
+        get() {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return this.innerText.length;
+            return sel.getRangeAt(0).endOffset;
+        },
+        set(pos) {
+            const range = document.createRange();
+            const sel = window.getSelection();
+            const node = this.firstChild || this;
+            range.setEnd(node, Math.min(pos, this.innerText.length));
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    });
+
+    // Add setSelectionRange method (like standard inputs)
+    editable.setSelectionRange = function(start, end, direction = 'forward') {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        const node = this.firstChild || this;
+        const textLength = this.innerText.length;
+        
+        // Validate positions
+        start = Math.min(Math.max(0, start), textLength);
+        end = Math.min(Math.max(0, end), textLength);
+        
+        range.setStart(node, start);
+        range.setEnd(node, end);
+        
+        sel.removeAllRanges();
+        sel.addRange(range);
+        
+        // Set cursor direction (not all browsers support this)
+        if (sel.extend) {
+            sel.collapse(node, start);
+            sel.extend(node, end);
+        }
+    };
+
+    // Define setRangeText method
+    editable.setRangeText = function(replacement) {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const range = sel.getRangeAt(0);
+        const currentLength = editable.innerText.length - (range.endOffset - range.startOffset);
+        const maxLength = getMaxLength();
+        const allowedMaxLength = maxLength > 0 ? maxLength : replacement.length + currentLength;
+        if (currentLength < allowedMaxLength) {
+            const allowedText = replacement.substring(0, allowedMaxLength - currentLength);
+            range.deleteContents();
+            range.insertNode(document.createTextNode(allowedText));
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    };
+
+    // Observe maxLength attribute changes
+    const observer = new MutationObserver(() => {
+        const maxLength = getMaxLength();
+        if (maxLength > 0 && editable.innerText.length > maxLength) {
+            editable.innerText = editable.innerText.substring(0, maxLength);
+            const range = document.createRange();
+            const sel = window.getSelection();
+            range.selectNodeContents(editable);
+            range.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    });
+
+    observer.observe(editable, {
+        attributes: true,
+        attributeFilter: ['maxlength']
+    });
+};
+
 /**
  * Utility module for QUELORA platform.
  * @type {Object}
@@ -299,7 +477,8 @@ const UtilsModule = {
     wait,
     getCurrentScriptPath,
     debounce,
-    isMobile
+    isMobile,
+    makeEditableDivInput
 };
 
 export default UtilsModule;

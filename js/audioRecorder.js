@@ -219,28 +219,40 @@ const playAudioSignal = async (times = 1) => {
  * @param {HTMLElement} referenceElement - Element associated with the voice button
  */
 const audioSignaling = async (referenceElement) => {
+  //console.log('audioSignaling: Starting, referenceElement:', referenceElement);
   try {
-    if (isRecording || !(await checkMicrophonePermission())) return;
+    if (isRecording || !(await checkMicrophonePermission())) {
+      //console.log('audioSignaling: Exit early - isRecording:', isRecording, 'Permission:', await checkMicrophonePermission());
+      return;
+    }
     currentReferenceElement = referenceElement;
+    //console.log('audioSignaling: Set currentReferenceElement');
 
     document.querySelectorAll('.community-thread, .interaction-item').forEach(el => {
       el.style.pointerEvents = 'none';
       el.style.opacity = '0.5';
     });
+    //console.log('audioSignaling: Disabled UI elements');
 
     recognizer = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognizer.continuous = true;
     recognizer.interimResults = true;
-    recognizer.lang = I18n.getSpeechVariant() || navigator.language;
+    recognizer.lang = 'en'; // Test with English
     recognizer.maxAlternatives = 1;
+    //console.log('audioSignaling: Recognizer initialized, lang:', recognizer.lang);
 
     let partialTranscript = '';
 
     recognizer.onresult = async (event) => {
+      //console.log('recognizer.onresult: Event received, results:', event.results);
       partialTranscript = Array.from(event.results).map(result => result[0].transcript).join('');
+      //console.log('recognizer.onresult: Partial transcript:', partialTranscript);
       if (event.results[0].isFinal) {
+        //console.log('recognizer.onresult: Final result detected');
         const audioBase64 = await finalizeAudio();
+        //console.log('recognizer.onresult: Audio finalized, base64 length:', audioBase64?.length || 0);
         const callback = callbackMap.get(referenceElement);
+        //console.log('recognizer.onresult: Callback exists:', !!callback);
         if (typeof callback === 'function') {
           const hash = await calculateSHA1((audioBase64 || '') + (partialTranscript || ''));
           callback(partialTranscript || null, audioBase64, hash);
@@ -251,54 +263,73 @@ const audioSignaling = async (referenceElement) => {
     };
 
     recognizer.onerror = async (event) => {
+      //console.log('recognizer.onerror: Error:', event.error, 'message:', event.message);
       if (event.error === 'no-speech' && recognizer.retryCount < 2) {
         recognizer.retryCount = (recognizer.retryCount || 0) + 1;
+        //console.log('recognizer.onerror: Retrying, attempt:', recognizer.retryCount);
         try {
           recognizer.start();
         } catch (e) {
+          //console.log('recognizer.onerror: Retry failed:', e);
           await handleErrorStop(partialTranscript, referenceElement);
         }
       } else {
+        //console.log('recognizer.onerror: Rendering error UI');
         UiModule.renderErrorMessageUI(I18n.getTranslation('speechRecognitionError'));
         await handleErrorStop(partialTranscript, referenceElement);
       }
     };
 
     recognizer.onend = async () => {
+      //console.log('recognizer.onend: Recognition ended, isRecording:', isRecording, 'partialTranscript:', partialTranscript, 'retryCount:', recognizer.retryCount || 0);
       if (isRecording && !partialTranscript && recognizer.retryCount < 2) {
         recognizer.retryCount = (recognizer.retryCount || 0) + 1;
+        //console.log('recognizer.onend: Retrying, attempt:', recognizer.retryCount);
         try {
           recognizer.start();
         } catch (e) {
+          //console.log('recognizer.onend: Retry failed:', e);
           await handleErrorStop(partialTranscript, referenceElement);
         }
+      } else {
+        //console.log('recognizer.onend: No retry, invoking callback');
+        await handleErrorStop(partialTranscript, referenceElement); // Ensure callback on end
       }
     };
 
+    //console.log('audioSignaling: Starting recognizer');
     recognizer.start();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    //console.log('audioSignaling: Media stream acquired');
     audioChunks = [];
     mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus', audioBitsPerSecond: ConfModule.get('audio.bitrate', 16000) });
     mediaRecorder.ondataavailable = e => e.data.size > 0 && audioChunks.push(e.data);
     mediaRecorder.start(100);
+    //console.log('audioSignaling: MediaRecorder started');
 
     createTimer();
 
     const handleAutoStopRecording = async () => {
       if (!isRecording) return;
       isManualStop = false;
+      //console.log('audioSignaling: Auto-stop triggered');
+      await handleErrorStop(partialTranscript, referenceElement); // Ensure callback on auto-stop
       await stopRecording();
       await playAudioSignal(2);
     };
 
-    stopTimeout = UtilsModule.startTimeout(handleAutoStopRecording, maxRecordingSeconds * 1000);
+    stopTimeout = UtilsModule.startTimeout(handleAutoStopRecording, 30000); // 30 seconds
+    //console.log('audioSignaling: Auto-stop timeout set to 30s');
 
     isRecording = true;
     new Audio(`data:audio/mp3;base64,${audioSignal}`).play().catch(e => console.error("Error playing sound:", e));
     document.querySelectorAll('.voice-button').forEach(button => button.classList.add('recording'));
+    //console.log('audioSignaling: Recording started, UI updated');
   } catch (error) {
+    //console.log('audioSignaling: Error caught:', error);
     handleError(error, 'audioSignaling');
     UiModule.renderErrorMessageUI(I18n.getTranslation('speechRecognitionError'));
+    await handleErrorStop('', referenceElement); // Ensure callback on error
     stopRecording();
   }
 };
@@ -322,8 +353,10 @@ const handleErrorStop = async (partialTranscript, referenceElement) => {
  * Stops audio recording and speech recognition.
  */
 const stopRecording = async () => {
+  //console.log('stopRecording: Called, isRecording:', isRecording);
   if (!isRecording) return;
   isRecording = false;
+  //console.log('stopRecording: Set isRecording to false');
 
   try {
     if (!isManualStop) {
@@ -350,6 +383,7 @@ const stopRecording = async () => {
     clearTimeout(stopTimeout);
     stopTimeout = null;
   }
+  //console.log('stopRecording: Cleanup UI');
   cleanupUI();
 };
 

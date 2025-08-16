@@ -167,6 +167,14 @@
     width: 100%;
     border: solid 1px var(--quelora-light-border-color);
     position: relative;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.comment-input:empty:before {
+  content: attr(placeholder);
+  color: #888;
+  pointer-events: none;
 }
 
 .quelora-comments .voice-button {
@@ -191,6 +199,17 @@
     width: 0%;
     transition: width 0.3s ease, background-color 0.3s ease;
 
+}
+
+.quelora-comments  .refresh-button {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    width: 40px;
+    height: 40px;
+    transform: translateX(-50%) scale(1);
+    opacity: 0.3;
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
 }
 
 .quelora-comments .progress-bar.full {

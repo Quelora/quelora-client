@@ -1375,7 +1375,7 @@ function attachCommentInputListener(entityId) {
                 iconReferenceElement: commentInput,
                 transcriptReferenceElement: commentInput,
                 onResult: (transcript, audioBase64, audioHash) => {
-                    callbackRecord(transcript, audioBase64, audioHash);
+                    CommentsModule.callbackRecord(transcript, audioBase64, audioHash);
                 }
             });
         }

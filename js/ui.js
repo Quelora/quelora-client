@@ -80,7 +80,11 @@ const commentsDrawerUI = new Drawer({
         <div class="input-container">
             <div class="comment-avatar profile-settings" style="display:none"></div>
             <span class="quelora-icons-outlined general-settings"></span>
-            <input type="text" placeholder="{{addcomment}}" class="comment-input" id="quelora-input" maxlength="200" enterkeyhint="send" >
+            <div class="comment-input" 
+                 id="quelora-input" 
+                 contenteditable="true" 
+                 maxlength="200"
+                 placeholder="{{addcomment}}"></div>
             <div class="progress-bar" id="quelora-input-bar"></div>
             <span class="quelora-icons-outlined" id="quelora-send">send</span>
             <span class="quelora-icons-outlined emoji-button" data-target-id="quelora-input">add_reaction</span>
@@ -91,12 +95,15 @@ const commentsDrawerUI = new Drawer({
     transitionSpeed: '0.3s',
     zIndex: 9000,
     position: 'bottom',
-    afterRender: () => {
+    afterRender: async () => {
         const threads = document.querySelector('#quelora-comments .community-threads');
-        if (!threads) {
-            return;
-        }
+        if (!threads) return;
 
+        // Aplicar comportamiento de input al div editable
+        const { default: UtilsModule } = await import('./utils.js');
+        UtilsModule.makeEditableDivInput('quelora-input');
+
+        // Pull-to-refresh de comentarios
         threads.style.position = 'relative';
         let startY = 0;
         let currentY = 0;
@@ -106,15 +113,7 @@ const commentsDrawerUI = new Drawer({
 
         function createRefreshButton() {
             refreshButton = document.createElement('button');
-            refreshButton.className = 'quelora-button quelora-icons-outlined loop';
-            refreshButton.style.position = 'absolute';
-            refreshButton.style.top = '20px';
-            refreshButton.style.left = '50%';
-            refreshButton.style.width = '40px';
-            refreshButton.style.height = '40px';
-            refreshButton.style.transform = 'translateX(-50%) scale(1)';
-            refreshButton.style.opacity = '0.3';
-            refreshButton.style.transition = 'transform 0.1s ease-out, opacity 0.1s ease-out';
+            refreshButton.className = 'quelora-button quelora-icons-outlined loop refresh-button';
             refreshButton.innerHTML = '<span class="quelora-icons-outlined">loop</span>';
             threads.appendChild(refreshButton);
         }
@@ -857,19 +856,18 @@ function showEditCommentUI(commentElement) {
             editConteiner.className = 'edit-container';
             
             const commentText = commentElement.querySelector('.comment-text')?.textContent || '';
-            const editInput = document.createElement('input');
-            editInput.type = 'text';
-            editInput.value = commentText;
+            const editInput = document.createElement('div');
+            editInput.contentEditable = 'true';
+            editInput.textContent = commentText;
             editInput.className = 'comment-input';
             editInput.id = 'quelora-input-edit';
             editInput.setAttribute('placeholder', '{{addcomment}}');
             editInput.setAttribute('enterkeyhint', 'send');
 
             const limit = isReply ? 
-                UtilsModule.getConfig(currentEntity)?.limits?.reply_text : 
-                UtilsModule.getConfig(currentEntity)?.limits?.comment_text;
-            editInput.maxLength = limit || 200;
-    
+            UtilsModule.getConfig(currentEntity)?.limits?.reply_text : 
+            UtilsModule.getConfig(currentEntity)?.limits?.comment_text;
+            editInput.setAttribute('maxlength',  limit || 200);
             const editBar = document.createElement('div');
             editBar.className = 'progress-bar';
             editBar.id = 'quelora-input-edit-bar';
@@ -880,7 +878,7 @@ function showEditCommentUI(commentElement) {
             inputContainer.appendChild(editBar);
             editConteiner.appendChild(inputContainer);
 
-            if(!UtilsModule.isMobile){
+            if (!UtilsModule.isMobile) {
                 const emojiButton = document.createElement('span');
                 emojiButton.classList.add('quelora-icons-outlined', 'emoji-button');
                 emojiButton.setAttribute('data-target-id', 'quelora-input-edit');
@@ -889,6 +887,8 @@ function showEditCommentUI(commentElement) {
             }
 
             bodyContent.appendChild(editConteiner);
+
+            UtilsModule.makeEditableDivInput(editInput);
 
             const handleKeydown = (event) => {
                 try {
@@ -940,7 +940,7 @@ function showEditCommentUI(commentElement) {
                 const editInput = bodyContent.querySelector('.comment-input');
                 if (!editInput) return;
         
-                const editComment = editInput.value;
+                const editComment = editInput.textContent;
                 const pickerContainer = document.getElementById('quelora-picker-container');
                 if (pickerContainer) {
                     pickerContainer.style.display = 'none';
@@ -959,7 +959,7 @@ function showEditCommentUI(commentElement) {
     
         function handleConfirmDelete() {
             try {
-                const modal =  document.querySelector('.quelora-modal');
+                const modal = document.querySelector('.quelora-modal');
                 const deleteButton = modal.querySelector('.delete-button');
         
                 const currentState = deleteButton.getAttribute('data-state');

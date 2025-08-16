@@ -144,6 +144,12 @@
     padding: var(--spacing-xl);
 }
 
+.quelora-modal .quelora-to-work .comment-text,
+.quelora-modal .comment-to-edit comment-text {
+    margin-bottom: 20px!important;
+}
+
+
 .quelora-modal .delete-button {
     background-color: var(--quelora-warning-color);
     color: var(--quelora-background-color);
@@ -225,6 +231,8 @@
     color: var(--quelora-text-color);
     border: solid 1px var(--quelora-light-border-color);
     width: -webkit-fill-available;
+    max-height: 250px;
+    overflow-y: auto;
 }
 
 .quelora-modal .comment-to-edit .quelora-icons-outlined {
