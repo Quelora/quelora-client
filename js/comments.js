@@ -43,6 +43,7 @@ import SessionModule from './session.js';
 import AudioRecorderModule from './audioRecorder.js';
 import MentionModule from './mention.js';
 import AnchorModule from './anchor.js';
+import StorageModule from './storage.js';
 
 // ==================== MODULE CONSTANTS ====================
 const TOUCH_MOVE_THRESHOLD = 10; // pixels
@@ -506,7 +507,7 @@ async function fetchComment(entityId, comment, replyId = null, audioBase64 = nul
  * @param {string} commentId - The comment ID to report
  * @param {string} type - The type of report
  */
-async function fetchReportComment(entityId, commentId, type) {
+async function fetchReportComment(entityId, commentId, type, hideAuthorContent = false) {
     try {
         token = await CoreModule.getTokenIfNeeded(token);
         const payload = { 
@@ -514,7 +515,8 @@ async function fetchReportComment(entityId, commentId, type) {
             entityId, 
             commentId, 
             type, 
-            cid 
+            cid,
+            hideAuthorContent
         };
         
         workerInstance.postMessage({
@@ -851,6 +853,7 @@ function createCommentElement(comment, entity, isReply) {
         commentHeader.setAttribute('data-can-delete', comment.authorOwner && canEditOrDelete);
         commentHeader.setAttribute('data-comment-language', comment.language);
         commentHeader.setAttribute('data-text-original', comment.text);
+        commentHeader.setAttribute('data-owner', comment.authorOwner);
 
         // Create avatar
         const commentAvatar = document.createElement('div');
@@ -1092,56 +1095,43 @@ async function renderTranslate(commentId, translation) {
  * @param {HTMLElement} container - DOM element to render into
  */
 function renderCommentList(entity, comments, container) {
-    try {
-        const fragment = document.createDocumentFragment();
-        
-        /**
-         * Gets CSS class for comment nesting level
-         * @param {number} level - Nesting level
-         * @returns {string} CSS class name
-         */
-        const getColorByLevel = (level) => {
-            const levels = [
-                "level-0", "level-1", "level-2", "level-3", 
-                "level-4", "level-5", "level-6", 
-                "level-7", "level-8", "level-9"
-            ];
-            return (typeof level === 'number' && level >= 0 && level < levels.length) 
-                ? levels[level] 
-                : 'level-default';
-        };
+    const fragment = document.createDocumentFragment();
 
-        // Check if rendering main thread with no comments and no existing elements
-        if (!container.classList.contains('comment-replies') && 
-            comments.length === 0 && 
-            container.children.length === 0) {
-            const emptyContainer = document.createElement('div');
-            emptyContainer.classList.add('comment-empty-container', 't');
-            emptyContainer.textContent = '{{emptyComments}}';
-            fragment.appendChild(emptyContainer);
-        } else {
-            comments.forEach(comment => {
-                const replyCount = countCommentRepliesAbove(container);
-                const commentElement = createCommentElement(comment, entity, replyCount !== 0);
-                
-                if (!commentElement) return;
+    const getColorByLevel = (level) => {
+        const levels = [
+            "level-0", "level-1", "level-2", "level-3", 
+            "level-4", "level-5", "level-6", 
+            "level-7", "level-8", "level-9"
+        ];
+        return (typeof level === 'number' && level >= 0 && level < levels.length) 
+            ? levels[level] 
+            : 'level-default';
+    };
 
-                // Apply nesting level styling
-                const levelColor = getColorByLevel(replyCount);
-                const replyDiv = commentElement.querySelector('.comment-replies');
-                
-                if (replyDiv) {
-                    replyDiv.classList.add(levelColor);
-                }
+    if (!container.classList.contains('comment-replies') && 
+        comments.length === 0 && 
+        container.children.length === 0) {
+        const emptyContainer = document.createElement('div');
+        emptyContainer.classList.add('comment-empty-container', 't');
+        emptyContainer.textContent = '{{emptyComments}}';
+        fragment.appendChild(emptyContainer);
+    } else {
+        comments.forEach(comment => {
+            if (ProfileModule.isBlockedAuthor(comment.author)) return;
+            
+            const replyCount = countCommentRepliesAbove(container);
+            const commentElement = createCommentElement(comment, entity, replyCount !== 0);
+            if (!commentElement) return;
 
-                fragment.appendChild(commentElement);
-            });
-        }
+            const levelColor = getColorByLevel(replyCount);
+            const replyDiv = commentElement.querySelector('.comment-replies');
+            if (replyDiv) replyDiv.classList.add(levelColor);
 
-        container.appendChild(fragment);
-    } catch (error) {
-        handleError(error, 'CommentsModule.renderCommentList');
+            fragment.appendChild(commentElement);
+        });
     }
+
+    container.appendChild(fragment);
 }
 
 /**

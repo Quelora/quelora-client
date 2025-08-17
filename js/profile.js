@@ -48,6 +48,7 @@ let workerInstance, token, cid, userProfile;
 let profileFetchLock = null;
 let isNotificationRunning = false;
 let activityInterval ;
+let hiddenAuthorsCache = null;
 
 const _memberProfiles = new Map();
 
@@ -151,6 +152,7 @@ const logout = async () => {
     try {
         SessionModule.logout();
         StorageModule.removeSessionItem('quelora_profile');
+        StorageModule.removeSessionItem('quelora_hidden_authors');
         CoreModule.removeToken();
         UiModule.resetCommentLikeIconsUI();
         _memberProfiles.clear();
@@ -213,9 +215,18 @@ const getOwnProfile = async (forceServerFetch = false, maxAttempts = 5, delayMs 
     return profileFetchLock;
 };
 
+/**
+ * Save the user profile in session storage and update hidden authors in local storage.
+ *
+ * @param {Object} profile - The profile object to save.
+ * @param {string} [profile.author] - The profile's author ID (required).
+ * @param {Array<{_id: string, blocked_id: string}>} [profile.blocked] - List of blocked users.
+ * @param {string} [path] - Optional key path to update only part of the profile.
+ */
 const saveMyProfile = (profile, path) => {
     if (!profile || !profile.author) return;
-    
+
+    // Save profile in session storage
     if (path) {
         const currentProfile = JSON.parse(StorageModule.getSessionItem('quelora_profile') || '{}');
         const updatedProfile = { ...currentProfile, [path]: profile[path] };
@@ -223,7 +234,15 @@ const saveMyProfile = (profile, path) => {
     } else {
         StorageModule.setSessionItem('quelora_profile', JSON.stringify(profile));
     }
-    
+
+    // Save hidden authors in local storage (overwrite if exists)
+    if (Array.isArray(profile.blocked)) {
+        const hiddenAuthors = profile.blocked.map(b => b.blocked_author);
+        StorageModule.setSessionItem('quelora_hidden_authors', JSON.stringify(hiddenAuthors));
+        hiddenAuthors.forEach(authorId => {
+            UiModule.destroyElementsByUI(authorId);
+        });
+    }
 };
 
 const saveMemberProfile = (profile) => memberProfiles.set(profile.author, profile);
@@ -316,7 +335,6 @@ function stopNotifications() {
         clearInterval(activityInterval);
         isNotificationRunning = false;
     }
-
 }
 
 const updateProfileSettingsUI = async () => {
@@ -336,131 +354,82 @@ const updateProfileSettingsUI = async () => {
             element[element.dataset[`${event}Handler`]] = newHandler;
         };
 
+        // --- Helpers ---
+        const bindSettingToggle = (selector, settingPath, extraHandler = null) => {
+            const el = document.querySelector(selector);
+            if (!el) return;
+            const value = settingPath.split('.').reduce((o, k) => o?.[k], ownProfile.settings) || false;
+            el.checked = value;
+            updateListener(el, 'change', function() {
+                postMessage('updateSettings', { key: settingPath, value: this.checked });
+                if (extraHandler) extraHandler.call(this);
+            });
+        };
+
+        const bindSettingSelect = (selector, settingPath, defaultValue = 'auto') => {
+            const el = document.querySelector(selector);
+            if (!el) return;
+            const value = settingPath.split('.').reduce((o, k) => o?.[k], ownProfile.settings) || defaultValue;
+            el.value = value;
+            updateListener(el, 'change', function() {
+                postMessage('updateSettings', { key: settingPath, value: this.value });
+            });
+        };
+
+        // --- Themes ---
         const themeProfile = document.querySelector('#quelora-theme-profile');    
         const themeButtons = {
-            light: themeProfile.querySelector('.light-theme'),
-            dark: themeProfile.querySelector('.dark-theme'),
-            system: themeProfile.querySelector('.system-theme')
+            light: themeProfile?.querySelector('.light-theme'),
+            dark: themeProfile?.querySelector('.dark-theme'),
+            system: themeProfile?.querySelector('.system-theme')
         };
-        
         for (const theme in themeButtons) {
             updateListener(themeButtons[theme], 'click', function() {
                 postMessage('updateSettings', { key: 'interface.defaultTheme', value: theme });
             });
         }
 
-        // Show Activity Buttons
+        // --- Show Activity Buttons ---
         const showActivityButtons = {
             everyone: document.querySelector('.privacy-button.everyone'),
             followers: document.querySelector('.privacy-button.followers'),
             onlyme: document.querySelector('.privacy-button.onlyme')
         };
-        
         const currentVisibility = ownProfile.settings?.privacy?.showActivity || 'everyone';
         for (const visibility in showActivityButtons) {
-            showActivityButtons[visibility].classList.toggle('active', visibility === currentVisibility);
+            showActivityButtons[visibility]?.classList.toggle('active', visibility === currentVisibility);
             updateListener(showActivityButtons[visibility], 'click', function() {
-                Object.values(showActivityButtons).forEach(btn => btn.classList.remove('active'));
+                Object.values(showActivityButtons).forEach(btn => btn?.classList.remove('active'));
                 this.classList.add('active');
                 postMessage('updateSettings', { key: 'privacy.showActivity', value: this.dataset.value });
             });
         }
 
-        // Remember session Toggle
-        const rememberSessionToggle = document.querySelector('#quelora-remember-session-toggle');
-        if (rememberSessionToggle) {
-            rememberSessionToggle.checked = ownProfile.settings?.session?.rememberSession;
-            updateListener(rememberSessionToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'session.rememberSession', value: this.checked });
-            });
-        }
+        // --- General Toggles ---
+        bindSettingToggle('#quelora-remember-session-toggle', 'session.rememberSession');
+        bindSettingToggle('#quelora-approve-followers-toggle', 'privacy.followerApproval');
+        bindSettingSelect('#quelora-language-select', 'interface.defaultLanguage', 'auto');
 
-        // Approve Followers Toggle
-        const approveFollowersToggle = document.querySelector('#quelora-approve-followers-toggle');
-        if (approveFollowersToggle) {
-            approveFollowersToggle.checked = ownProfile.settings?.privacy?.followerApproval;
-            updateListener(approveFollowersToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'privacy.followerApproval', value: this.checked });
-            });
-        }
+        bindSettingToggle('#quelora-web-notifications-toggle', 'notifications.web', function() {
+            this.checked ? runNotifications() : stopNotifications();
+        });
 
-        // Language Select
-        const languageSelect = document.querySelector('#quelora-language-select');
-        if (languageSelect) {
-            languageSelect.value = ownProfile.settings?.interface?.defaultLanguage || 'auto';
-            updateListener(languageSelect, 'change', function() {
-                postMessage('updateSettings', { key: 'interface.defaultLanguage', value: this.value });
-            });
-        }
+        bindSettingToggle('#quelora-email-notifications-toggle', 'notifications.email');
+        
+        // Push notifications necesita extra lógica
+        bindSettingToggle('#quelora-push-notifications-toggle', 'notifications.push', function() {
+            if (this.checked) {
+                NotificationModule.subscribeToPushNotifications(token);
+            } else {
+                NotificationModule.unsubscribeFromPushNotifications(token);
+            }
+        });
 
-        // Web Notifications Toggle
-        const webNotificationsToggle = document.querySelector('#quelora-web-notifications-toggle');
-        if (webNotificationsToggle) {
-            webNotificationsToggle.checked = ownProfile.settings?.notifications?.web;
-            updateListener(webNotificationsToggle, 'change', function() {
-                this.checked ? runNotifications() : stopNotifications();
-                postMessage('updateSettings', { key: 'notifications.web', value: this.checked });
-            });
-        }
+        bindSettingToggle('#quelora-notify-replies-toggle', 'notifications.comments');
+        bindSettingToggle('#quelora-notify-likes-toggle', 'notifications.postLikes');
+        bindSettingToggle('#quelora-notify-followers-toggle', 'notifications.newFollowers');
+        bindSettingToggle('#quelora-notify-posts-toggle', 'notifications.newPost');
 
-        // Email Notifications Toggle
-        const emailNotificationsToggle = document.querySelector('#quelora-email-notifications-toggle');
-        if (emailNotificationsToggle) {
-            emailNotificationsToggle.checked = ownProfile.settings?.notifications?.email;
-            updateListener(emailNotificationsToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'notifications.email', value: this.checked });
-            });
-        }
-
-        // Push Notifications Toggle
-        const pushNotificationsToggle = document.querySelector('#quelora-push-notifications-toggle');
-        if (pushNotificationsToggle) {
-            pushNotificationsToggle.checked = ownProfile.settings?.notifications?.push;
-            updateListener(pushNotificationsToggle, 'change', async function() {
-                postMessage('updateSettings', { key: 'notifications.push', value: this.checked });
-                if (this.checked) {
-                    NotificationModule.subscribeToPushNotifications(token);
-                } else {
-                    NotificationModule.unsubscribeFromPushNotifications(token);
-                }
-            });
-        }
-
-        // Notify Replies Toggle
-        const notifyRepliesToggle = document.querySelector('#quelora-notify-replies-toggle');
-        if (notifyRepliesToggle) {
-            notifyRepliesToggle.checked = ownProfile.settings?.notifications?.comments;
-            updateListener(notifyRepliesToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'notifications.comments', value: this.checked });
-            });
-        }
-
-        // Notify Likes Toggle
-        const notifyLikesToggle = document.querySelector('#quelora-notify-likes-toggle');
-        if (notifyLikesToggle) {
-            notifyLikesToggle.checked = ownProfile.settings?.notifications?.postLikes;
-            updateListener(notifyLikesToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'notifications.postLikes', value: this.checked });
-            });
-        }
-
-        // Notify Followers Toggle
-        const notifyFollowersToggle = document.querySelector('#quelora-notify-followers-toggle');
-        if (notifyFollowersToggle) {
-            notifyFollowersToggle.checked = ownProfile.settings?.notifications?.newFollowers;
-            updateListener(notifyFollowersToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'notifications.newFollowers', value: this.checked });
-            });
-        }
-
-        // Notify Posts Toggle
-        const notifyPostsToggle = document.querySelector('#quelora-notify-posts-toggle');
-        if (notifyPostsToggle) {
-            notifyPostsToggle.checked = ownProfile.settings?.notifications?.newPost;
-            updateListener(notifyPostsToggle, 'change', function() {
-                postMessage('updateSettings', { key: 'notifications.newPost', value: this.checked });
-            });
-        }
     } catch (error) {
         console.error('Error updating profile option UI:', error);
     }
@@ -1313,9 +1282,7 @@ const renderProfileListLikes = async (payload) => {
 };
 
 const createLikeProfileItem = async (user) => {
-    const ownProfile = await getOwnProfile();
     const isFollowing = user.isFollowing || false;
-    
     return await createFollowerItem(user, {
         showFollowButton: true,
         isFollowing: isFollowing,
@@ -1622,7 +1589,22 @@ const renderSearchAccountsResults = async (payload) => {
     }
 };
 
+const isBlockedAuthor = (author) => {
+  if (!hiddenAuthorsCache) {
+    try {
+      hiddenAuthorsCache = JSON.parse(StorageModule.getSessionItem('quelora_hidden_authors')) ?? [];
+    } catch {
+      hiddenAuthorsCache = [];
+    }
+  }
+  return hiddenAuthorsCache.includes(author);
+};
+
+export const refreshBlockedAuthors = () => { hiddenAuthorsCache = null; };
+
 const ProfileModule = {
+    isBlockedAuthor,
+    refreshBlockedAuthors,
     initializeProfile,
     findMention,
     setToken,

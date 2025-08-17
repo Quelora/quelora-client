@@ -841,7 +841,8 @@ function showEditCommentUI(commentElement) {
         const canEdit = commentHeader.getAttribute('data-can-edit') === 'true';
         const canDelete = commentHeader.getAttribute('data-can-delete') === 'true';
         const isReply = commentHeader.getAttribute('data-is-reply') === 'true';
-    
+        const isOwner = (commentHeader.getAttribute('data-owner') === 'true');
+
         const bodyContent = document.createElement('div');
         bodyContent.className = 'quelora-to-work';
 
@@ -917,9 +918,14 @@ function showEditCommentUI(commentElement) {
         }
 
         buttons.push(
-            { className: 'close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' },
-            { className: 'report-button t', textContent: '{{report}}', onClick: () => showReportCommentUI(commentElement), icon: 'flag' }
+            { className: 'close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
         );
+
+        if (!isOwner) {
+            buttons.push(
+                { className: 'report-button t', textContent: '{{report}}', onClick: () => showReportCommentUI(commentElement), icon: 'flag' }
+            );
+        }
     
         if (UtilsModule.getConfig(currentEntity)?.editing?.allow_delete && canDelete) {
             buttons.push({
@@ -1180,6 +1186,7 @@ function showReportCommentUI(commentElement) {
         if (!commentHeader) return;
 
         const commentId = commentHeader.getAttribute('data-comment-id');
+        const authorId = commentHeader.parentElement.getAttribute('data-author-id');
     
         const reportContent = document.createElement('div');
         reportContent.classList.add('report-content');
@@ -1218,10 +1225,27 @@ function showReportCommentUI(commentElement) {
                 console.error('Error creating report option:', error);
             }
         });
+
+        const hideAuthorContainer = document.createElement('div');
+        hideAuthorContainer.classList.add('hide-author-container');
+        
+        const hideAuthorCheckbox = document.createElement('input');
+        hideAuthorCheckbox.type = 'checkbox';
+        hideAuthorCheckbox.id = 'hide-author-content';
+        hideAuthorCheckbox.name = 'hide-author-content';
+        
+        const hideAuthorLabel = document.createElement('label');
+        hideAuthorLabel.classList.add('t');
+        hideAuthorLabel.htmlFor = 'hide-author-content';
+        hideAuthorLabel.textContent = '{{hideAuthorContent}}'; 
+        
+        hideAuthorContainer.appendChild(hideAuthorCheckbox);
+        hideAuthorContainer.appendChild(hideAuthorLabel);
     
         reportContent.appendChild(paragraph);
         reportContent.appendChild(advertencia);
         reportContent.appendChild(optionsList);
+        reportContent.appendChild(hideAuthorContainer);
     
         const buttons = [
             { className: 'close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
@@ -1233,7 +1257,18 @@ function showReportCommentUI(commentElement) {
             try {
                 event.preventDefault();
                 const type = event.target.getAttribute('data-type');
-                CommentsModule.fetchReportComment(currentEntity, commentId, type);
+                const hideAuthorContent = document.getElementById('hide-author-content').checked;
+                CommentsModule.fetchReportComment(currentEntity, commentId, type, hideAuthorContent);
+                if (hideAuthorContent && authorId) {
+                    const hiddenAuthors = JSON.parse(StorageModule.getSessionItem('quelora_hidden_authors') || '[]');
+                    if (!hiddenAuthors.includes(authorId)) {
+                        hiddenAuthors.push(authorId);
+                        StorageModule.setSessionItem('quelora_hidden_authors', JSON.stringify(hiddenAuthors));
+                    }
+
+                    ProfileModule.refreshBlockedAuthors();
+                    destroyElementsByUI(authorId);
+                }
             } catch (error) {
                 console.error('Error handling report:', error);
             }
@@ -1241,6 +1276,13 @@ function showReportCommentUI(commentElement) {
     } catch (error) {
         console.error('Error showing report comment modal:', error);
     }
+}
+
+function destroyElementsByUI(authorId) {
+    document.querySelectorAll(`[data-author-id="${authorId}"]`).forEach(el => {
+        const thread = el.closest('.community-thread');
+        if (thread) thread.remove();
+    });
 }
 
 function renderStatsUI(stats) {
@@ -1964,46 +2006,47 @@ const initializeUI = () => {
 };
 
 const UiModule = {
-        initializeUI,
-        createProfileDropupUI,
-        getCommunityThreadsUI,
-        addLoadingMessageUI,
-        addProfileSkeletoUI,
-        renderReportedUI,
-        setupModalUI,
-        showEditCommentUI,
-        showReportCommentUI,
-        renderErrorMessageUI,
-        renderStatsUI,
-        renderActivitiesUI,
-        closeModalUI,
-        likesDrawerUI,
-        commentsDrawerUI,
-        settingsDrawerUI,
-        generalSettingsDrawerUI,
-        profileDrawerUI,
-        notificationDrawerUI,
-        followRequestDrawerUI,
-        filterListItemsUI,
-        updateLikeUI,
-        updateBookmarkUI,
-        updateCounterUI,
-        updateCommentUI,
-        updateProfileUI,
-        unwrapCommentElementUI,
-        wrapCommentElementUI,
-        addReplyHeaderUI,
-        removeHeaderUI,
-        updateUserUI,
-        addProfileOptionUI,
-        updateCommentLikeUI,
-        updateCommentCountUI,
-        resetCommentLikeIconsUI,
-        addElementHeaderUI,
-        handleAudioResponseUI,
-        getCounterFromDOMUI,
-        createEmojiPickerBarUI,
-        audioUI
+    initializeUI,
+    createProfileDropupUI,
+    getCommunityThreadsUI,
+    addLoadingMessageUI,
+    addProfileSkeletoUI,
+    renderReportedUI,
+    setupModalUI,
+    showEditCommentUI,
+    showReportCommentUI,
+    renderErrorMessageUI,
+    renderStatsUI,
+    renderActivitiesUI,
+    closeModalUI,
+    likesDrawerUI,
+    commentsDrawerUI,
+    settingsDrawerUI,
+    generalSettingsDrawerUI,
+    profileDrawerUI,
+    notificationDrawerUI,
+    followRequestDrawerUI,
+    filterListItemsUI,
+    updateLikeUI,
+    updateBookmarkUI,
+    updateCounterUI,
+    updateCommentUI,
+    updateProfileUI,
+    unwrapCommentElementUI,
+    wrapCommentElementUI,
+    addReplyHeaderUI,
+    removeHeaderUI,
+    updateUserUI,
+    addProfileOptionUI,
+    updateCommentLikeUI,
+    updateCommentCountUI,
+    resetCommentLikeIconsUI,
+    addElementHeaderUI,
+    handleAudioResponseUI,
+    getCounterFromDOMUI,
+    createEmojiPickerBarUI,
+    audioUI,
+    destroyElementsByUI
 };
 
 export default UiModule;

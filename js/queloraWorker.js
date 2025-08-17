@@ -291,7 +291,7 @@ self.addEventListener('message', (event) => {
             handleFetch(action, `${apiUrl}/comments/${payload.entityId}/comment/${payload.commentId}/report`, {
                 method: "POST",
                 headers: authHeaders(payload.token),
-                body: JSON.stringify({ type: payload.type })
+                body: JSON.stringify({ type: payload.type, blocked: payload.hideAuthorContent })
             }, 'reportedComment');
             break;
 

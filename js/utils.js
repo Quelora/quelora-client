@@ -303,154 +303,236 @@ const makeEditableDivInput = (editable) => {
     }
     if (!editable) return;
 
-    // Helper function to get maxLength from attribute
+    if (!editable.style.whiteSpace) {
+        editable.style.whiteSpace = 'pre-wrap';
+    }
+
+    // === Helpers ===
     const getMaxLength = () => {
         const max = parseInt(editable.getAttribute('maxlength'));
         return isNaN(max) ? -1 : max;
     };
 
-    // Prevent input when maxLength is reached
+    const getSelectionOffsets = () => {
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) {
+            const len = editable.textContent.length;
+            return { start: len, end: len };
+        }
+        const range = sel.getRangeAt(0);
+        return { start: range.startOffset, end: range.endOffset };
+    };
+
+    const setCaret = (pos) => {
+        const len = editable.textContent.length;
+        const p = Math.max(0, Math.min(len, pos));
+        const range = document.createRange();
+        const sel = window.getSelection();
+        if (!editable.firstChild || editable.firstChild.nodeType !== Node.TEXT_NODE) {
+            editable.textContent = editable.textContent; // colapsa a un solo text node
+        }
+        const node = editable.firstChild || editable;
+        range.setStart(node, p);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    };
+
+    const setSelectionRangeImpl = (start, end) => {
+        const len = editable.textContent.length;
+        const s = Math.max(0, Math.min(len, start));
+        const e = Math.max(0, Math.min(len, end));
+        const range = document.createRange();
+        const sel = window.getSelection();
+        if (!editable.firstChild || editable.firstChild.nodeType !== Node.TEXT_NODE) {
+            editable.textContent = editable.textContent;
+        }
+        const node = editable.firstChild || editable;
+        range.setStart(node, s);
+        range.setEnd(node, e);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    };
+
+    const clampToMaxLength = (text) => {
+        const maxLength = getMaxLength();
+        if (maxLength >= 0 && text.length > maxLength) {
+            return text.substring(0, maxLength);
+        }
+        return text;
+    };
+
+    const sanitizeToPlainText = (rawHTMLish) => {
+        const div = document.createElement('div');
+        div.innerHTML = rawHTMLish;
+        let plain = div.textContent || '';
+        plain = clampToMaxLength(plain);
+        return plain;
+    };
+
+    const replaceWithPlainTextPreservingCaret = () => {
+        const { start } = getSelectionOffsets();
+        const plain = sanitizeToPlainText(editable.innerHTML);
+        const delta = plain.length - editable.textContent.length;
+        editable.textContent = plain;
+        setCaret(start + Math.max(0, delta));
+    };
+
+    // === Events ===
+
     editable.addEventListener('beforeinput', (e) => {
         const maxLength = getMaxLength();
-        if (maxLength >= 0 && editable.innerText.length >= maxLength) {
-            if (!e.inputType.startsWith('delete')) {
-                e.preventDefault();
+        if (maxLength < 0) return;
+
+        if (e.inputType && e.inputType.startsWith('delete')) return;
+
+        const sel = window.getSelection();
+        let selectionLength = 0;
+        if (sel && sel.rangeCount) {
+            const r = sel.getRangeAt(0);
+            selectionLength = Math.abs(r.endOffset - r.startOffset);
+        }
+
+        const incoming = (typeof e.data === 'string') ? e.data : '';
+        const currentLen = editable.textContent.length;
+        const projected = currentLen - selectionLength + incoming.length;
+
+        if (projected > maxLength) {
+            e.preventDefault();
+            const remaining = maxLength - (currentLen - selectionLength);
+            if (remaining > 0 && incoming) {
+                document.execCommand('insertText', false, incoming.substring(0, remaining));
             }
         }
     });
 
-    // Handle paste with maxLength validation
     editable.addEventListener('paste', (e) => {
         e.preventDefault();
-        const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-        const currentLength = editable.innerText.length;
+        const text = (e.clipboardData || window.clipboardData).getData('text/plain') || '';
         const maxLength = getMaxLength();
-        const allowedMaxLength = maxLength > 0 ? maxLength : text.length + currentLength;
-        if (currentLength < allowedMaxLength) {
-            const allowedText = text.substring(0, allowedMaxLength - currentLength);
-            document.execCommand('insertText', false, allowedText);
+
+        const sel = window.getSelection();
+        let selectionLength = 0;
+        if (sel && sel.rangeCount) {
+            const r = sel.getRangeAt(0);
+            selectionLength = Math.abs(r.endOffset - r.startOffset);
         }
+        const currentLen = editable.textContent.length;
+        const remaining = maxLength >= 0 ? maxLength - (currentLen - selectionLength) : text.length;
+
+        const allowed = maxLength >= 0 ? text.substring(0, Math.max(0, remaining)) : text;
+        if (allowed) document.execCommand('insertText', false, allowed);
     });
 
-    // Validate allowed characters and enforce maxLength
+    editable.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const data = e.dataTransfer;
+        const text = data ? (data.getData('text/plain') || '') : '';
+        const maxLength = getMaxLength();
+
+        const sel = window.getSelection();
+        let selectionLength = 0;
+        if (sel && sel.rangeCount) {
+            const r = sel.getRangeAt(0);
+            selectionLength = Math.abs(r.endOffset - r.startOffset);
+        }
+        const currentLen = editable.textContent.length;
+        const remaining = maxLength >= 0 ? maxLength - (currentLen - selectionLength) : text.length;
+
+        const allowed = maxLength >= 0 ? text.substring(0, Math.max(0, remaining)) : text;
+        if (allowed) document.execCommand('insertText', false, allowed);
+    });
+
     editable.addEventListener('input', () => {
-        let text = editable.innerText;
-        const maxLength = getMaxLength();
-        if (maxLength >= 0 && text.length > maxLength) {
-            text = text.substring(0, maxLength);
+        const html = editable.innerHTML;
+        if (html.indexOf('<') === -1 && html.indexOf('>') === -1) {
+            const txt = editable.textContent;
+            const clamped = clampToMaxLength(txt);
+            if (clamped !== txt) {
+                const pos = getSelectionOffsets().start;
+                editable.textContent = clamped;
+                setCaret(Math.min(pos, clamped.length));
+            }
+            return;
         }
-        const validText = text.replace(/[^\p{L}\p{N}\s\p{Emoji}\u200D]/gu, '');
-        if (text !== validText || (maxLength >= 0 && text.length > maxLength)) {
-            editable.innerText = validText;
-            const range = document.createRange();
-            const sel = window.getSelection();
-            range.selectNodeContents(editable);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
+        replaceWithPlainTextPreservingCaret();
     });
 
-    // Define value property
+    // === API  and inputs ===
+
     Object.defineProperty(editable, 'value', {
         get() {
-            return this.innerText;
+            return this.textContent;
         },
         set(v) {
-            const maxLength = getMaxLength();
-            const allowedMaxLength = maxLength > 0 ? maxLength : v.length;
-            this.innerText = v.substring(0, allowedMaxLength);
+            const s = String(v ?? '');
+            const clamped = clampToMaxLength(s);
+            this.textContent = clamped;
+            setCaret(clamped.length);
         }
     });
 
-    // Define selectionStart property
     Object.defineProperty(editable, 'selectionStart', {
         get() {
             const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return this.innerText.length;
+            if (!sel || sel.rangeCount === 0) return this.textContent.length;
             return sel.getRangeAt(0).startOffset;
         },
         set(pos) {
-            const range = document.createRange();
-            const sel = window.getSelection();
-            const node = this.firstChild || this;
-            range.setStart(node, Math.min(pos, this.innerText.length));
-            range.collapse(true);
-            sel.removeAllRanges();
-            sel.addRange(range);
+            setCaret(pos);
         }
     });
 
-    // Define selectionEnd property
     Object.defineProperty(editable, 'selectionEnd', {
         get() {
             const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return this.innerText.length;
+            if (!sel || sel.rangeCount === 0) return this.textContent.length;
             return sel.getRangeAt(0).endOffset;
         },
         set(pos) {
-            const range = document.createRange();
-            const sel = window.getSelection();
-            const node = this.firstChild || this;
-            range.setEnd(node, Math.min(pos, this.innerText.length));
-            sel.removeAllRanges();
-            sel.addRange(range);
+            const len = this.textContent.length;
+            setSelectionRangeImpl(Math.min(this.selectionStart, pos), Math.max(this.selectionStart, pos));
         }
     });
 
-    // Add setSelectionRange method (like standard inputs)
     editable.setSelectionRange = function(start, end, direction = 'forward') {
-        const range = document.createRange();
-        const sel = window.getSelection();
-        const node = this.firstChild || this;
-        const textLength = this.innerText.length;
-        
-        // Validate positions
-        start = Math.min(Math.max(0, start), textLength);
-        end = Math.min(Math.max(0, end), textLength);
-        
-        range.setStart(node, start);
-        range.setEnd(node, end);
-        
-        sel.removeAllRanges();
-        sel.addRange(range);
-        
-        // Set cursor direction (not all browsers support this)
-        if (sel.extend) {
-            sel.collapse(node, start);
-            sel.extend(node, end);
+        setSelectionRangeImpl(start, end);
+        if (direction === 'backward') {
+            const sel = window.getSelection();
+            const node = this.firstChild || this;
+            if (sel && sel.extend) {
+                sel.collapse(node, end);
+                sel.extend(node, start);
+            }
         }
     };
 
-    // Define setRangeText method
     editable.setRangeText = function(replacement) {
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0) return;
         const range = sel.getRangeAt(0);
-        const currentLength = editable.innerText.length - (range.endOffset - range.startOffset);
+
+        const currentLen = editable.textContent.length - (range.endOffset - range.startOffset);
         const maxLength = getMaxLength();
-        const allowedMaxLength = maxLength > 0 ? maxLength : replacement.length + currentLength;
-        if (currentLength < allowedMaxLength) {
-            const allowedText = replacement.substring(0, allowedMaxLength - currentLength);
-            range.deleteContents();
-            range.insertNode(document.createTextNode(allowedText));
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        }
+        const allowedMax = maxLength > 0 ? maxLength : (currentLen + String(replacement).length);
+        const remaining = allowedMax - currentLen;
+
+        const allowedText = String(replacement).substring(0, Math.max(0, remaining));
+        range.deleteContents();
+        range.insertNode(document.createTextNode(allowedText));
+        const newPos = (range.startOffset || 0) + allowedText.length;
+        editable.textContent = editable.textContent; 
+        setCaret(newPos);
     };
 
-    // Observe maxLength attribute changes
     const observer = new MutationObserver(() => {
         const maxLength = getMaxLength();
-        if (maxLength > 0 && editable.innerText.length > maxLength) {
-            editable.innerText = editable.innerText.substring(0, maxLength);
-            const range = document.createRange();
-            const sel = window.getSelection();
-            range.selectNodeContents(editable);
-            range.collapse(false);
-            sel.removeAllRanges();
-            sel.addRange(range);
+        const txt = editable.textContent;
+        if (maxLength > 0 && txt.length > maxLength) {
+            const pos = getSelectionOffsets().start;
+            const clamped = txt.substring(0, maxLength);
+            editable.textContent = clamped;
+            setCaret(Math.min(pos, clamped.length));
         }
     });
 
@@ -459,6 +541,7 @@ const makeEditableDivInput = (editable) => {
         attributeFilter: ['maxlength']
     });
 };
+
 
 /**
  * Utility module for QUELORA platform.

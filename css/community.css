@@ -542,3 +542,17 @@
 .quelora-comments .comment-audio-container.loading .audio-play-button {
     color: var(--quelora-gray-color);
 }
+
+.hide-author-container {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hide-author-container input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+}
