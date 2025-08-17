@@ -643,11 +643,15 @@ const createFollowerItem = async (user, options = {}) => {
 };
 
 const createCommentItem = async (comment) => {
+    if (isBlockedAuthor(comment.author.author)) return '';
     const user = comment.author;
     const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
     const isOwnProfile = user.author === getOwnProfile()?.author;
     const userProfile = memberProfiles.get(user.author) || user;
-    const followButtonHTML = !isOwnProfile ? (await createFollowButton(userProfile)).outerHTML : '';
+    
+    const followButtonHTML = !isOwnProfile 
+        ? (await createFollowButton(userProfile)).outerHTML 
+        : '';
 
     const refererHTML = renderRefererStructure({
         date: comment.created_at,
@@ -664,11 +668,16 @@ const createCommentItem = async (comment) => {
 };
 
 const createLikeItem = async (like) => {
-    const user = like.author || {};
+    if (!like.author || isBlockedAuthor(like.author.author)) return '';
+
+    const user = like.author;
     const initials = user.name?.split(' ').map(n => n[0]).join('').toUpperCase() || '';
     const isOwnProfile = user.author === getOwnProfile()?.author;
     const userProfile = memberProfiles.get(user.author) || user;
-    const followButtonHTML = !isOwnProfile ? (await createFollowButton(userProfile)).outerHTML : '';
+    
+    const followButtonHTML = !isOwnProfile 
+        ? (await createFollowButton(userProfile)).outerHTML 
+        : '';
 
     const refererHTML = renderRefererStructure({
         date: like.created_at,
@@ -782,7 +791,13 @@ const renderProfileSection = async (items, container, createItemFn, emptyMessage
     if (!container) return;
 
     if (items?.length) {
-        const htmlItems = await Promise.all(items.map(async (item) => {
+        // Filter out blocked authors
+        const filteredItems = items.filter(item => {
+            const authorId = item.author?.author || item.author;
+            return authorId && !isBlockedAuthor(authorId);
+        });
+
+        const htmlItems = await Promise.all(filteredItems.map(async (item) => {
             const html = await createItemFn(item);
             const { author } = item;
             if (author) {
@@ -793,7 +808,7 @@ const renderProfileSection = async (items, container, createItemFn, emptyMessage
             return html;
         }));
 
-        container.innerHTML = htmlItems.join('');
+        container.innerHTML = htmlItems.length ? htmlItems.join('') : createEmptyState(emptyMessage);
     } else {
         container.innerHTML = createEmptyState(emptyMessage);
     }
@@ -801,7 +816,7 @@ const renderProfileSection = async (items, container, createItemFn, emptyMessage
     if (createItemFn === createFollowerItem) {
         attachFollowButtonListeners();
     }
-};
+}
 
 const setupSearchHandlers = () => {
     document.querySelectorAll('.profile-tab-content .search-input').forEach(input => {
@@ -1346,16 +1361,20 @@ const renderFollowRequests = async () => {
         let html = '<ul>';
 
         for (const request of requests) {
-            html += await createFollowerItem(request.requester, {
-                requestId: request._id,
-                showRequestActions: true,
-                showFollowButton: false,
-                requestTime: request.created_at,
-                animationClasses: {
-                    accept: 'flip-out-hor-top',
-                    reject: 'flip-out-hor-bottom'
-                }
-            });
+            const item = !isBlockedAuthor(request.requester.author)
+                ? await createFollowerItem(request.requester, {
+                    requestId: request._id,
+                    showRequestActions: true,
+                    showFollowButton: false,
+                    requestTime: request.created_at,
+                    animationClasses: {
+                        accept: 'flip-out-hor-top',
+                        reject: 'flip-out-hor-bottom'
+                    }
+                })
+                : null;
+            
+            if (item) html += item;
         }
 
         html += '</ul>';
@@ -1482,9 +1501,13 @@ const renderCombinedMentionResults = async (profiles, inputElement) => {
         
         newProfiles.forEach(profile => memberProfiles.set(profile.author, profile));
         
-        const newItems = await Promise.all(newProfiles.map(user => 
-            createFollowerItem(user, { showFollowButton: false })
-        ));
+        const newItems = await Promise.all(
+            newProfiles.map(user => 
+                !isBlockedAuthor(user.author) 
+                    ? createFollowerItem(user, { showFollowButton: false }) 
+                    : null
+            ).filter(Boolean)
+        );
         
         if (newItems.length > 0) {
             const fragment = document.createDocumentFragment();
@@ -1568,9 +1591,13 @@ const renderSearchAccountsResults = async (payload) => {
         
         ul.replaceChildren();
 
-        const htmlStrings = await Promise.all(profiles.map(user => 
-            createFollowerItem(user)
-        ));
+        const htmlStrings = await Promise.all(
+            profiles.map(user => 
+                !isBlockedAuthor(user.author) 
+                    ? createFollowerItem(user) 
+                    : null
+            ).filter(Boolean)
+        );
 
         const fragment = document.createDocumentFragment();
         

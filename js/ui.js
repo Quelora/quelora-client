@@ -1278,10 +1278,17 @@ function showReportCommentUI(commentElement) {
     }
 }
 
-function destroyElementsByUI(authorId) {
-    document.querySelectorAll(`[data-author-id="${authorId}"]`).forEach(el => {
-        const thread = el.closest('.community-thread');
-        if (thread) thread.remove();
+function destroyElementsByUI(id) {
+    const selectors = [
+        `[data-author-id="${id}"]`,
+        `[data-member-id="${id}"]`
+    ];
+    
+    selectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            const thread = el.closest('.community-thread');
+            if (thread) thread.remove();
+        });
     });
 }
 
