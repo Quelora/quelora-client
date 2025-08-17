@@ -227,7 +227,7 @@ function setInputLimit(limits = 200) {
     try {
         const inputElement = document.getElementById('quelora-input');
         if (inputElement) {
-            inputElement.maxLength = limits;
+            inputElement.setAttribute('maxlength', limits);
         }
     } catch (error) {
         console.error('Error setting input limit:', error);

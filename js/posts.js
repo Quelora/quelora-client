@@ -402,6 +402,9 @@ async function loadThread(entityId, lastCommentId = null, includeLast = false) {
     CommentsModule.fetchComments(entityId, lastCommentId, includeLast);
     CommentsModule.attachCommentInputListener(entityId);
     UiModule.createEmojiPickerBarUI();
+    UtilsModule.setInputLimit(
+        UtilsModule.getConfig(entityId)?.limits?.comment_text
+    );
     UiModule.commentsDrawerUI.open();
 }
 

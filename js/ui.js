@@ -1329,8 +1329,6 @@ function renderStatsUI(stats) {
         updateBookmarkUI(interactionElement, stat.authorBookmarked);
         
         PostsModule.attachEventListeners(stat.entity);
-        UtilsModule.setInputLimit(UtilsModule.getConfig(stat.entity)?.limits?.comment_text);
-
         const dataEntityElement = document.querySelector(`[data-entity="${stat.entity}"]`);
         if (dataEntityElement) dataEntityElement.setAttribute("data-entity-ready", "true");
         });
@@ -1498,6 +1496,8 @@ function updateCommentUI(entityId, commentData) {
                 commentData.replyId ? null : threadsContainer.firstChild
             );
         }
+
+        commentElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (error) {
         console.error('Error updating comment UI:', error);
     }
