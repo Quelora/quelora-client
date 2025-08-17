@@ -1,8 +1,9 @@
 
 
 .quelora-loading-message {
-    display: block;
+    display: flex;
     align-items: center; 
+    justify-content:center;
     gap: var(--spacing-xl);
     text-align: left;
     padding: var(--spacing-xl);
@@ -10,8 +11,9 @@
     font-size: var(--font-size-sm);
 }
 
-.quelora-loading-message-skeleton {
-    display: block!important;
+.quelora-loading-message:has(.quelora-skeleton-message) {
+    width:fit-content;
+    flex-direction: column;
 }
 
 .quelora-loader {

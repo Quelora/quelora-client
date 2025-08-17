@@ -171,5 +171,6 @@
     "chinese": "中国語",
     "russian": "ロシア語",
     "arabic": "アラビア語",
-    "hideAuthorContent": "このメンバーが生成したコンテンツをもっと見たくない"
+    "hideAuthorContent": "このメンバーが生成したコンテンツをもっと見たくない",
+    "search_min_chars": "検索するには少なくとも4文字入力してください"
 }

@@ -466,6 +466,12 @@
   height: 100vh;
 }
 
+.quelora-profile-header{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
 .follow-button,
 .button-button {
   display: flex;

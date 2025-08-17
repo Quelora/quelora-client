@@ -171,5 +171,6 @@
     "chinese": "中文",
     "russian": "俄语",
     "arabic": "阿拉伯语",
-    "hideAuthorContent": "我不想再看到该成员生成的内容"
+    "hideAuthorContent": "我不想再看到该成员生成的内容",
+    "search_min_chars": "请输入至少4个字符进行搜索"
 }

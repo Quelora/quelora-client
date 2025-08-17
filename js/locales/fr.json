@@ -171,5 +171,6 @@
     "chinese": "Chinois",
     "russian": "Russe",
     "arabic": "Arabe",
-    "hideAuthorContent": "Je ne souhaite plus voir de contenu généré par ce membre"
+    "hideAuthorContent": "Je ne souhaite plus voir de contenu généré par ce membre",
+    "search_min_chars": "Saisissez au moins 4 caractères pour rechercher"
 }

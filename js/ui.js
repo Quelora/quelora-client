@@ -650,6 +650,15 @@ function addLoadingMessageUI(container, { type = 'message', position = 'after', 
     if (type === 'message') {
         wrapper.innerHTML = `<div class="quelora-loader"></div>{{loadingMessage}}`;
         wrapper.classList.add('t');
+    } else if(type === 'profile') {
+        wrapper.innerHTML = Array(count).fill(`
+            <div class="quelora-skeleton-message quelora-community-thread">
+                <div class="comment-header" style="justify-content:left">
+                    <div class="comment-avatar quelora-skeleton quelora-skeleton-avatar"></div>
+                    <span class="comment-author quelora-skeleton quelora-skeleton-line" style="height:14px;width:200px"></span>
+                </div>
+            </div>
+        `).join('');
     } else {
         wrapper.innerHTML = Array(count).fill(`
             <div class="quelora-skeleton-message quelora-community-thread">
@@ -1357,14 +1366,40 @@ function filterListAccountUI() {
 
         const handleSearch = async (e) => {
             try {
-                const query = e.target.value;
-                await ProfileModule.fetchAccounts(query.trim());
+                const query = e.target.value.trim();
+                const container = document.querySelector('.quelora-account-request-list');
+                if (!container) return;
+                
+                const ul = container.querySelector('ul');
+                
+                const existingMessage = container.querySelector('.quelora-empty-container');
+                if (existingMessage) existingMessage.remove();
+
+                if (query.length > 0 && query.length < 4) {
+                    const message = document.createElement('div');
+                    message.className = 'quelora-empty-container t';
+                    message.textContent = '{{search_min_chars}}';
+                    ul.innerHTML = ''; 
+                    ul.appendChild(message);
+                    return;
+                }
+
+                if (query.length >= 4 || query.length === 0) {
+                    UiModule.addLoadingMessageUI(ul, {
+                        type: 'message',
+                        position: 'after',
+                        empty: true,
+                    });
+                    await ProfileModule.fetchAccounts(query);
+                }
             } catch (error) {
                 console.error('Error fetching accounts:', error);
             }
         };
-        const debouncedHandleSearch = UtilsModule.debounce(handleSearch, 800);
+
+        const debouncedHandleSearch = UtilsModule.debounce(handleSearch, 1000);
         searchInput.addEventListener('input', debouncedHandleSearch);
+
         return () => {
             searchInput.removeEventListener('input', debouncedHandleSearch);
         };

@@ -49,6 +49,7 @@ let profileFetchLock = null;
 let isNotificationRunning = false;
 let activityInterval ;
 let hiddenAuthorsCache = null;
+let originalItemsCache = null;
 
 const _memberProfiles = new Map();
 
@@ -123,8 +124,15 @@ const loadProfileWithUI = async (action, data) => {
 };
 
 const getProfile = async (member) => {
+    clearSearchInputs();
     await loadProfileWithUI('getProfile', { author: member });
 };
+
+const clearSearchInputs= async () => {
+    document.querySelectorAll('.quelora-community-profile input.search-input').forEach(input => {
+        input.value = '';
+    });
+}
 
 const getMention = async (mention) => {
     await loadProfileWithUI('getMention', { mention });
@@ -536,12 +544,12 @@ const updateFollowState = async (memberId, action, requiresApproval = false) => 
 };
 
 const attachProfileClickListeners = () => {
-    document.querySelectorAll('.comment-avatar[data-member-id]').forEach(avatar => {
+    document.querySelectorAll('.comment-avatar[data-member-id]:not([data-listener-attached])').forEach(avatar => {
         const handleAvatarClick = () => {
             ProfileModule.getProfile(avatar.dataset.memberId);
         };
-        avatar.removeEventListener('click', handleAvatarClick);
         avatar.addEventListener('click', handleAvatarClick);
+        avatar.dataset.listenerAttached = 'true';
     });
 };
 
@@ -693,7 +701,7 @@ const createLikeItem = async (like) => {
     `;
 };
 
-const createShareItem = (share) => {
+const createShareItem = async (share) => {
     const refererHTML = renderRefererStructure({
         date: share.entity?.created_at,
         link: share.entity?.link,
@@ -709,7 +717,7 @@ const createShareItem = (share) => {
     `;
 };
 
-const createBookmarkItem = (bookmark) => {
+const createBookmarkItem = async (bookmark) => {
     const refererHTML = renderRefererStructure({
         date: bookmark.post?.created_at,
         link: 'javascript:void(0);',
@@ -785,11 +793,12 @@ const renderCommentStructure = (item, user, initials, followButtonHTML) => {
 
 const renderProfileSection = async (items, container, createItemFn, emptyMessage) => {
     if (!container) return;
-
     if (items?.length) {
         // Filter out blocked authors
+
         const filteredItems = items.filter(item => {
             const authorId = item.author?.author || item.author;
+            if (!authorId) return true;
             return authorId && !isBlockedAuthor(authorId);
         });
 
@@ -816,18 +825,91 @@ const renderProfileSection = async (items, container, createItemFn, emptyMessage
 
 const setupSearchHandlers = () => {
     document.querySelectorAll('.profile-tab-content .search-input').forEach(input => {
+        // Remove previous listener if it exists
+        if (input._searchHandler) {
+            input.removeEventListener('input', input._searchHandler);
+        }
+
         const handleSearchInput = UtilsModule.debounce((e) => {
+            const searchTerm = e.target.value.trim().toLowerCase();
             const tabContent = e.target.closest('.profile-tab-content');
-            const tabType = tabContent.classList[1]; 
-            const searchTerm = e.target.value.trim();
+            const tabType = tabContent.classList[1];
             const memberId = document.getElementById('profile').getAttribute('data-profile-member-id');
+            const list = tabContent.querySelector('ul');
+            let originalItemsCache = null; // Move cache inside to avoid global state issues
+
+            if (!originalItemsCache) {
+                originalItemsCache = Array.from(list.children).map(item => item.cloneNode(true));
+            }
+
+            const existingMessage = list.querySelector('.quelora-empty-container.t');
+            if (existingMessage) existingMessage.remove();
+
+            list.innerHTML = '';
+            originalItemsCache.forEach(item => {
+                const clonedItem = item.cloneNode(true);
+                const avatars = clonedItem.querySelectorAll('.comment-avatar');
+                avatars.forEach(avatar => avatar.removeAttribute('data-listener-attached'));
+                const followButton = clonedItem.querySelectorAll('.follow-button');
+                followButton.forEach(avatar => avatar.removeAttribute('data-event-added'));
+                list.appendChild(clonedItem);
+            });
+
+            const items = Array.from(list.querySelectorAll('li:not(.quelora-empty-container)'));
+
+            if (searchTerm.length === 0) {
+                attachProfileClickListeners();
+                attachFollowButtonListeners();
+                return;
+            }
+
+            if (searchTerm.length < 4) {
+                let hasMatches = false;
+                
+                items.forEach(item => {
+                    const text = item.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+                    const matches = text.includes(searchTerm);
+                    item.style.display = matches ? '' : 'none';
+                    if (matches) hasMatches = true;
+                });
+
+                if (!hasMatches) {
+                    const message = document.createElement('div');
+                    message.className = 'quelora-empty-container t';
+                    message.textContent = '{{search_min_chars}}';
+                    list.innerHTML = '';
+                    list.appendChild(message);
+                }
+
+                attachFollowButtonListeners();
+                attachProfileClickListeners();
+                return;
+            }
+
+            let visibleCount = 0;
+            items.forEach(item => {
+                const text = item.textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+                const visible = text.includes(searchTerm);
+                item.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
+            });
             
-            if (searchTerm.length >= 2 || searchTerm.length === 0) {
+            attachFollowButtonListeners();
+            attachProfileClickListeners();
+            
+            if (visibleCount < 10) {
+                UiModule.addLoadingMessageUI(list, {
+                    type: 'profile',
+                    position: 'after',
+                    empty: true,
+                    count: 10
+                });
                 executeSearch(memberId, tabType, searchTerm);
             }
-        }, 600);
+        }, 1000);
 
-        input.removeEventListener('input', handleSearchInput);
+        // Store the function reference directly on the element
+        input._searchHandler = handleSearchInput;
         input.addEventListener('input', handleSearchInput);
     });
 };
@@ -845,6 +927,8 @@ const handleSearchResults = async (searchType, results) => {
     try {
         const tabContent = document.querySelector(`.profile-tab-content.${searchType}`);
         if (!tabContent) return;
+        
+         tabContent.querySelector('ul').querySelector('.quelora-loading-message')?.remove();
 
         switch(searchType) {
             case 'comments':
@@ -905,6 +989,10 @@ const handleSearchResults = async (searchType, results) => {
                 console.warn(`Uncontrolled search type: ${searchType}`);
                 break;
         }
+
+        //Attach avatar event
+        attachProfileClickListeners();
+
         tabContent.querySelector('ul')?.scrollTo(0, 0);
     } catch (error) {
         handleError(error, 'handleSearchResults');
