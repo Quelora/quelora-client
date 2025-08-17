@@ -37,17 +37,6 @@
   padding: var(--spacing-xl);
 }
 
-
-.profile-stats .comment-empty-container {
-    padding: var(--spacing-display);
-    text-align: center;
-    font-size: var(--font-size-md);
-    color: var(--quelora-text-color);
-    bottom: 0px;
-    width:100%;
-}
-
-
 .stat-item {
   display: flex;
   align-items: center;
@@ -482,7 +471,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px 6px;
+  padding: 3px 16px;
   gap: 6px;
   border: 1px solid var(--quelora-follow-button-border);
   border-radius: var(--quelora-follow-button-radius);

@@ -473,8 +473,8 @@ async function fetchComment(entityId, comment, replyId = null, audioBase64 = nul
             ? container.querySelector(`.comment-replies[data-reply-id="${replyId}"]`)
             : container.querySelector('.community-threads');
 
-        // Remove existing comment-empty-container
-        const emptyContainer = container.querySelector('.comment-empty-container');
+        // Remove existing quelora-empty-container
+        const emptyContainer = container.querySelector('.quelora-empty-container');
         if (emptyContainer) {
             emptyContainer.remove();
         }
@@ -1112,7 +1112,7 @@ function renderCommentList(entity, comments, container) {
         comments.length === 0 && 
         container.children.length === 0) {
         const emptyContainer = document.createElement('div');
-        emptyContainer.classList.add('comment-empty-container', 't');
+        emptyContainer.classList.add('quelora-empty-container', 't');
         emptyContainer.textContent = '{{emptyComments}}';
         fragment.appendChild(emptyContainer);
     } else {
@@ -1447,7 +1447,7 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
                 }
             },
             {
-                className: 'close-button t',
+                className: 'quelora-btn close-button t',
                 textContent: '{{close}}',
                 icon: 'close',
                 onClick: () => {

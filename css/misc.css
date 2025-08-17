@@ -22,6 +22,15 @@ body.drawer-scroll-locked {
     height: 435px;
 }
 
+.quelora-empty-container {
+    padding: var(--spacing-display);
+    text-align: center;
+    font-size: var(--font-size-md);
+    color: var(--quelora-text-color);
+    bottom: 0px;
+    width:100%;
+}
+
 .silenced {
     transition: bottom 0.5s;
     bottom: 0;
@@ -262,10 +271,11 @@ body.drawer-scroll-locked {
 }
 
 .quelora-btn {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 8px;
+    padding: 10px;
     border: 1px solid var(--quelora-follow-button-border);
     border-radius: var(--quelora-follow-button-radius);
     cursor: pointer;
@@ -276,6 +286,7 @@ body.drawer-scroll-locked {
     color: var(--quelora-follow-button-color);
     box-shadow: var(--quelora-follow-button-shadow);
     backdrop-filter: blur(10px);
+    gap:10px;
     -webkit-backdrop-filter: blur(10px);
 }
 
@@ -291,4 +302,16 @@ body.drawer-scroll-locked {
     border-color: var(--quelora-follow-button-active-bg-profile);
     color: white;
     box-shadow: var(--quelora-follow-button-active-shadow);
+}
+
+.quelora-btn .quelora-svg-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+}
+
+.quelora-btn span:not(.quelora-svg-icon) {
+    margin-left: 24px;
 }

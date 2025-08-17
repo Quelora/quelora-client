@@ -117,7 +117,7 @@ const Session = (function () {
     modalContent.classList.add('quelora-modal-content');
 
     const closeButton = document.createElement('button');
-    closeButton.classList.add('quelora-close-button');
+    closeButton.classList.add('quelora-btn quelora-close-button');
     closeButton.innerHTML = '×';
     closeButton.addEventListener('click', closeModalUI);
 

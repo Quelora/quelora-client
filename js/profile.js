@@ -580,11 +580,7 @@ const updatePrivateCounter = (object, count) => {
 }
 
 const createEmptyState = (message) => `
-    <ul>
-        <li style="color: var(--quelora-light-gray-color); padding: var(--spacing-xl); text-align:center">
-            ${I18n.getTranslation(message) || message}
-        </li>
-    </ul>
+    <ul><div class="quelora-empty-container t">${I18n.getTranslation(message) || message}</div></ul>
 `;
 
 const createFollowerItem = async (user, options = {}) => {
@@ -1581,10 +1577,6 @@ const renderSearchAccountsResults = async (payload) => {
         const profiles = Array.isArray(payload) ? payload : payload.result;
         const container = document.querySelector('.quelora-account-request-list');
         if (!container) return;
-        if (!profiles || !profiles.length){
-             container.innerHTML = createEmptyState('noResultsForQuery');
-             return;
-        }
 
         const ul = container.querySelector('ul');
         if (!ul) return;
@@ -1598,6 +1590,11 @@ const renderSearchAccountsResults = async (payload) => {
                     : null
             ).filter(Boolean)
         );
+
+        if (!htmlStrings.length) {
+            container.innerHTML = createEmptyState('noResultsForQuery');
+            return;
+        }
 
         const fragment = document.createDocumentFragment();
         

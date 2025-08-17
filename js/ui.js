@@ -524,7 +524,7 @@ const searchFollowRequestDrawerUI = new Drawer({
                 <span class="quelora-icons-outlined search-icon">search</span>
                 <input type="text" placeholder="{{search}}" class="search-input" id="accounts-search">
               </div>
-              <div class="quelora-account-request-list"><ul></ul></div>`,
+              <div class="quelora-account-request-list"><ul><div class="quelora-empty-container t">{{noResultsForQuery}}</div></ul></div>`,
     height: '100%',
     transitionSpeed: '0.3s',
     zIndex: 9007,
@@ -549,7 +549,7 @@ function renderActivitiesUI(activities) {
         if (!notificationList) return;
 
         // Clear existing empty container if present
-        const existingEmptyContainer = notificationList.querySelector('.comment-empty-container');
+        const existingEmptyContainer = notificationList.querySelector('.quelora-empty-container');
         if (existingEmptyContainer) existingEmptyContainer.remove();
 
         if (!activities || activities.status !== "ok" || !activities.activities?.length) {
@@ -558,7 +558,7 @@ function renderActivitiesUI(activities) {
 
             // Create empty container if no activities
             const emptyContainer = document.createElement('div');
-            emptyContainer.classList.add('comment-empty-container', 't');
+            emptyContainer.classList.add('quelora-empty-container', 't');
             emptyContainer.textContent = '{{emptyActivity}}';
             notificationList.appendChild(emptyContainer);
             return;
@@ -765,7 +765,7 @@ function renderReportedUI(message) {
         paragraph.textContent = '{{thankYouMessage}}';
 
         const button = document.createElement('button');
-        button.className = 'close-button t';
+        button.className = 'quelora-btn close-button t';
         button.appendChild(document.createTextNode(`{{ready}}`));
         button.addEventListener('click', closeModalUI);
 
@@ -909,31 +909,19 @@ function showEditCommentUI(commentElement) {
         const buttons = [];
         
         if (canEdit) {
-            buttons.push({
-                className: 'save-button t',
-                textContent: '{{send}}',
-                onClick: (event) => handleConfirmEdit(event),
-                icon: 'send'
-            });
+            buttons.push({ className: 'quelora-btn save-button t', textContent: '{{send}}', onClick: (event) => handleConfirmEdit(event), icon: 'send' });
         }
 
         buttons.push(
-            { className: 'close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
+            { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
         );
 
         if (!isOwner) {
-            buttons.push(
-                { className: 'report-button t', textContent: '{{report}}', onClick: () => showReportCommentUI(commentElement), icon: 'flag' }
-            );
+            buttons.push( { className: 'quelora-btn report-button t', textContent: '{{report}}', onClick: () => showReportCommentUI(commentElement), icon: 'flag' });
         }
     
         if (UtilsModule.getConfig(currentEntity)?.editing?.allow_delete && canDelete) {
-            buttons.push({
-                className: 'delete-button t',
-                textContent: '{{delete}}',
-                onClick: (event) => handleConfirmDelete(event),
-                icon: 'delete'
-            });
+            buttons.push({ className: 'quelora-btn delete-button t', textContent: '{{delete}}', onClick: (event) => handleConfirmDelete(event), icon: 'delete' });
         }
     
         setupModalUI(bodyContent, buttons, '.quelora-comments');
@@ -1248,7 +1236,7 @@ function showReportCommentUI(commentElement) {
         reportContent.appendChild(hideAuthorContainer);
     
         const buttons = [
-            { className: 'close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
+            { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
         ];
     
         setupModalUI(reportContent, buttons,'.quelora-comments');

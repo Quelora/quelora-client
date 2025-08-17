@@ -132,15 +132,6 @@
     width:100%;
 }
 
-.quelora-comments .comment-empty-container {
-    padding: var(--spacing-display);
-    text-align: center;
-    font-size: var(--font-size-md);
-    color: var(--quelora-text-color);
-    bottom: 0px;
-    width:100%;
-}
-
 .quelora-comments .profile-settings{
     margin-right: 0px!important;
 }
