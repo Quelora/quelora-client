@@ -1925,6 +1925,10 @@ function createProfileDropupUI() {
                     <span class="t">{{showActivity}}</span>
                 </li>
                 <li class="divider"></li>
+                <li class="dropup-item" data-action="follow-request">
+                    <span class="quelora-icons-outlined">person_add</span>
+                    <span class="t">{{followRequest}}</span>
+                </li>
                 <li class="dropup-item" data-action="followers">
                     <span class="quelora-icons-outlined">person_search</span>
                     <span class="t">{{searchAccounts}}</span>
@@ -1965,6 +1969,9 @@ function createProfileDropupUI() {
                     notificationDrawerUI.open();
                 } else if (action === 'followers') {
                     searchFollowRequestDrawerUI.open();
+                } else if (action === 'follow-request') {
+                    ProfileModule.renderFollowRequests()
+                    followRequestDrawerUI.open();
                 } else if (action === 'logout') {
                     await ProfileModule.logout();
                 }

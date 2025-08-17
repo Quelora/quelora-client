@@ -275,12 +275,12 @@ body.drawer-scroll-locked {
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px;
+    padding: 14px;
     border: 1px solid var(--quelora-follow-button-border);
     border-radius: var(--quelora-follow-button-radius);
     cursor: pointer;
     transition: all 0.25s ease;
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-xl);
     font-weight: 500;
     background-color: var(--quelora-follow-button-bg);
     color: var(--quelora-follow-button-color);
