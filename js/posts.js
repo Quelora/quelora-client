@@ -414,7 +414,7 @@ async function loadThread(entityId, lastCommentId = null, includeLast = false) {
  * @param {string} commentId - The ID of the parent comment
  * @param {string} replyId - The ID of the reply to focus on
  */
-async function laodNested(entityId, commentId, replyId) {
+async function loadNested(entityId, commentId, replyId) {
     CommentsModule.fetchNested(entityId, commentId, replyId);
 }
 
@@ -454,7 +454,7 @@ const PostsModule = {
     handleBookmark,
     updateAllInteractionBars,
     loadThread,
-    laodNested
+    loadNested
 };
 
 export default PostsModule;

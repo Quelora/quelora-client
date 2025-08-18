@@ -32,6 +32,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import UtilsModule from './utils.js';
+
 //import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
 
 const Quelora = (() => {
@@ -260,8 +262,13 @@ const Quelora = (() => {
         const handleQuoteOrLike = async (params) => {
             const [entityId, lastCommentId, replyId = ''] = params;
             UiModule.getCommunityThreadsUI()?.replaceChildren();
-            await PostsModule.loadThread(entityId, lastCommentId, true);
-            await PostsModule.loadNested(entityId, lastCommentId, replyId);
+            if (lastCommentId && replyId) {
+                await PostsModule.loadThread(entityId, lastCommentId, true);
+                await UtilsModule.wait(500);
+                await PostsModule.loadNested(entityId, lastCommentId, replyId);
+            } else {
+                await PostsModule.loadThread(entityId, lastCommentId, true);
+            }
         };
 
         return {

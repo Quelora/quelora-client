@@ -1220,15 +1220,15 @@ async function renderNestedComments(nestedData, scrollTo) {
     let attemptCount = 0;
 
     const tryRender = async () => {
-        const commentBox = document.querySelector(
-            `[data-reply-id="${nestedData.commentId}"]`
-        );
+        const threadRoot = document.querySelector(
+            `.community-thread [data-comment-id="${nestedData.commentId}"]`
+        )?.closest('.community-thread');
 
-        if (!commentBox) {
+        if (!threadRoot) {
             attemptCount++;
             if (attemptCount >= MAX_RENDER_ATTEMPTS) {
                 console.error(
-                    `Replies container for comment ${nestedData.commentId} not found after ${MAX_RENDER_ATTEMPTS} attempts`
+                    `Thread root for comment ${nestedData.commentId} not found after ${MAX_RENDER_ATTEMPTS} attempts`
                 );
                 await shakeComment(scrollTo);
                 return;
@@ -1237,13 +1237,11 @@ async function renderNestedComments(nestedData, scrollTo) {
             return;
         }
 
-        // Remove loading indicator
         UiModule.getCommunityThreadsUI()
             ?.querySelector('.quelora-loading-message')
             ?.remove();
 
-        // Render initial level of comments
-        renderCommentList(nestedData.entityId, nestedData.list, commentBox);
+        renderCommentList(nestedData.entityId, nestedData.list, threadRoot);
 
         /**
          * Recursively renders nested replies
@@ -1255,31 +1253,29 @@ async function renderNestedComments(nestedData, scrollTo) {
                 const replyContainer = parentContainer.querySelector(
                     `.comment-replies[data-reply-id="${comment._id}"]`
                 );
-                
+
                 if (replyContainer && comment.replies?.list?.length > 0) {
-                    renderCommentList(nestedData.entityId, comment.replies.list, replyContainer);
+                    renderCommentList(
+                        nestedData.entityId,
+                        comment.replies.list,
+                        replyContainer
+                    );
                     renderRepliesRecursively(comment.replies.list, replyContainer);
                 }
             });
         };
 
-        renderRepliesRecursively(nestedData.list, commentBox);
-        
-        // Clean up view replies buttons
-        document.querySelector(`.view-replies[data-comment-id="${nestedData.commentId}"]`)?.remove();
-        
-        const replyContainer = document.querySelector(
-            `div.comment-replies[data-reply-id="${nestedData.commentId}"]`
-        );
-        
-        replyContainer?.querySelectorAll('.view-replies').forEach(el => el.remove());
-        
-        // Scroll and highlight target comment
+        renderRepliesRecursively(nestedData.list, threadRoot);
+        threadRoot.querySelectorAll(
+            `.view-replies[data-comment-id], .view-replies`
+        ).forEach(el => el.remove());
+
         await shakeComment(scrollTo);
     };
 
     tryRender();
 }
+
 
 /**
  * Attaches event listeners to comment input elements
@@ -1532,19 +1528,10 @@ async function shakeComment(commentId) {
         );
         
         if (commentElement) {
-            // Scroll to comment
-            commentElement.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'start' 
-            });
-            
-            // Apply animation
+            const elementPosition = commentElement.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({ top: elementPosition - 100,behavior: 'smooth'});
             commentElement.classList.add('shake-animation');
-            
-            // Remove animation after delay
-            UtilsModule.startTimeout(() => {
-                commentElement.classList.remove('shake-animation');
-            }, 2500);
+            UtilsModule.startTimeout(() => { commentElement.classList.remove('shake-animation');}, 2500);
         }
     } catch (error) {
         handleError(error, 'CommentsModule.shakeComment');
@@ -1692,25 +1679,35 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
             });
         }
 
+        function findOriginalComment(element, lastCommentId = '') {
+            if (!element) return lastCommentId;
+            if (element.classList.contains('community-threads')) {
+                return lastCommentId;
+            }
+            if (element.classList.contains('community-thread')) {
+                const header = element.querySelector('.comment-header');
+                if (header) {
+                    lastCommentId = header.getAttribute('data-comment-id') || lastCommentId;
+                }
+            }
+            return findOriginalComment(element.parentElement, lastCommentId);
+        }
+
         // Share button
         const shareButton = commentElement.querySelector('.share-text');
         if (shareButton) {
             shareButton.addEventListener('click', (event) => {
                 event.preventDefault();
-                const commentElement = event.target.closest('.community-threads');
-                const currentEntity = commentElement?.getAttribute('data-threads-entity');
                 const commentId = event.target.getAttribute('data-comment-id');
-                const repliesElement = event.target.closest('.comment-replies');
-                const originalComment = repliesElement?.getAttribute('data-reply-id');
-                
+                const originalComment = findOriginalComment(event.target.closest('.community-thread'));
+                const currentEntity = event.target.closest('.community-threads')?.getAttribute('data-threads-entity');
                 handleShare(
-                    currentEntity, 
-                    originalComment || commentId, 
+                    currentEntity,
+                    originalComment || commentId,
                     originalComment ? commentId : ''
                 );
             });
         }
-
     } catch (error) {
         handleError(error, 'CommentsModule.attachCommentEventListeners');
     }
