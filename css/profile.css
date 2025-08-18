@@ -297,14 +297,15 @@
 #quelora-profile .follow-dropdown {
   position: absolute;
   top: 100%;
-  right: 0;
+  right: -1px;
   background-color: var(--quelora-secondary-color, #fff);
   border: 1px solid var(--quelora-light-border-color,#ddd); 
   border-radius: 8px;
   border-top-right-radius: 0;
+  border-top-left-radius: 0;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   z-index: 10;
-  min-width: 200px;
+  min-width: 250px;
   display: none;
 }
 
@@ -312,10 +313,10 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  padding: var(--spacing-xl);
   cursor: pointer;
   color: var(--quelora-primary-text-color);
-  font-size: var(--font-size-md);
+  font-size: var(--font-size-xl);
   transition: background-color 0.2s ease;
 }
 
