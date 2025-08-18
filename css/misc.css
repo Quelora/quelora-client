@@ -189,30 +189,30 @@ body.drawer-scroll-locked {
 
 #quelora-comments .drawer-content::-webkit-scrollbar,
 #quelora-community-profile .drawer-content::-webkit-scrollbar,
-#profile .profile-tab-content::-webkit-scrollbar {
+#quelora-profile .profile-tab-content::-webkit-scrollbar {
   width: var(--spacing-sm);
 }
 #quelora-comments .drawer-content::-webkit-scrollbar-track,
 #quelora-community-profile .drawer-content::-webkit-scrollbar-track,
-#profile .profile-tab-content::-webkit-scrollbar-track {
+#quelora-profile .profile-tab-content::-webkit-scrollbar-track {
   background: var(--quelora-light-background-color);
   border-radius: var(--spacing-xs);
 }
 #quelora-comments .drawer-content::-webkit-scrollbar-thumb,
 #quelora-community-profile .drawer-content::-webkit-scrollbar-thumb,
-#profile .profile-tab-content::-webkit-scrollbar-thumb {
+#quelora-profile .profile-tab-content::-webkit-scrollbar-thumb {
   background: var(--quelora-medium-gray-color);
   border-radius: var(--spacing-xs);
 }
 #quelora-comments .drawer-content::-webkit-scrollbar-thumb:hover 
 #quelora-community-profile .drawer-content::-webkit-scrollbar-thumb:hover,
-#profile .profile-tab-content::-webkit-scrollbar-thumb:hover {
+#quelora-profile .profile-tab-content::-webkit-scrollbar-thumb:hover {
   background: var(--quelora-primary-color);
 }
 
 #quelora-comments .drawer-content,
 #quelora-community-profile .drawer-content ,
-#profile .profile-tab-content{
+#quelora-profile .profile-tab-content{
   scrollbar-width: thin;
   scrollbar-color: var(--quelora-medium-gray-color) var(--quelora-light-background-color);
 }

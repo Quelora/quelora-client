@@ -18,7 +18,7 @@
   right: 0;
 }
 
-#profile {
+#quelora-profile {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   display: flex;
   flex-direction: column;
@@ -90,7 +90,7 @@
   color: var(--quelora-placeholder-color);
 }
 
-#profile .profile-actions {
+#quelora-profile .profile-actions {
   gap: var(--spacing-md);
   padding-right: var(--spacing-xl);
   padding-bottom: var(--font-size-xl);
@@ -99,7 +99,7 @@
   align-items: flex-end;
 }
 
-#profile ul,
+#quelora-profile ul,
 .quelora-likes-list ul,
 .quelora-follow-request ul,
 .mention-suggestions ul {
@@ -119,7 +119,7 @@
   width: 100%;
 }
 
-#profile ul li {
+#quelora-profile ul li {
   background: var(--quelora-dark-background-color);
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -129,8 +129,9 @@
   border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-#profile .follower ul li,
-#profile .followed ul li,
+#quelora-profile .follower ul li,
+#quelora-profile .followed ul li,
+#quelora-profile .blocked ul li,
 .quelora-likes-list ul li,
 .mention-suggestions ul li {
   background: transparent;
@@ -142,14 +143,15 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-#profile .follower ul li:hover,
-#profile .followed ul li:hover,
-#profile .bookmarks ul li:hover,
+#quelora-profile .follower ul li:hover,
+#quelora-profile .followed ul li:hover,
+#quelora-profile .bookmarks ul li:hover,
+#quelora-profile .blocked ul li:hover,
 .mention-suggestions ul li:hover {
   box-shadow: none;
 }
 
-#profile .profile-user {
+#quelora-profile .profile-user {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
@@ -160,28 +162,28 @@
   height: 140px;
 }
 
-#profile .container-avatar {
+#quelora-profile .container-avatar {
   position: relative;
   flex-shrink: 0;
 }
 
-#profile .profile-camara {
+#quelora-profile .profile-camara {
   position: absolute;
   right: 10px;
   top: 130px;
 }
 
-#profile .profile-camara-avatar {
+#quelora-profile .profile-camara-avatar {
   left: 65px;
   top: 50px;
   position: absolute;
 }
 
-#profile .profile-edit svg {
+#quelora-profile .profile-edit svg {
   color: var(--quelora-primary-text-color);
 }
 
-#profile .profile-avatar {
+#quelora-profile .profile-avatar {
   height: 90px;
   width: 90px;
   background-size: cover;
@@ -200,34 +202,34 @@
   transition: transform 0.3s ease;
 }
 
-#profile .profile-avatar:hover {
+#quelora-profile .profile-avatar:hover {
   transform: scale(1.05);
 }
 
-#profile .user-info {
+#quelora-profile .user-info {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
   width: 100%;
 }
 
-#profile .user-pill {
+#quelora-profile .user-pill {
   display: flex;
   gap: var(--spacing-xs);
   align-items: center;
 }
 
-#profile .user-pill .quelora-icons-outlined {
+#quelora-profile .user-pill .quelora-icons-outlined {
   font-size: var(--icon-size-md);
   color: var(--quelora-primary-text-color);
 }
 
-#profile .user,
-#profile .user-name {
+#quelora-profile .user,
+#quelora-profile .user-name {
   margin: 0;
 }
 
-#profile .profile-user .user {
+#quelora-profile .profile-user .user {
   display: flex;
   gap: 4px;
   font-size: var(--font-size-xxxl);
@@ -236,19 +238,19 @@
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 }
 
-#profile .profile-user .user-name {
+#quelora-profile .profile-user .user-name {
   font-size: var(--font-size-xl);
   font-weight: 600;
   color: white;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
 }
 
-#profile .profile-close {
+#quelora-profile .profile-close {
   cursor: pointer;
   padding-right: var(--spacing-xl);
 }
 
-#profile .profile-tabs {
+#quelora-profile .profile-tabs {
   display: flex;
   justify-content: end;
   padding-top: var(--spacing-lg);
@@ -259,7 +261,7 @@
   padding-left: var(--spacing-lg);
 }
 
-#profile .profile-tab {
+#quelora-profile .profile-tab {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
@@ -271,8 +273,8 @@
   border: 1px solid var(--quelora-dark-background-color);
 }
 
-#profile .profile-tab:hover,
-#profile .profile-tab.active {
+#quelora-profile .profile-tab:hover,
+#quelora-profile .profile-tab.active {
   background: var(--quelora-light-background-color);
   border-radius: 8px 8px 0 0;
   margin-bottom: -1px;
@@ -280,28 +282,90 @@
   border-bottom: none;
 }
 
-#profile .profile-tab .quelora-icons-outlined {
+#quelora-profile .follow-tab {
+  position: relative;
+  gap:0px;
+}
+
+#quelora-profile .follow-tab::after {
+  content: '\25BC';
+  font-size: var(--font-size-sm);
+  color: var(--quelora-primary-text-color);
+  margin-left: var(--spacing-sm);
+}
+
+#quelora-profile .follow-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background-color: var(--quelora-secondary-color, #fff);
+  border: 1px solid var(--quelora-light-border-color,#ddd); 
+  border-radius: 8px;
+  border-top-right-radius: 0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  min-width: 200px;
+  display: none;
+}
+
+#quelora-profile .follow-dropdown .dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  cursor: pointer;
+  color: var(--quelora-primary-text-color);
+  font-size: var(--font-size-md);
+  transition: background-color 0.2s ease;
+}
+
+#quelora-profile .follow-dropdown .dropdown-item:hover {
+  background: var(--quelora-light-background-color);
+}
+
+#quelora-profile .follow-dropdown .dropdown-item .quelora-icons-outlined {
   font-size: var(--icon-size-lg);
 }
 
-#profile .profile-tab .counter {
+#quelora-profile .follow-dropdown .divider{
+    height: 1px;
+    background-color: var(--quelora-light-border-color);
+    margin: var(--spacing-md) 0;
+}
+
+#quelora-profile .follow-dropdown .dropdown-item .counter {
+  font-size: var(--font-size-xxs);
+  color: var(--quelora-light-gray-color);
+  margin: 0;
+  background: var(--quelora-primary-color);
+  color: white;
+  border-radius: 12px;
+  padding: 2px 8px;
+  line-height: 1;
+}
+
+#quelora-profile .profile-tab .quelora-icons-outlined {
+  font-size: var(--icon-size-lg);
+}
+
+#quelora-profile .profile-tab .counter {
   font-size: var(--font-size-sm);
   color: var(--quelora-light-gray-color);
   margin: 0;
 }
 
-#profile .profile-tab-content {
+#quelora-profile .profile-tab-content {
   display: none;
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
-#profile .profile-tab-content.active {
+#quelora-profile .profile-tab-content.active {
   display: block;
 }
 
-#profile .referer-info {
+#quelora-profile .referer-info {
   background: var(--quelora-background-color);
   padding: var(--spacing-xl);
   padding-bottom: 20px;
@@ -311,54 +375,54 @@
   position: relative;
 }
 
-#profile .referer-info .comment-time {
+#quelora-profile .referer-info .comment-time {
   font-size: var(--font-size-md);
   padding-left: 0;
 }
 
-#profile .referer-link {
+#quelora-profile .referer-link {
   font-size: var(--font-size-md);
   color: var(--quelora-primary-color);
   text-decoration: none;
 }
 
-#profile .like-header,
-#profile .comment-header,
-#profile .share-header,
-#profile .bookmark-header {
+#quelora-profile .like-header,
+#quelora-profile .comment-header,
+#quelora-profile .share-header,
+#quelora-profile .bookmark-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-#profile .like-info,
-#profile .comment-info,
-#profile .share-info,
-#profile .bookmark-info {
+#quelora-profile .like-info,
+#quelora-profile .comment-info,
+#quelora-profile .share-info,
+#quelora-profile .bookmark-info {
   flex-grow: 1;
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
 }
 
-#profile .like-time,
-#profile .share-time,
-#profile .bookmark-time {
+#quelora-profile .like-time,
+#quelora-profile .share-time,
+#quelora-profile .bookmark-time {
   font-size: var(--font-size-sm);
   color: var(--quelora-primary-text-color);
 }
 
-#profile .quelora-icons-outlined {
+#quelora-profile .quelora-icons-outlined {
   font-size: var(--font-size-md);
   color: var(--quelora-primary-text-color);
 }
 
-#profile .quelora-icons-outlined svg{
+#quelora-profile .quelora-icons-outlined svg{
   width: 24px;
-  height: 24px;;
+  height: 24px;
 }
 
-#profile .comment-to-profile {
+#quelora-profile .comment-to-profile {
   background: var(--quelora-background-color);
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
   color: var(--quelora-primary-text-color);
@@ -372,9 +436,9 @@
   clip-path: polygon(0% 7.5px, 47.5% 7.5px, 50% 0%, 52.5% 7.5px, 100% 7.5px, 100% 100%, 0% 100%);
 }
 
-#profile .share-time-container,
-#profile .like-time-container,
-#profile .bookmark-time-container {
+#quelora-profile .share-time-container,
+#quelora-profile .like-time-container,
+#quelora-profile .bookmark-time-container {
   font-size: var(--font-size-xxxs);
   display: inline-flex;
   align-items: center;
@@ -409,25 +473,25 @@
   height: 48px;
 }
 
-#profile .comment-author,
+#quelora-profile .comment-author,
 .quelora-likes-list .comment-author {
   font-size: var(--font-size-md);
   color: var(--quelora-primary-text-color);
 }
 
-#profile .comment-text {
+#quelora-profile .comment-text {
   margin-top: -8px;
   padding-left: 48px;
   font-size: var(--font-size-md);
 }
 
-#profile .comment-text a {
+#quelora-profile .comment-text a {
   text-decoration: none;
   color: var(--quelora-primary-text-color);
   font-size: var(--font-size-md);
 }
 
-#profile .referer-description {
+#quelora-profile .referer-description {
   font-size: var(--font-size-sm);
   color: var(--quelora-primary-text-color);
   margin-top: var(--spacing-sm);
@@ -473,6 +537,8 @@
 }
 
 .follow-button,
+.unblock-button,
+.block-button,
 .button-button {
   display: flex;
   align-items: center;
@@ -493,26 +559,38 @@
 }
 
 .follow-button:hover,
-.button-button:hover {
+.button-button:hover,
+.unblock-button:hover
+.block-button:hover {
   background-color: var(--quelora-follow-button-hover-bg);
   transform: scale(var(--quelora-follow-button-hover-scale));
   box-shadow: var(--quelora-follow-button-hover-shadow);
 }
 
 .follow-button:active,
-.button-button:active {
+.button-button:active
+.unblock-button:active,
+.block-button:active {
   transform: scale(var(--quelora-follow-button-active-scale));
   background-color: var(--quelora-follow-button-active-bg);
 }
 
-.follow-button.active {
+.unblock-button {
   background: var(--quelora-follow-button-active-bg-profile);
   border-color: var(--quelora-follow-button-active-bg-profile);
   color: white;
   box-shadow: var(--quelora-follow-button-active-shadow);
 }
 
-.button-button.active {
+.follow-button.active{
+  background: var(--quelora-follow-button-active-bg-profile);
+  border-color: var(--quelora-follow-button-active-bg-profile);
+  color: white;
+  box-shadow: var(--quelora-follow-button-active-shadow);
+}
+
+.button-button.active,
+.unblock-button.active {
   background: var(--quelora-follow-button-active-bg-list);
   border-color: var(--quelora-follow-button-active-bg-list);
   color: white;
@@ -520,34 +598,38 @@
 }
 
 .follow-button .quelora-icons-outlined,
-.button-button .quelora-icons-outlined {
+.button-button .quelora-icons-outlined,
+.unblock-button .quelora-icons-outlined,
+.block-button .quelora-icons-outlined {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: var(--icon-size-md);
 }
 
 .follow-button .legend,
-.button-button .legend {
+.button-button .legend,
+.unblock-button .legend,
+.block-button .legend {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: var(--font-size-sm);
   font-weight: 500;
 }
 
-#profile .profile-private-account {
+#quelora-profile .profile-private-account {
   flex-direction: column;
 }
 
-#profile .profile-private-account .info {
+#quelora-profile .profile-private-account .info {
   display: flex;
   justify-content: flex-end;
   gap: var(--spacing-lg);
   padding: var(--spacing-lg);
 }
 
-#profile .profile-private-account .info .quelora-svg-icon {
+#quelora-profile .profile-private-account .info .quelora-svg-icon {
   padding-right: var(--spacing-lg);
 }
 
-#profile .profile-private-account .message {
+#quelora-profile .profile-private-account .message {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -555,7 +637,7 @@
   padding: var(--spacing-lg);
 }
 
-#profile .profile-private-account .message .icon {
+#quelora-profile .profile-private-account .message .icon {
   width: 80px;
   height: 80px;
   flex-shrink: 0;
@@ -564,7 +646,7 @@
   justify-content: center;
 }
 
-#profile .profile-private-account .message .icon .quelora-svg-icon {
+#quelora-profile .profile-private-account .message .icon .quelora-svg-icon {
   width: 80px;
   height: 80px;
   flex-shrink: 0;
@@ -573,26 +655,26 @@
   justify-content: center;
 }
 
-#profile .profile-private-account .message .icon svg {
+#quelora-profile .profile-private-account .message .icon svg {
   width: 80px;
   height: 80px;
   color: var(--quelora-icon-color);
 }
 
-#profile .profile-private-account .message .text-content {
+#quelora-profile .profile-private-account .message .text-content {
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 
-#profile .profile-private-account .message .line-1 {
+#quelora-profile .profile-private-account .message .line-1 {
   font-size: var(--font-size-xl);
   font-weight: bold;
   color: var(--quelora-text-color);
   margin-bottom: var(--spacing-xs);
 }
 
-#profile .profile-private-account .message .line-2 {
+#quelora-profile .profile-private-account .message .line-2 {
   font-size: var(--font-size-sm);
   color: var(--quelora-light-gray-color);
 }

@@ -52,6 +52,7 @@ let hiddenAuthorsCache = null;
 let originalItemsCache = null;
 
 const _memberProfiles = new Map();
+const tabControllers = new WeakMap();
 
 // ==================== HELPERS ====================
 const handleError = (error, context) => {
@@ -153,6 +154,7 @@ const fetchFollowingActivities = async (ignoreLastActivity = false) => {
 const followActions = {
     follow: (memberId) => postMessage('followUser', { memberId }),
     unfollow: (memberId) => postMessage('unfollowUser', { memberId }),
+    cancel: (memberId) => postMessage('cancelFollowRequest', { memberId }),
 };
 
 // ==================== PROFILE STORAGE ====================
@@ -251,6 +253,9 @@ const saveMyProfile = (profile, path) => {
             UiModule.destroyElementsByUI(authorId);
         });
     }
+
+    // Update Profile
+    if(!path) saveMemberProfile(profile) ;
 };
 
 const saveMemberProfile = (profile) => memberProfiles.set(profile.author, profile);
@@ -480,7 +485,6 @@ const createFollowButton = async (user, options = {}) => {
     if (buttonState) button.classList.add(buttonState);
     button.dataset.memberApproval = user.followerApproval ?? false;
     button.dataset.followState = followState;
-    if (isPendingRequest) button.disabled = true;
 
     button.removeEventListener('click', handleFollowClick);
     button.addEventListener('click', handleFollowClick);
@@ -501,7 +505,7 @@ const handleFollowClick = async (event) => {
 
     StorageModule.removeSessionItem('quelora_profile');
 
-    followActions[followState === 'following' ? 'unfollow' : 'follow'](memberId);
+    followActions[followState === 'following' ? 'unfollow' : followState === 'pending' ? 'cancel' : 'follow'](memberId);
 };
 
 const updateFollowState = async (memberId, action, requiresApproval = false) => {
@@ -538,7 +542,10 @@ const updateFollowState = async (memberId, action, requiresApproval = false) => 
         btn.classList.remove('active', 'pending');
         if (buttonState) btn.classList.add(buttonState);
         
-        btn.disabled = buttonState === 'pending';
+        document.querySelectorAll(`.follow-button[data-member-id="${memberId}"]`).forEach(btn => {
+            btn.disabled = false;
+        });
+
         btn.dataset.followState = followState;
     });
 };
@@ -572,7 +579,7 @@ const updateCounter = (tab, count) => {
 };
 
 const updatePrivateCounter = (object, count) => {
-    const counter = document.querySelector(`#profile .profile-private-account .${object}`);
+    const counter = document.querySelector(`#quelora-profile .profile-private-account .${object}`);
     if (counter) {
         // Asegurarnos de usar counts para los totales reales
         let realCount = count;
@@ -598,7 +605,8 @@ const createFollowerItem = async (user, options = {}) => {
         showFollowButton = true,
         requestTime = null,
         isFollowing = user.isFollowing,
-        isPendingRequest = user.isFollowRequestSent || false
+        isPendingRequest = user.isFollowRequestSent || false,
+        isBlocked = false
     } = options;
 
     const ownProfile = await getOwnProfile();
@@ -619,6 +627,15 @@ const createFollowerItem = async (user, options = {}) => {
     } else if (showFollowButton && !isOwnProfile) {
         const followButton = await createFollowButton(user, { isFollowing, isPendingRequest });
         actionButtons = followButton.outerHTML;
+    }
+
+    if (isBlocked) {
+        actionButtons = `
+            <button class="unblock-button" data-member-id="${user.author}">
+                <span class="quelora-icons-outlined">unlock</span>
+                <span class="legend">${I18n.getTranslation('unblock')}</span>
+            </button>
+        `;
     }
 
     const li = document.createElement('li');
@@ -834,9 +851,8 @@ const setupSearchHandlers = () => {
             const searchTerm = e.target.value.trim().toLowerCase();
             const tabContent = e.target.closest('.profile-tab-content');
             const tabType = tabContent.classList[1];
-            const memberId = document.getElementById('profile').getAttribute('data-profile-member-id');
+            const memberId = document.getElementById('quelora-profile').getAttribute('data-profile-member-id');
             const list = tabContent.querySelector('ul');
-            let originalItemsCache = null; // Move cache inside to avoid global state issues
 
             if (!originalItemsCache) {
                 originalItemsCache = Array.from(list.children).map(item => item.cloneNode(true));
@@ -1058,7 +1074,7 @@ const renderProfile = async (userProfile) => {
             UiModule.profileDrawerUI.close();
             return;
         }
-
+        originalItemsCache = null;
         const ownProfile = await getOwnProfile();
 
         const isOwnProfile = ownProfile?.author === userProfile.author;
@@ -1066,14 +1082,13 @@ const renderProfile = async (userProfile) => {
 
         memberProfiles.set(userProfile.author, userProfile);
 
-        const profile = document.getElementById('profile');
+        const profile = document.getElementById('quelora-profile');
         if (!profile) throw new Error('Profile container not found');
 
         // Set profile data
         profile.dataset.profileMemberId = userProfile.author;
         setProfileText(profile, userProfile);
         setProfileImages(profile, userProfile);
-
 
         // Handle edit functionality
         handleEditButtons(profile, isOwnProfile, userProfile);
@@ -1240,41 +1255,128 @@ const handleProfileActions = (profile, isOwnProfile, userProfile) => {
     }
 };
 
-const setupTabs = async (profile, isOwnProfile, userProfile) => {
-    const tabs = profile.querySelectorAll('.profile-tab');
-    const tabContents = profile.querySelectorAll('.profile-tab-content');
-    const isActivityHidden = !userProfile?.activity;
+const setupTabs = (profile, isOwnProfile, userProfile) => {
+    if (tabControllers.has(profile)) {
+        tabControllers.get(profile).abort();
+    }
+    const controller = new AbortController();
+    tabControllers.set(profile, controller);
 
+    const tabs = profile.querySelectorAll('.profile-tab[data-tab]');
+    const tabContents = profile.querySelectorAll('.profile-tab-content');
+    const followTab = profile.querySelector('.profile-tab[data-tab="follow"]');
+    const followDropdown = followTab?.querySelector('.follow-dropdown');
+
+    const shouldHideActivity = !userProfile?.activity && !isOwnProfile;
+
+    const handleDropdownItemClick = (e) => {
+        const target = e.target.closest('.dropdown-item');
+        if (!target) return;
+
+        e.preventDefault();
+        
+        if (target.dataset.action === 'followers') {
+            UiModule.searchFollowRequestDrawerUI.open();
+        } else if (target.dataset.action === 'follow-request') {
+            ProfileModule.renderFollowRequests();
+        }
+        activateTab(target);
+    };
+
+    if (followDropdown) {
+        followDropdown.addEventListener('click', handleDropdownItemClick, { 
+            signal: controller.signal 
+        });
+    }
+
+    const activateTab = (targetElement) => {
+        const targetId = targetElement?.dataset.tab;
+        if (!targetId) return;
+
+        const isFollowSubItem = followDropdown?.contains(targetElement);
+
+        tabs.forEach(tab => {
+            const isMainFollowTab = tab.dataset.tab === 'follow';
+            const isDirectTarget = tab === targetElement;
+            tab.classList.toggle('active', isDirectTarget || (isFollowSubItem && isMainFollowTab));
+        });
+
+        tabContents.forEach(content => {
+            content.classList.toggle('active', content.classList.contains(targetId));
+        });
+
+        if (followDropdown) {
+            followDropdown.style.display = 'none';
+        }
+    };
+
+    const handleInteraction = (e) => {
+        const target = e.target.closest('[data-tab]');
+        if (!target) return;
+
+        e.preventDefault();
+        
+        if (target === followTab) {
+            const isVisible = followDropdown.style.display === 'block';
+            followDropdown.style.display = isVisible ? 'none' : 'block';
+        } else {
+            activateTab(target);
+            if (target.dataset.tab === 'blocked') {
+                const containter = profile.querySelector('.profile-tab-content.blocked ul');
+                UiModule.addLoadingMessageUI( containter, {
+                    type: 'profile',
+                    position: 'after',
+                    empty: true,
+                    count: userProfile?.blocked?.length || 1
+                });
+                postMessage('getBlocked', {});
+            }
+        }
+    };
+    
+    const handleClickOutside = (e) => {
+        if (followDropdown && !followTab.contains(e.target)) {
+            followDropdown.style.display = 'none';
+        }
+    };
+
+    profile.addEventListener('click', handleInteraction, { signal: controller.signal });
+    document.addEventListener('click', handleClickOutside, { signal: controller.signal });
+
+    const activityTabs = ['comments', 'likes', 'shares'];
     tabs.forEach(tab => {
         const tabType = tab.dataset.tab;
-        // Always update display based on current activity setting
-        if (['comments', 'likes', 'shares', 'bookmarks'].includes(tabType)) {
-            tab.style.display = (isActivityHidden && !isOwnProfile) ? 'none' : 'flex';
-            tabContents.forEach(content => {
-                if (content.classList.contains(tabType)) {
-                    content.style.display = (isActivityHidden && !isOwnProfile) ? 'none' : '';
-                }
-            });
+        if (activityTabs.includes(tabType)) {
+            tab.style.display = shouldHideActivity ? 'none' : '';
+        } else if (tabType === 'bookmarks') {
+            tab.style.display = isOwnProfile ? '' : 'none';
         }
+    });
 
-        tab.addEventListener('click', (e) => {
-            e.preventDefault();
-            const target = tab.dataset.tab;
-            tabContents.forEach(c => c.classList.toggle('active', c.classList.contains(target)));
-            tabs.forEach(t => {
-                t.classList.toggle('active', t === tab);
-                t.style.fontWeight = t === tab ? 'bold' : 'normal';
-            });
+    const itemsToToggle = ['blocked', 'follow-request'];
+    itemsToToggle.forEach(name => {
+        const selector = `[data-tab="${name}"], [data-action="${name}"]`;
+        profile.querySelectorAll(selector).forEach(el => {
+            el.style.display = isOwnProfile ? 'flex' : 'none';
         });
     });
 
-    const bookmarkTab = profile.querySelector('.profile-tab[data-tab="bookmarks"]');
-    if (bookmarkTab) bookmarkTab.style.display = isOwnProfile ? 'flex' : 'none';
+    const defaultTabName = shouldHideActivity ? 'followers' : 'comments';
+    let defaultTabElement = profile.querySelector(`[data-tab="${defaultTabName}"]`);
 
-    const defaultTab = (isActivityHidden && !isOwnProfile) ? 
-        profile.querySelector('.profile-tab[data-tab="follower"]') :
-        profile.querySelector('.profile-tab[data-tab="comments"]');
-    defaultTab?.click();
+    if (defaultTabElement) {
+        activateTab(defaultTabElement);
+    } else if (tabs.length > 0) {
+        const firstVisibleTab = Array.from(tabs).find(t => t.style.display !== 'none');
+        if (firstVisibleTab && firstVisibleTab.dataset.tab !== 'follow') {
+            activateTab(firstVisibleTab);
+        } else {
+            const fallbackFollowers = followDropdown?.querySelector('[data-tab="followers"]');
+            if (fallbackFollowers) {
+                activateTab(fallbackFollowers);
+            }
+        }
+    }
 };
 
 const renderSections = async (profile, userProfile) => {
@@ -1292,6 +1394,44 @@ const renderSections = async (profile, userProfile) => {
     ));
 };
 
+const renderBlockedUsers = async (blockedUsers) => {
+    try {
+        const container = document.querySelector('.profile-tab-content.blocked ul');
+        if (!container) return;
+
+        if (!blockedUsers?.length) {
+            container.innerHTML = createEmptyState('noBlockedUsers');
+            return;
+        }
+
+        const htmlItems = await Promise.all(
+            blockedUsers.map(user => 
+                createFollowerItem(user, {
+                    showFollowButton: true,
+                    isBlocked: true,
+                    isFollowing: false,
+                    showRequestActions: false
+                })
+            )
+        );
+
+        container.innerHTML = htmlItems.join('');
+        document.querySelectorAll('.unblock-button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const clickedButton = e.currentTarget;
+                clickedButton.disabled = true;
+                const memberId = clickedButton.dataset.memberId;
+                postMessage('unblockUser', { memberId });
+            });
+        });
+
+        attachProfileClickListeners();
+
+    } catch (error) {
+        handleError(error, 'renderBlockedUsers');
+    }
+};
+
 const updateTabCounts = (profile, userProfile) => {
     const tabCountMap = {
         comments: userProfile?.counts?.comments || 0,
@@ -1299,10 +1439,20 @@ const updateTabCounts = (profile, userProfile) => {
         shares: userProfile?.counts?.shares || 0,
         follower: userProfile?.counts?.followers || 0,
         followed: userProfile?.counts?.following || 0,
+        blocked: userProfile?.blocked?.length || 0,
         bookmarks: userProfile?.counts?.bookmarks || 0
     };
 
-    Object.keys(tabCountMap).forEach(tab => updateCounter(tab, tabCountMap[tab]));
+    Object.keys(tabCountMap).forEach(tab => {
+        if (tab === 'follower' || tab === 'followed' || tab === 'blocked') {
+            const dropdownItem = profile.querySelector(`.follow-dropdown .dropdown-item[data-tab="${tab}"] .counter`);
+            if (dropdownItem) {
+                dropdownItem.textContent = `${UtilsModule.formatNumberAbbreviated(tabCountMap[tab])}`;
+            }
+        } else {
+            updateCounter(tab, tabCountMap[tab]);
+        }
+    });
 };
 
 const initializeInteractions = () => {
@@ -1712,7 +1862,39 @@ const isBlockedAuthor = (author) => {
   return hiddenAuthorsCache.includes(author);
 };
 
-export const refreshBlockedAuthors = () => { hiddenAuthorsCache = null; };
+const refreshBlockedAuthors = () => { hiddenAuthorsCache = null; };
+
+const memberBlockStatus = async (payload) => {
+try {
+        const { memberId, block } = payload;
+        const buttonSelector = `#quelora-profile > div.profile-tab-content.blocked button[data-member-id="${memberId}"]`;
+        const originalButton = document.querySelector(buttonSelector);
+        if (!originalButton) {
+            console.warn(`Button not found for memberId: ${memberId}`);
+            return;
+        }
+        const newButton = originalButton.cloneNode(true);
+        const isBlocked = block;
+        const config = {
+            action: isBlocked ? 'unblockUser' : 'blockUser',
+            newClass: isBlocked ? 'unblock-button' : 'block-button',
+            oldClass: isBlocked ? 'block-button' : 'unblock-button',
+            icon: isBlocked ? 'unlock' : 'lock',
+            textKey: isBlocked ? 'unblock' : 'block'
+        };
+        newButton.classList.replace(config.oldClass, config.newClass);
+        newButton.innerHTML = `
+            <span class="quelora-icons-outlined">${IconsModule.getIconSvg(config.icon)}</span>
+            <span class="legend t">${I18n.getTranslation(config.textKey)}</span>
+        `;
+        newButton.onclick = () => postMessage(config.action, { memberId });
+        newButton.disabled = false;
+        originalButton.replaceWith(newButton);
+
+    } catch (error) {
+        handleError(error, 'updateUserBlockStatus');
+    }
+};
 
 const ProfileModule = {
     isBlockedAuthor,
@@ -1744,6 +1926,8 @@ const ProfileModule = {
     updateProfileOptionUI,
     updateProfileSettingsUI,
     handleSearchResults,
+    renderBlockedUsers,
+    memberBlockStatus
 };
 
 export default ProfileModule;

@@ -233,6 +233,8 @@ const Quelora = (() => {
         error: (payload) => console.error(payload?.details?.message || payload?.message, 'Fetch/XHR', payload),
         searchMentionResults: (payload) => ProfileModule.renderMentionResults(payload.result),
         searchAccountsResults: (payload) => ProfileModule.renderSearchAccountsResults(payload.result),
+        returnBlocked: (payload) => ProfileModule.renderBlockedUsers(payload.result),
+        memberBlockStatus: (payload) => ProfileModule.memberBlockStatus(payload),
     });
 
     const handleWorkerMessage = (event, handlers) => {

@@ -333,7 +333,7 @@ const profileDrawerUI = new Drawer({
     customClass: 'quelora-community-profile',
     title: '{{profile}}',
     content: `<div class="quelora-community-profile">
-                <div id="profile">
+                <div id="quelora-profile">
                     <div class="profile-user">
                         <div class="container-avatar">
                             <div class="profile-avatar"></div>
@@ -364,27 +364,49 @@ const profileDrawerUI = new Drawer({
                     <div class="profile-tabs">
                         <div class="profile-tab" data-tab="comments">
                             <span class="quelora-icons-outlined">comment</span>
-                            <p class="counter">(0)</p>
+                            <p class="counter">0</p>
                         </div>
                         <div class="profile-tab" data-tab="likes">
                             <span class="quelora-icons-outlined">favorite</span>
-                            <p class="counter">(0)</p>
+                            <p class="counter">0</p>
                         </div>
                         <div class="profile-tab" data-tab="shares">
                             <span class="quelora-icons-outlined">share</span>
-                            <p class="counter">(0)</p>
-                        </div>
-                        <div class="profile-tab" data-tab="follower">
-                            <span class="quelora-icons-outlined">people</span>
-                            <p class="counter">(0)</p>
-                        </div>
-                        <div class="profile-tab" data-tab="followed">
-                            <span class="quelora-icons-outlined">person</span>
-                            <p class="counter">(0)</p>
+                            <p class="counter">0</p>
                         </div>
                         <div class="profile-tab" data-tab="bookmarks">
                             <span class="quelora-icons-outlined">bookmark</span>
-                            <p class="counter">(0)</p>
+                            <p class="counter">0</p>
+                        </div>
+                        <div class="profile-tab follow-tab" data-tab="follow">
+                            <span class="quelora-icons-outlined">people</span>
+                            <p class="counter"></p>
+                            <div class="follow-dropdown" style="display: none;">
+                                <div class="dropdown-item" data-tab="follower">
+                                    <span class="quelora-icons-outlined">people</span>
+                                    <span class="t">{{followers}}</span>
+                                    <p class="counter">0</p>
+                                </div>
+                                <div class="dropdown-item" data-tab="followed">
+                                    <span class="quelora-icons-outlined">person</span>
+                                    <span class="t">{{following}}</span>
+                                    <p class="counter">0</p>
+                                </div>
+                                <div class="dropdown-item" data-tab="blocked">
+                                    <span class="quelora-icons-outlined">userbloked</span>
+                                    <span class="t">{{blocked}}</span>
+                                    <p class="counter">0</p>
+                                </div>
+                                <div class="divider"></div>
+                                <div class="dropdown-item" data-action="follow-request">
+                                    <span class="quelora-icons-outlined">person_add</span>
+                                    <span class="t">{{followRequest}}</span>
+                                </div>
+                                <div class="dropdown-item" data-action="followers">
+                                    <span class="quelora-icons-outlined">person_search</span>
+                                    <span class="t">{{searchAccounts}}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="profile-tab-content comments">
@@ -421,6 +443,13 @@ const profileDrawerUI = new Drawer({
                             <input type="text" placeholder="{{search-followed}}" class="search-input">
                         </div>
                         <ul></ul>
+                    </div>
+                    <div class="profile-tab-content blocked">
+                        <div class="search-container">
+                            <span class="quelora-icons-outlined search-icon">search</span>
+                            <input type="text" placeholder="{{search}}" class="search-input">
+                        </div>
+                        <ul>{{noBlocked}}</ul>
                     </div>
                     <div class="profile-tab-content bookmarks">
                         <div class="search-container">
@@ -677,7 +706,7 @@ function addLoadingMessageUI(container, { type = 'message', position = 'after', 
 
 async function addProfileSkeletoUI() {
     try {
-        const profile = document.getElementById('profile');
+        const profile = document.getElementById('quelora-profile');
         if (!profile) throw new Error('Profile container not found');
         profile.dataset.profileMemberId = '';
         const avatar = profile.querySelector('.profile-avatar');
@@ -2005,7 +2034,7 @@ function createProfileDropupUI() {
                 } else if (action === 'followers') {
                     searchFollowRequestDrawerUI.open();
                 } else if (action === 'follow-request') {
-                    ProfileModule.renderFollowRequests()
+                    ProfileModule.renderFollowRequests();
                     followRequestDrawerUI.open();
                 } else if (action === 'logout') {
                     await ProfileModule.logout();
@@ -2060,6 +2089,7 @@ const UiModule = {
     commentsDrawerUI,
     settingsDrawerUI,
     generalSettingsDrawerUI,
+    searchFollowRequestDrawerUI,
     profileDrawerUI,
     notificationDrawerUI,
     followRequestDrawerUI,

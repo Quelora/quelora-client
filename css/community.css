@@ -307,13 +307,13 @@
 
 .quelora-comments .comment-info,
 .quelora-modal .quelora-to-work .comment-info,
-#profile .comment-info {
+#quelora-profile .comment-info {
     flex-grow: 1;
 }
 
 .quelora-comments .comment-author,
 .quelora-likes .comment-author,
-#profile .comment-author,
+#quelora-profile .comment-author,
 .quelora-likes-list .comment-author,
 .quelora-modal .quelora-to-work .comment-author {
     font-size: var(--font-size-md);
@@ -322,7 +322,7 @@
 
 .quelora-comments .comment-time,
 .quelora-modal .quelora-to-work .comment-time,
-#profile .comment-time,
+#quelora-profile .comment-time,
 .quelora-likes-list .comment-time {
     padding-left: var(--spacing-display);
     color: var(--quelora-light-gray-color);

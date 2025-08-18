@@ -346,12 +346,40 @@ self.addEventListener('message', (event) => {
             }, 'userUnfollowed');
             break;
 
+        case 'cancelFollowRequest':
+            handleFetch(action, `${apiUrl}/profile/${payload.memberId}/cancel-follow`, {
+                method: 'DELETE',
+                headers: authHeaders(payload.token)
+            }, 'userUnfollowed');
+            break;
+
         case 'approveFollowUser':
             handleFetch(action, `${apiUrl}/profile/${payload.memberId}/follow/approve`, {
                 method: 'PATCH',
                 headers: authHeaders(payload.token),
                 body: JSON.stringify({ approve: payload.approve })
             }, 'userApprovefollowed');
+            break;
+
+        case 'unblockUser':
+            handleFetch(action, `${apiUrl}/profile/${payload.memberId}/cancel-block`, {
+                method: 'DELETE',
+                headers: authHeaders(payload.token)
+            }, 'memberBlockStatus');
+            break;
+            
+        case 'blockUser':
+            handleFetch(action, `${apiUrl}/profile/${payload.memberId}/block`, {
+                method: 'POST',
+                headers: authHeaders(payload.token)
+            }, 'memberBlockStatus');
+            break;
+
+        case 'getBlocked':
+            handleFetch(action, `${apiUrl}/profile/blocked`, {
+                method: 'GET',
+                headers: authHeaders(payload.token)
+            }, 'returnBlocked');
             break;
 
         case 'updateProfile':
