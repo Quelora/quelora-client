@@ -172,5 +172,9 @@
     "russian": "ロシア語",
     "arabic": "アラビア語",
     "hideAuthorContent": "このメンバーが生成したコンテンツをもっと見たくない",
-    "search_min_chars": "検索するには少なくとも4文字入力してください"
+    "search_min_chars": "検索するには少なくとも4文字入力してください",
+    "blocked": "ブロック済み",
+    "unblock": "ブロック解除",
+    "block": "ブロック",
+    "noBlockedUsers": "ブロックしているメンバーはいません"
 }

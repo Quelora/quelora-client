@@ -172,5 +172,9 @@
     "russian": "Russisch",
     "arabic": "Arabisch",
     "hideAuthorContent": "Ich möchte keine weiteren Inhalte dieses Mitglieds sehen",
-    "search_min_chars": "Geben Sie mindestens 4 Zeichen ein, um zu suchen"
+    "search_min_chars": "Geben Sie mindestens 4 Zeichen ein, um zu suchen",
+    "blocked": "Blockierte",
+    "unblock": "Entsperren",
+    "block": "Blockieren",
+    "noBlockedUsers": "Du hast keine blockierten Mitglieder"
 }

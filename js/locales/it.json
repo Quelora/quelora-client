@@ -172,5 +172,9 @@
     "russian": "Russo",
     "arabic": "Arabo",
     "hideAuthorContent": "Non desidero vedere altri contenuti generati da questo membro",
-    "search_min_chars": "Inserisci almeno 4 caratteri per cercare"
+    "search_min_chars": "Inserisci almeno 4 caratteri per cercare",
+    "blocked": "Bloccati",
+    "unblock": "Sblocca",
+    "block": "Blocca",
+    "noBlockedUsers": "Non hai membri bloccati"
 }
