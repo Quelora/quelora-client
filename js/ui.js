@@ -445,10 +445,6 @@ const profileDrawerUI = new Drawer({
                         <ul></ul>
                     </div>
                     <div class="profile-tab-content blocked">
-                        <div class="search-container">
-                            <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search}}" class="search-input">
-                        </div>
                         <ul>{{noBlocked}}</ul>
                     </div>
                     <div class="profile-tab-content bookmarks">
