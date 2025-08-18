@@ -32,9 +32,21 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import ConfModule from './conf.js';
+import EmojiModule from './emoji.js';
 import UtilsModule from './utils.js';
+import CoreModule from './core.js';
+import ProfileModule from './profile.js';
+import PostsModule from './posts.js';
+import CommentsModule from './comments.js';
+import UiModule from './ui.js';
+import I18n from './i18n.js';
+import SessionModule from './session.js';
+import IconsModule from './icons.js';
+import StorageModule from './storage.js';
 
-//import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
+//import WORKER_CONTENT from './queloraWorker.js'; // Justo para compilación
+import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
 
 const Quelora = (() => {
     // ==================== STATE & CONFIGURATION ====================
@@ -46,11 +58,6 @@ const Quelora = (() => {
     let apiUrl;
 
     const DEFAULT_LANGUAGE = 'en';
-    const MODULE_PATHS = [
-        './conf.js', './emoji.js', './utils.js', './core.js',
-        './profile.js', './posts.js', './comments.js', './ui.js',
-        './i18n.js', './session.js', './icons.js', './storage.js'
-    ];
 
     // ==================== HELPERS ====================
     const handleError = (error, context) => {
@@ -313,13 +320,7 @@ const Quelora = (() => {
     // ==================== INITIALIZATION ====================
     async function init(enableEmojiPicker = true) {
         try {
-            // Dynamically load all dependencies in parallel
-            const modules = await Promise.all(MODULE_PATHS.map(path => import(path)));
-            const [
-                ConfModule, EmojiModule, UtilsModule, CoreModule,
-                ProfileModule, PostsModule, CommentsModule, UiModule,
-                I18n, SessionModule, IconsModule, StorageModule
-            ] = modules.map(m => m.default || m);
+         
 
             // Set configuration and global variables
             currentScriptPath = UtilsModule.getCurrentScriptPath();
