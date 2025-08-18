@@ -45,8 +45,8 @@ import SessionModule from './session.js';
 import IconsModule from './icons.js';
 import StorageModule from './storage.js';
 
-//import WORKER_CONTENT from './queloraWorker.js'; // Justo para compilación
-import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
+
+//import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
 
 const Quelora = (() => {
     // ==================== STATE & CONFIGURATION ====================
