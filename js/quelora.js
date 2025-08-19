@@ -44,7 +44,7 @@ import I18n from './i18n.js';
 import SessionModule from './session.js';
 import IconsModule from './icons.js';
 import StorageModule from './storage.js';
-
+import AIModule from './ai.js';
 
 //import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
 
@@ -244,6 +244,7 @@ const Quelora = (() => {
         searchAccountsResults: (payload) => ProfileModule.renderSearchAccountsResults(payload.result),
         returnBlocked: (payload) => ProfileModule.renderBlockedUsers(payload.result),
         memberBlockStatus: (payload) => ProfileModule.memberBlockStatus(payload),
+        getAnalysisResult: (payload) => AIModule.renderAnalysisModal(payload),
     });
 
     const handleWorkerMessage = (event, handlers) => {
@@ -355,6 +356,7 @@ const Quelora = (() => {
             await CoreModule.initializeCore(moduleConfig);
             await PostsModule.initializePost(moduleConfig);
             await CommentsModule.initializeComments(moduleConfig);
+            await AIModule.initializeAI(moduleConfig);
 
             // Initialize UI and background tasks
             await initializeEmojiPicker(enableEmojiPicker, EmojiModule, UtilsModule);

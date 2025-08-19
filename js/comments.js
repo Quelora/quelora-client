@@ -43,7 +43,7 @@ import SessionModule from './session.js';
 import AudioRecorderModule from './audioRecorder.js';
 import MentionModule from './mention.js';
 import AnchorModule from './anchor.js';
-import StorageModule from './storage.js';
+import AIModule from './ai.js';
 
 // ==================== MODULE CONSTANTS ====================
 const TOUCH_MOVE_THRESHOLD = 10; // pixels
@@ -1366,6 +1366,8 @@ function attachCommentInputListener(entityId) {
             });
         }
 
+        AIModule.addAIButton();
+        
     } catch (error) {
         handleError(error, 'CommentsModule.attachCommentInputListener');
     }

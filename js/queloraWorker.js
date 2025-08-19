@@ -45,7 +45,8 @@ const cacheConfig = {
     'getReplies': 15000,
     'getProfile': 60000,
     'getMention': 60000,
-    'getFollowingActivities': 45000
+    'getFollowingActivities': 60000,
+    'getAnalysis': 60000,
 };
 
 function hashPayload(payload) {
@@ -330,6 +331,14 @@ self.addEventListener('message', (event) => {
                 method: "GET",
                 headers: authHeaders(payload.token)
             }, 'getLikeUpdated');
+            break;
+
+        case 'getAnalysis':
+            url = `${apiUrl}/posts/analysis/${payload.entityId}`;
+            handleFetch(action, url, {
+                method: "GET",
+                headers: authHeaders(payload.token)
+            }, 'getAnalysisResult');
             break;
 
         case 'followUser':

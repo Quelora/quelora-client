@@ -49,7 +49,7 @@
 }
 
 .quelora-modal .quelora-body {
-    background-color: var(--quelora-secondary-color);
+    background-color: var(--quelora-bw-background-color);
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
     border-radius: 5px;
     color: var(--quelora-primary-text-color);
@@ -67,7 +67,6 @@
     justify-content: flex-start;
     gap: var(--spacing-sm);
     width: 50%;
-    padding: var(--spacing-display);
 }
 
 .quelora-modal .report-options-list {
@@ -132,21 +131,17 @@
 
 .quelora-modal .quelora-to-work,
 .quelora-modal .comment-to-edit {
-    background-color: var(--quelora-secondary-color);
+    background-color: var(--quelora-bw-background-color);
     box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    border: solid 1px var(--quelora-light-border-color);
     border-radius: 5px;
     color: var(--quelora-primary-text-color);
     display: flex;
     flex-direction: column;
     overflow: hidden;
     padding: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
 }
-
-.quelora-modal .quelora-to-work .comment-text,
-.quelora-modal .comment-to-edit comment-text {
-    margin-bottom: 20px!important;
-}
-
 
 .quelora-modal .delete-button {
     background-color: var(--quelora-warning-color);

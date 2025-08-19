@@ -311,7 +311,3 @@ body.drawer-scroll-locked {
     transform: translateY(-50%);
     margin: 0;
 }
-
-.quelora-btn span:not(.quelora-svg-icon) {
-    margin-left: 24px;
-}

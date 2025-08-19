@@ -76,11 +76,11 @@ class Drawer {
     }
 
     /**
-     * NEW: Central method to manage body scroll lock based on visible drawers.
      * This method checks the current state and decides whether to lock or unlock.
      */
     static updateBodyScrollLock() {
-        if (Drawer.isAnyDrawerVisible()) {
+        const activeFull = document.querySelector('.drawer.active.drawer--full');
+        if (activeFull) {
             Drawer.lockBodyScroll();
         } else {
             Drawer.unlockBodyScroll();
@@ -360,47 +360,57 @@ class Drawer {
      * Sets the drawer's height or width based on position.
      * @param {number} height - New size in pixels
      */
-    setHeight(height) {
-        if (this.position === 'bottom') {
-            this.element.style.height = `${height}px`;
-        } else {
-            this.element.style.width = `${height}px`;
-        }
-        this.element.style[this.getPositionProperty()] = '0';
-        this.currentPosition = 0;
-        this.currentHeight = height;
-    }
+    setHeight(height) {
+        if (this.position === 'bottom') {
+            this.element.style.height = `${height}px`;
+        } else {
+            this.element.style.width = `${height}px`;
+        }
+        this.element.style[this.getPositionProperty()] = '0';
+        this.currentPosition = 0;
+        this.currentHeight = height;
+
+
+        const dimension = this.getDimension();
+        const half = dimension * 0.5;
+        const TOL = 3; // tolerancia en px
+
+        const isHalf = Math.abs(height - half) <= TOL;
+        const isFull = Math.abs(height - dimension) <= TOL;
+
+        this.element.classList.toggle('drawer--half', isHalf);
+        this.element.classList.toggle('drawer--full', isFull);
+        if (!isHalf && !isFull) {
+            this.element.classList.remove('drawer--half', 'drawer--full');
+        }
+
+        Drawer.updateBodyScrollLock();
+    }
 
     /**
      * Opens the drawer, pushing current active drawer to stack.
      */
-    open() {
-        if (Drawer.activeDrawer) {
-            Drawer.drawerStack.push(Drawer.activeDrawer);
-            Drawer.activeDrawer.hide();
-        }
+    open() {
+        if (Drawer.activeDrawer) {
+            Drawer.drawerStack.push(Drawer.activeDrawer);
+            Drawer.activeDrawer.hide();
+        }
 
-        Drawer.activeDrawer = this;
-        Drawer.setupHistoryHandling();
-        history.pushState({ drawerId: this.id }, '', window.location.href);
+        Drawer.activeDrawer = this;
+        Drawer.setupHistoryHandling();
+        history.pushState({ drawerId: this.id }, '', window.location.href);
 
-        this.element.style.visibility = 'visible';
-        this.element.style.pointerEvents = 'auto';
+        this.element.style.visibility = 'visible';
+        this.element.style.pointerEvents = 'auto';
 
-        if (this.position === 'bottom') {
-            this.element.style.height = this.height;
-        } else {
-            this.element.style.width = this.height;
-        }
+        const sizePx = this.parseSize(this.height, this.getDimension());
+        this.setHeight(sizePx);
 
-        this.element.classList.add('active', 'shadow');
-        this.element.classList.remove('no-shadow');
-        this.element.style[this.getPositionProperty()] = '0';
-        this.currentPosition = 0;
+        this.element.classList.add('active', 'shadow');
+        this.element.classList.remove('no-shadow');
 
-        Drawer.updateBodyScrollLock();
-        this.emit('open');
-    }
+        this.emit('open');
+    }
 
     /**
      * Hides the drawer without removing it from the stack.
@@ -418,22 +428,16 @@ class Drawer {
      * Shows a previously hidden drawer.
      */
     show() {
-        this.element.style.visibility = 'visible';
-        this.element.style.pointerEvents = 'auto';
+        this.element.style.visibility = 'visible';
+        this.element.style.pointerEvents = 'auto';
 
-        if (this.position === 'bottom') {
-            this.element.style.height = this.height;
-        } else {
-            this.element.style.width = this.height;
-        }
+        const sizePx = this.parseSize(this.height, this.getDimension());
+        this.setHeight(sizePx);
 
-        this.element.classList.add('active', 'shadow');
-        this.element.classList.remove('no-shadow');
-        this.element.style[this.getPositionProperty()] = '0';
-        this.currentPosition = 0;
-        
-        Drawer.updateBodyScrollLock();
-        this.emit('show');
+        this.element.classList.add('active', 'shadow');
+        this.element.classList.remove('no-shadow');
+
+        this.emit('show');
     }
 
     /**
