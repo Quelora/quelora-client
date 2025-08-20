@@ -9,7 +9,7 @@
 }
 
 .ai-analysis-sentiment {
-    font-size: var(--font-size-xxs);
+    font-size: var(--font-size-md);
     padding: var(--spacing-md);
     padding-bottom: var(--spacing-xxxl);
     margin-bottom: var(--spacing-xxxl);

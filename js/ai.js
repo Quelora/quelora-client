@@ -7,6 +7,7 @@
 import CommentsModule from './comments.js';
 import UiModule from './ui.js';
 import UtilsModule from './utils.js';
+import AnchorModule from './anchor.js';
 
 let workerInstance;
 let token;
@@ -60,9 +61,11 @@ async function addAIButton() {
  * Renderiza un análisis de IA dentro de un modal
  * @param {Object} analysisData - Objeto con análisis y comentarios destacados
  */
+
 function renderAnalysisModal(analysisData) {
     isDisabled = false;
     UiModule.closeModalUI();
+    
     const bodyContent = document.createElement('div');
     bodyContent.className = 'ai-analysis-modal';
     bodyContent.setAttribute('data-threads-entity', entityId);
@@ -71,12 +74,10 @@ function renderAnalysisModal(analysisData) {
     title.textContent = analysisData.analysis.title;
     bodyContent.appendChild(title);
 
-
     const subtitle = document.createElement('p');
     subtitle.className = 'ai-analysis-subtitle';
     subtitle.textContent = analysisData.analysis.debateSummary;
     bodyContent.appendChild(subtitle);
-
 
     const sentimentContainer = document.createElement('div');
     sentimentContainer.className = 'ai-analysis-sentiment';
@@ -96,12 +97,30 @@ function renderAnalysisModal(analysisData) {
     `;
     bodyContent.appendChild(sentimentContainer);
 
-    // Comentarios destacados
+    // Comentarios destacados con ancla
     analysisData.analysis.highlightedComments.forEach(hComment => {
         const container = document.createElement('div');
         container.className = 'quelora-to-work';
+        
         const commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
         commentElement.querySelector('.comment-actions')?.remove();
+
+        // Generar enlace al comentario
+        const link = AnchorModule.generateLink({
+            type: 'comment',
+            ids: {
+                entity: entityId,
+                commentId: hComment._id
+            }
+        });
+
+        // Click en el comentario: cierra modal y navega al ancla
+        commentElement.style.cursor = 'pointer';
+        commentElement.addEventListener('click', () => {
+            UiModule.closeModalUI();
+            location.hash = link;
+        });
+
         container.appendChild(commentElement);
         bodyContent.appendChild(container);
     });
