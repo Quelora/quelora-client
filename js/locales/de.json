@@ -176,5 +176,9 @@
     "blocked": "Blockierte",
     "unblock": "Entsperren",
     "block": "Blockieren",
-    "noBlockedUsers": "Du hast keine blockierten Mitglieder"
+    "noBlockedUsers": "Du hast keine blockierten Mitglieder",
+    "opinion": "Meinung",
+    "positive": "Positiv",
+    "negative": "Negativ",
+    "neutral": "Neutral"
 }

@@ -176,5 +176,9 @@
     "blocked": "ブロック済み",
     "unblock": "ブロック解除",
     "block": "ブロック",
-    "noBlockedUsers": "ブロックしているメンバーはいません"
+    "noBlockedUsers": "ブロックしているメンバーはいません",
+    "opinion": "意見",
+    "positive": "肯定的",
+    "negative": "否定的",
+    "neutral": "中立"
 }

@@ -176,5 +176,9 @@
     "blocked": "已封锁",
     "unblock": "解除封锁",
     "block": "封锁",
-    "noBlockedUsers": "你没有被封锁的成员"
+    "noBlockedUsers": "你没有被封锁的成员",
+    "opinion": "观点",
+    "positive": "积极",
+    "negative": "消极",
+    "neutral": "中立"
 }

@@ -175,5 +175,9 @@
     "blocked": "المحظورون",
     "unblock": "إلغاء الحظر",
     "block": "حظر",
-    "noBlockedUsers": "ليس لديك أعضاء محظورون"
+    "noBlockedUsers": "ليس لديك أعضاء محظورون",
+    "opinion": "رأي",
+    "positive": "إيجابي",
+    "negative": "سلبي",
+    "neutral": "محايد"
 }
