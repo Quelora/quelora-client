@@ -413,8 +413,8 @@ const addVoiceButton = ({ iconReferenceElement, onResult }) => {
       throw new Error("iconReferenceElement and onResult callback are required.");
     }
 
-    if (iconReferenceElement.nextElementSibling?.classList.contains('voice-button')) return;
-
+    if (iconReferenceElement.parentElement.querySelector('.voice-button')) return;
+    
     callbackMap.set(iconReferenceElement, onResult);
 
     if (!UtilsModule.isMobile) {
