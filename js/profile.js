@@ -54,6 +54,93 @@ let originalItemsCache = null;
 const _memberProfiles = new Map();
 const tabControllers = new WeakMap();
 
+// ==================== CRYPTO HELPERS ====================
+const deriveKey = async (token, salt) => {
+    try {
+        const encoder = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+            'raw',
+            encoder.encode(token),
+            { name: 'PBKDF2' },
+            false,
+            ['deriveBits', 'deriveKey']
+        );
+        return await crypto.subtle.deriveKey(
+            {
+                name: 'PBKDF2',
+                salt: salt,
+                iterations: 100000,
+                hash: 'SHA-256'
+            },
+            keyMaterial,
+            { name: 'AES-GCM', length: 256 },
+            false,
+            ['encrypt', 'decrypt']
+        );
+    } catch (error) {
+        console.error('Error deriving key:', error);
+        throw error;
+    }
+};
+
+const encryptProfile = async (profileData, token) => {
+    try {
+        const encoder = new TextEncoder();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const key = await deriveKey(token, salt);
+        const encrypted = await crypto.subtle.encrypt(
+            {
+                name: 'AES-GCM',
+                iv: iv
+            },
+            key,
+            encoder.encode(profileData)
+        );
+        const encryptedArray = new Uint8Array(encrypted);
+        const combined = new Uint8Array(salt.length + iv.length + encryptedArray.length);
+        combined.set(salt, 0);
+        combined.set(iv, salt.length);
+        combined.set(encryptedArray, salt.length + iv.length);
+        // Encode to base64url to avoid invalid characters
+        const base64 = btoa(String.fromCharCode(...combined))
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+        return base64;
+    } catch (error) {
+        console.error('Error encrypting profile:', error);
+        throw error;
+    }
+};
+
+const decryptProfile = async (encryptedData, token) => {
+    try {
+        // Decode base64url
+        let binaryString = atob(encryptedData.replace(/-/g, '+').replace(/_/g, '/'));
+        const combined = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            combined[i] = binaryString.charCodeAt(i);
+        }
+        const salt = combined.slice(0, 16);
+        const iv = combined.slice(16, 28);
+        const encrypted = combined.slice(28);
+        const key = await deriveKey(token, salt);
+        const decrypted = await crypto.subtle.decrypt(
+            {
+                name: 'AES-GCM',
+                iv: iv
+            },
+            key,
+            encrypted
+        );
+        return new TextDecoder().decode(decrypted);
+    } catch (error) {
+        console.error('Error decrypting profile:', error);
+        throw error;
+    }
+};
+
 // ==================== HELPERS ====================
 const handleError = (error, context) => {
     console.error(`Error in ${context}:`, error);
@@ -187,10 +274,18 @@ const isLogin = () => {
  * Return JSON data user
  */
 const getOwnProfile = async (forceServerFetch = false, maxAttempts = 5, delayMs = 400) => {
-    
     if (!forceServerFetch) {
         const cachedProfile = StorageModule.getSessionItem('quelora_profile');
-        if (cachedProfile) return JSON.parse(cachedProfile);
+        if (cachedProfile) {
+            try {
+                const decryptedProfile = await decryptProfile(cachedProfile, token);
+                return JSON.parse(decryptedProfile);
+            } catch (error) {
+                handleError(error, 'ProfileModule.getOwnProfile decrypt');
+                // Clear invalid cached profile to prevent repeated errors
+                StorageModule.removeSessionItem('quelora_profile');
+            }
+        }
     }
 
     if (profileFetchLock) {
@@ -207,9 +302,17 @@ const getOwnProfile = async (forceServerFetch = false, maxAttempts = 5, delayMs 
 
             while (attempt < maxAttempts) {
                 await UtilsModule.wait(delayMs);
-                profile = StorageModule.getSessionItem('quelora_profile');
-                if (profile) {
-                    return JSON.parse(profile);
+                const cachedProfile = StorageModule.getSessionItem('quelora_profile');
+                if (cachedProfile) {
+                    try {
+                        const decryptedProfile = await decryptProfile(cachedProfile, token);
+                        profile = JSON.parse(decryptedProfile);
+                        return profile;
+                    } catch (error) {
+                        handleError(error, 'ProfileModule.getOwnProfile decrypt retry');
+                        // Clear invalid cached profile
+                        StorageModule.removeSessionItem('quelora_profile');
+                    }
                 }
                 attempt++;
 
@@ -233,16 +336,35 @@ const getOwnProfile = async (forceServerFetch = false, maxAttempts = 5, delayMs 
  * @param {Array<{_id: string, blocked_id: string}>} [profile.blocked] - List of blocked users.
  * @param {string} [path] - Optional key path to update only part of the profile.
  */
-const saveMyProfile = (profile, path) => {
+const saveMyProfile = async (profile, path) => {
     if (!profile || !profile.author) return;
 
     // Save profile in session storage
     if (path) {
-        const currentProfile = JSON.parse(StorageModule.getSessionItem('quelora_profile') || '{}');
+        let currentProfile = {};
+        const cachedProfile = StorageModule.getSessionItem('quelora_profile');
+        if (cachedProfile) {
+            try {
+                const decryptedProfile = await decryptProfile(cachedProfile, token);
+                currentProfile = JSON.parse(decryptedProfile);
+            } catch (error) {
+                handleError(error, 'ProfileModule.saveMyProfile decrypt');
+            }
+        }
         const updatedProfile = { ...currentProfile, [path]: profile[path] };
-        StorageModule.setSessionItem('quelora_profile', JSON.stringify(updatedProfile));
+        try {
+            const encryptedProfile = await encryptProfile(JSON.stringify(updatedProfile), token);
+            StorageModule.setSessionItem('quelora_profile', encryptedProfile);
+        } catch (error) {
+            handleError(error, 'ProfileModule.saveMyProfile encrypt');
+        }
     } else {
-        StorageModule.setSessionItem('quelora_profile', JSON.stringify(profile));
+        try {
+            const encryptedProfile = await encryptProfile(JSON.stringify(profile), token);
+            StorageModule.setSessionItem('quelora_profile', encryptedProfile);
+        } catch (error) {
+            handleError(error, 'ProfileModule.saveMyProfile encrypt');
+        }
     }
 
     // Save hidden authors in local storage (overwrite if exists)
@@ -255,7 +377,7 @@ const saveMyProfile = (profile, path) => {
     }
 
     // Update Profile
-    if(!path) saveMemberProfile(profile) ;
+    if (!path) saveMemberProfile(profile);
 };
 
 const saveMemberProfile = (profile) => memberProfiles.set(profile.author, profile);
@@ -677,7 +799,7 @@ const createCommentItem = async (comment) => {
     const refererHTML = renderRefererStructure({
         date: comment.created_at,
         link: comment.referer?.link,
-        description: comment.referer?.description,
+        title: comment.referer?.title,
     });
 
     return `
@@ -703,7 +825,7 @@ const createLikeItem = async (like) => {
     const refererHTML = renderRefererStructure({
         date: like.created_at,
         link: like.referer?.link || like.link,
-        description: like.referer?.description || like.description,
+        title: like.referer?.title || like.title,
         timeAgo: like.created_at,
         extraClass: 'like-time-container',
         icon: 'schedule',
@@ -722,7 +844,7 @@ const createShareItem = async (share) => {
     const refererHTML = renderRefererStructure({
         date: share.entity?.created_at,
         link: share.entity?.link,
-        description: share.entity?.description,
+        title: share.entity?.title,
         timeAgo: share.madeAt,
         extraClass: 'share-time-container',
         icon: 'schedule',
@@ -738,7 +860,7 @@ const createBookmarkItem = async (bookmark) => {
     const refererHTML = renderRefererStructure({
         date: bookmark.post?.created_at,
         link: 'javascript:void(0);',
-        description: bookmark.post?.description,
+        title: bookmark.post?.title,
         timeAgo: bookmark.created_at,
         extraClass: 'bookmark-time-container',
         icon: 'schedule',
@@ -753,7 +875,7 @@ const createBookmarkItem = async (bookmark) => {
 const renderRefererStructure = ({ 
     date, 
     link = 'javascript:void(0);', 
-    description, 
+    title, 
     timeAgo, 
     extraClass = '', 
     icon = '', 
@@ -763,7 +885,7 @@ const renderRefererStructure = ({
         <div class="referer-info">
             <span class="comment-time t">${UtilsModule.formatDate(date)}</span>
             | <a class="referer-link" href="${link}">
-                ${description || I18n.getTranslation('noDescription')}
+                ${title || I18n.getTranslation('noDescription')}
             </a>
             ${timeAgo ? `
                 <div class="${extraClass}">

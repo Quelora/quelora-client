@@ -1436,7 +1436,7 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
         // Modal action buttons
         const buttons = [
             {
-                className: 'send-button t',
+                className: 'quelora-btn send-button t',
                 textContent: '{{send}}',
                 icon: 'send',
                 onClick: () => {

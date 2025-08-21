@@ -569,99 +569,97 @@ const closeModalUI = () => {
 };
 
 function renderActivitiesUI(activities) {
-    try {
-        const notificationList = document.querySelector('#community-quelora-notification-list');
-        if (!notificationList) return;
+    const notificationList = document.querySelector('#community-quelora-notification-list');
+    if (!notificationList) return;
 
-        // Clear existing empty container if present
+    const clearEmptyContainer = () => {
         const existingEmptyContainer = notificationList.querySelector('.quelora-empty-container');
-        if (existingEmptyContainer) existingEmptyContainer.remove();
+        existingEmptyContainer?.remove();
+    };
 
-        if (!activities || activities.status !== "ok" || !activities.activities?.length) {
-            const notificationFloat = document.querySelector('.notification-float');
-            if (notificationFloat) notificationFloat.style.display = 'none';
+    const showEmptyState = () => {
+        const notificationFloat = document.querySelector('.notification-float');
+        if (notificationFloat) notificationFloat.style.display = 'none';
+        notificationList.innerHTML = `<div class="quelora-empty-container t">{{emptyActivity}}</div>`;
+    };
 
-            // Create empty container if no activities
-            const emptyContainer = document.createElement('div');
-            emptyContainer.classList.add('quelora-empty-container', 't');
-            emptyContainer.textContent = '{{emptyActivity}}';
-            notificationList.appendChild(emptyContainer);
-            return;
-        }
+    const renderNotificationItem = (activity) => {
+        const { action_type, author, created_at, references, entity } = activity;
+        const ids = {
+            entity: references?.entity,
+            commentId: references?.commentId,
+            replyId: references?.replyId,
+            follow: references?.profileId
+        };
+        const link = AnchorModule.generateLink({ type: action_type, ids });
+        const avatarStyle = author?.picture ? `style="background-image: url('${author.picture}'); background-size: cover;"` : '';
+        const avatarContent = author?.picture ? '' : author?.author_username?.charAt(0)?.toUpperCase() || '';
+        const actionText = {
+            share: I18n.getTranslation('sharedPost'),
+            like: entity?.type === 'comment' ? I18n.getTranslation('likedYourComment') : I18n.getTranslation('likedPost'),
+            comment: I18n.getTranslation('commentedOnPost'),
+            reply: I18n.getTranslation('repliedToYourComment'),
+            follow: I18n.getTranslation('isFollow'),
+            default: I18n.getTranslation('performedAnAction')
+        }[action_type] || I18n.getTranslation('performedAnAction');
+        const preview = entity?.preview ? `<span class="notification-preview">${entity.preview}</span>` : '';
 
-        let storedActivities = JSON.parse(StorageModule.getSessionItem('quelora_notifications_activities')) || [];
-        let lastActivityTime = StorageModule.getSessionItem('quelora_notifications_last_activity_time') || 0;
-
-        const newActivities = activities.activities.filter(activity => 
-            new Date(activity.created_at).getTime() > new Date(lastActivityTime).getTime()
-        );
-
-        const allActivities = [...new Map([...storedActivities, ...activities.activities]
-            .map(item => [item._id, item])).values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-        const latestActivityTime = activities.activities.reduce((max, activity) => 
-            Math.max(max, new Date(activity.created_at).getTime()), new Date(lastActivityTime).getTime()
-        );
-
-        StorageModule.setSessionItem('quelora_notifications_activities', JSON.stringify(allActivities));
-        StorageModule.setSessionItem('quelora_notifications_last_activity_time', new Date(latestActivityTime).toISOString());
-
-        notificationList.innerHTML = `<ul class="quelora-notification-list">${allActivities.map(activity => {
-            const ids = {
-                entity: activity.references?.entity,
-                commentId: activity.references?.commentId,
-                replyId: activity.references?.replyId,
-                follow: activity.references?.profileId
-            };
-            const link = AnchorModule.generateLink({ type: activity.action_type, ids });
-            const avatarStyle = activity.author?.picture ? `style="background-image: url('${activity.author.picture}'); background-size: cover;"` : '';
-            const avatarContent = activity.author?.picture ? '' : activity.author?.author_username?.charAt(0)?.toUpperCase() || '';
-            const actionText = {
-                share: I18n.getTranslation('sharedPost'),
-                like: activity.entity?.type === 'comment' ? I18n.getTranslation('likedYourComment') : I18n.getTranslation('likedPost'),
-                comment: I18n.getTranslation('commentedOnPost'),
-                reply: I18n.getTranslation('repliedToYourComment'),
-                follow: I18n.getTranslation('isFollow'),
-                default: I18n.getTranslation('performedAnAction')
-            }[activity.action_type] || I18n.getTranslation('performedAnAction');
-            const preview = activity.entity?.preview ? `<span class="notification-preview">${activity.entity.preview}</span>` : '';
-
-            return `<li class="quelora-notification-item" data-link="${link}">
-                        <div class="comment-avatar" ${avatarStyle} data-visibility="${activity.author?.visibility}">${avatarContent}</div>
-                        <div class="notification-content">
+        return `<li class="quelora-notification-item" data-link="${link}">
+                    <div class="comment-avatar" ${avatarStyle} data-visibility="${author?.visibility}">${avatarContent}</div>
+                    <div class="notification-content">
                         <div class="notification-text-container">
-                            <span class="notification-message"><strong>${activity.author?.author_username || ''}</strong><span class="t">${actionText}</span></span>
-                            <span class="notification-time t">${UtilsModule.getTimeAgo(activity.created_at)}</span>
+                            <span class="notification-message"><strong>${author?.author_username || ''}</strong><span class="t">${actionText}</span></span>
+                            <span class="notification-time t">${UtilsModule.getTimeAgo(created_at)}</span>
                         </div>
                         ${preview}
-                        </div>
-                    </li>`;
-        }).join('')}</ul>`;
+                    </div>
+                </li>`;
+    };
 
-        const handleNotificationClick = (item) => () => {
+    const handleNotificationClick = (e) => {
+        const item = e.target.closest('.quelora-notification-item');
+        if (item) {
             window.location.href = item.dataset.link;
             UiModule.notificationDrawerUI.close();
-        };
-
-        notificationList.querySelectorAll('.quelora-notification-item').forEach(item => {
-            item.removeEventListener('click', handleNotificationClick(item));
-            item.addEventListener('click', handleNotificationClick(item));
-        });
-
-        if (newActivities.length) {
-            ToastModule.info(
-                '<span class="quelora-icons-outlined bellRing">notifications</span>',
-                I18n.getTranslation('notifications'),
-                `${I18n.getTranslation('youHave')} ${newActivities.length} ${I18n.getTranslation(newActivities.length === 1 ? 'notification' : 'notifications')}`,
-                () => UiModule.notificationDrawerUI.show()
-            );
         }
-    } catch (error) {
-        console.error('Error rendering activities:', error);
-        const notificationList = document.querySelector('#community-quelora-notification-list');
-        if (notificationList) {
-            notificationList.innerHTML = `<li class="error-message">${I18n.getTranslation('errorLoadingNotifications')}</li>`;
-        }
+    };
+
+    clearEmptyContainer();
+    if (!activities || activities.status !== "ok" || !activities.activities?.length) {
+        showEmptyState();
+        return;
+    }
+
+    const storedData = {
+        activities: JSON.parse(StorageModule.getSessionItem('quelora_notifications_activities') || '[]'),
+        lastActivityTime: StorageModule.getSessionItem('quelora_notifications_last_activity_time') || 0
+    };
+
+    const newActivities = activities.activities.filter(activity => 
+        new Date(activity.created_at).getTime() > new Date(storedData.lastActivityTime).getTime()
+    );
+
+    const allActivities = [...new Map([...storedData.activities, ...activities.activities]
+        .map(item => [item._id, item])).values()].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    const latestActivityTime = activities.activities.reduce((max, activity) => 
+        Math.max(max, new Date(activity.created_at).getTime()), new Date(storedData.lastActivityTime).getTime()
+    );
+
+    StorageModule.setSessionItem('quelora_notifications_activities', JSON.stringify(allActivities));
+    StorageModule.setSessionItem('quelora_notifications_last_activity_time', new Date(latestActivityTime).toISOString());
+
+    notificationList.innerHTML = `<ul class="quelora-notification-list">${allActivities.map(renderNotificationItem).join('')}</ul>`;
+    notificationList.removeEventListener('click', handleNotificationClick);
+    notificationList.addEventListener('click', handleNotificationClick);
+
+    if (newActivities.length) {
+        ToastModule.info(
+            '<span class="quelora-icons-outlined bellRing">notifications</span>',
+            I18n.getTranslation('notifications'),
+            `${I18n.getTranslation('youHave')} ${newActivities.length} ${I18n.getTranslation(newActivities.length === 1 ? 'notification' : 'notifications')}`,
+            () => UiModule.notificationDrawerUI.show()
+        );
     }
 }
 
@@ -669,23 +667,17 @@ function addLoadingMessageUI(container, { type = 'message', position = 'after', 
     if (!container) return console.error('Container not found');
     if (empty) container.innerHTML = '';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'quelora-loading-message';
-    
-    if (type === 'message') {
-        wrapper.innerHTML = `<div class="quelora-loader"></div>{{loadingMessage}}`;
-        wrapper.classList.add('t');
-    } else if(type === 'profile') {
-        wrapper.innerHTML = Array(count).fill(`
+    const templates = {
+        message: `<div class="quelora-loader"></div>{{loadingMessage}}`,
+        profile: Array(count).fill(`
             <div class="quelora-skeleton-message quelora-community-thread">
                 <div class="comment-header" style="justify-content:left">
                     <div class="comment-avatar quelora-skeleton quelora-skeleton-avatar"></div>
                     <span class="comment-author quelora-skeleton quelora-skeleton-line" style="height:14px;width:200px"></span>
                 </div>
             </div>
-        `).join('');
-    } else {
-        wrapper.innerHTML = Array(count).fill(`
+        `).join(''),
+        skeleton: Array(count).fill(`
             <div class="quelora-skeleton-message quelora-community-thread">
                 <div class="comment-header" style="justify-content:left">
                     <div class="comment-avatar quelora-skeleton quelora-skeleton-avatar"></div>
@@ -694,8 +686,12 @@ function addLoadingMessageUI(container, { type = 'message', position = 'after', 
                 <div class="comment-text quelora-skeleton quelora-skeleton-line" style="width:32px;height:16px;margin-left:47px"></div>
                 <div class="quelora-skeleton quelora-skeleton-line" style="width:140px;height:12px;margin-left:47px"></div>
             </div>
-        `).join('');
-    }
+        `).join('')
+    };
+
+    const wrapper = document.createElement('div');
+    wrapper.className = `quelora-loading-message${type === 'message' ? ' t' : ''}`;
+    wrapper.innerHTML = templates[type] || templates.message;
 
     container[position === 'before' ? 'prepend' : 'append'](wrapper);
 }

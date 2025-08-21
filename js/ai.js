@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
-* @license Licensed under the GNU Affero General Public License v3.0
+ * @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -38,12 +38,17 @@ import UiModule from './ui.js';
 import UtilsModule from './utils.js';
 import AnchorModule from './anchor.js';
 
+// Global variables to store worker instance, token, client ID, entity ID, and disabled state
 let workerInstance;
 let token;
 let cid;
 let entityId;
 let isDisabled;
 
+/**
+ * Initializes the AI module with provided dependencies
+ * @param {Object} dependencies - Object containing worker, token, and client ID
+ */
 async function initializeAI(dependencies) {
     try {
         workerInstance = dependencies.worker;
@@ -55,6 +60,9 @@ async function initializeAI(dependencies) {
     }
 }
 
+/**
+ * Adds an AI button to the UI for triggering AI analysis
+ */
 async function addAIButton() {
     try {
         const iconReferenceElement = document.getElementById('quelora-input');
@@ -76,7 +84,7 @@ async function addAIButton() {
                 { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => UiModule.closeModalUI(), icon: 'close' }
             ];
             UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
-            // Ensure we have a valid token
+            // Ensure a valid token is available
             token = await CoreModule.getTokenIfNeeded(token);
             workerInstance.postMessage({ action: 'getAnalysis', payload: { token, entityId, cid } });
             isDisabled = true;
@@ -89,10 +97,9 @@ async function addAIButton() {
 }
 
 /**
- * Renderiza un análisis de IA dentro de un modal
- * @param {Object} analysisData - Objeto con análisis y comentarios destacados
+ * Renders AI analysis within a modal
+ * @param {Object} analysisData - Object containing analysis and highlighted comments
  */
-
 function renderAnalysisModal(analysisData) {
     isDisabled = false;
     UiModule.closeModalUI();
@@ -128,7 +135,7 @@ function renderAnalysisModal(analysisData) {
     `;
     bodyContent.appendChild(sentimentContainer);
 
-    // Comentarios destacados con ancla
+    // Render highlighted comments with anchor links
     analysisData.analysis.highlightedComments.forEach(hComment => {
         const container = document.createElement('div');
         container.className = 'quelora-to-work';
@@ -136,7 +143,7 @@ function renderAnalysisModal(analysisData) {
         const commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
         commentElement.querySelector('.comment-actions')?.remove();
 
-        // Generar enlace al comentario
+        // Generate link to the comment
         const link = AnchorModule.generateLink({
             type: 'comment',
             ids: {
@@ -145,7 +152,7 @@ function renderAnalysisModal(analysisData) {
             }
         });
 
-        // Click en el comentario: cierra modal y navega al ancla
+        // Click on comment: closes modal and navigates to anchor
         commentElement.style.cursor = 'pointer';
         commentElement.addEventListener('click', () => {
             UiModule.closeModalUI();
@@ -162,7 +169,7 @@ function renderAnalysisModal(analysisData) {
     UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
 }
 
-// ==================== EXPORT ====================
+// Export the AI module with its methods
 const AIModule = {
     initializeAI,
     addAIButton,

@@ -46,6 +46,7 @@
 .quelora-modal .quelora-modal-content {
     padding: var(--spacing-display);
     text-align: left;
+    width: 98%;
 }
 
 .quelora-modal .quelora-body {
@@ -58,7 +59,6 @@
     overflow: hidden;
     padding: var(--spacing-xl);
     margin: var(--spacing-xl);
-    width: 94%;
 }
 
 .quelora-modal .quelora-modal-footer {
