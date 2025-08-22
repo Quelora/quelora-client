@@ -2141,6 +2141,110 @@ const getEntityInteractionUI = (entityId) => {
   return res.length === 1 ? res[0] : res;
 };
 
+/**
+ * Creates a DOM element with specified properties, classes, attributes, styles, content, and event listeners.
+ * Designed to handle all element creation patterns used in QUELORA's CommentsModule and ProfileModule.
+ * 
+ * @param {Object} options - Configuration object for the element
+ * @param {string} options.tag - The HTML tag name (e.g., 'div', 'button', 'span')
+ * @param {string|string[]} [options.classes] - Single class or array of classes to add
+ * @param {Object} [options.attributes] - Key-value pairs for element attributes
+ * @param {Object} [options.styles] - Key-value pairs for inline CSS styles
+ * @param {string|Node|Node[]} [options.content] - Text content, single Node, or array of Nodes
+ * @param {Object} [options.listeners] - Event listeners as key-value pairs (event: handler)
+ * @param {HTMLElement[]} [options.children] - Array of child elements to append
+ * @param {boolean} [options.translate=false] - Whether to mark content for translation (adds 't' class)
+ * @param {string} [options.innerHTML] - Raw HTML content to set (overrides content)
+ * @returns {HTMLElement|null} The created DOM element or null if creation fails
+ */
+function createElementUI({
+    tag,
+    classes = [],
+    attributes = {},
+    styles = {},
+    content = '',
+    listeners = {},
+    children = [],
+    translate = false,
+    innerHTML
+}) {
+    try {
+        // Validate tag
+        if (!tag || typeof tag !== 'string') {
+            console.error('Invalid or missing tag name');
+            return null;
+        }
+
+        // Create element
+        const element = document.createElement(tag);
+
+        // Add classes
+        if (classes) {
+            const classList = Array.isArray(classes) ? classes : [classes];
+            classList.forEach(cls => {
+                if (cls) element.classList.add(cls);
+            });
+            if (translate) {
+                element.classList.add('t'); // Mark for translation as seen in scripts
+            }
+        }
+
+        // Set attributes
+        Object.entries(attributes).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                element.setAttribute(key, value);
+            }
+        });
+
+        // Set styles
+        Object.entries(styles).forEach(([key, value]) => {
+            if (value !== undefined && value !== null) {
+                element.style[key] = value;
+            }
+        });
+
+        // Set content
+        if (innerHTML) {
+            element.innerHTML = translate ? `{{${innerHTML}}}` : innerHTML;
+        } else if (content) {
+            if (typeof content === 'string') {
+                element.textContent = content;
+            } else if (content instanceof Node) {
+                element.appendChild(content);
+            } else if (Array.isArray(content)) {
+                content.forEach(item => {
+                    if (item instanceof Node) {
+                        element.appendChild(item);
+                    } else if (typeof item === 'string') {
+                        element.appendChild(
+                            document.createTextNode(item)
+                        );
+                    }
+                });
+            }
+        }
+
+        // Append children
+        children.forEach(child => {
+            if (child instanceof Node) {
+                element.appendChild(child);
+            }
+        });
+
+        // Add event listeners
+        Object.entries(listeners).forEach(([event, handler]) => {
+            if (typeof handler === 'function') {
+                element.addEventListener(event, handler);
+            }
+        });
+
+        return element;
+    } catch (error) {
+        console.error(`Error in UiModule.createElement for tag ${tag}:`, error);
+        return null;
+    }
+}
+
 const initializeUI = () => {
     try {
         filterListItemsUI('likes-search', '#quelora-likes-list');
@@ -2154,6 +2258,7 @@ const initializeUI = () => {
 };
 
 const UiModule = {
+    createElementUI,
     getCommentHeaderUI,
     getCommunityThreadsUI,
     getProfileContainerUI,

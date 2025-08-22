@@ -68,27 +68,42 @@ async function addAIButton() {
         const iconReferenceElement = UiModule.getCommentInputUI();
         if (iconReferenceElement.parentElement.querySelector('.ai-button')) return;
 
-        const AIButton = document.createElement('span');
-        AIButton.classList.add('quelora-icons-outlined', 'ai-button');
-        AIButton.textContent = 'robot';
+        const AIButton = UiModule.createElementUI({
+            tag: 'span',
+            classes: ['quelora-icons-outlined', 'ai-button'],
+            content: 'robot'
+        });
 
-        AIButton.onclick = async function () {
-            if (isDisabled) return;
 
-            const threadsContainer = UiModule.getCommunityThreadsUI();
-            entityId = threadsContainer?.getAttribute('data-threads-entity');
+        if (AIButton) {
+            AIButton.onclick = async function () {
+                if (isDisabled) return;
 
-            const bodyContent = document.createElement('div');
-            UiModule.addLoadingMessageUI(bodyContent, { type: 'message' });
-            const buttons = [
-                { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => UiModule.closeModalUI(), icon: 'close' }
-            ];
-            UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
-            // Ensure a valid token is available
-            token = await CoreModule.getTokenIfNeeded(token);
-            workerInstance.postMessage({ action: 'getAnalysis', payload: { token, entityId, cid } });
-            isDisabled = true;
-        };
+                const threadsContainer = UiModule.getCommunityThreadsUI();
+                entityId = threadsContainer?.getAttribute('data-threads-entity');
+
+                const bodyContent = UiModule.createElementUI({
+                    tag: 'div'
+                });
+                
+                if (bodyContent) {
+                    UiModule.addLoadingMessageUI(bodyContent, { type: 'message' });
+                    const buttons = [
+                        { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => UiModule.closeModalUI(), icon: 'close' }
+                    ];
+                    UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
+                }
+                
+                // Ensure a valid token is available
+                token = await CoreModule.getTokenIfNeeded(token);
+                workerInstance.postMessage({ action: 'getAnalysis', payload: { token, entityId, cid } });
+                isDisabled = true;
+            };
+
+            iconReferenceElement.insertAdjacentElement('afterend', AIButton);
+        } else {
+            console.error('Failed to create AI button');
+        }
 
         iconReferenceElement.insertAdjacentElement('afterend', AIButton);
     } catch (error) {
@@ -104,41 +119,53 @@ function renderAnalysisModal(analysisData) {
     isDisabled = false;
     UiModule.closeModalUI();
     
-    const bodyContent = document.createElement('div');
-    bodyContent.className = 'ai-analysis-modal';
-    bodyContent.setAttribute('data-threads-entity', entityId);
+    const bodyContent = UiModule.createElementUI({
+        tag: 'div',
+        classes: 'ai-analysis-modal',
+        attributes: {
+            'data-threads-entity': entityId
+        }
+    });
 
-    const title = document.createElement('h2');
-    title.textContent = analysisData.analysis.title;
+    const title = UiModule.createElementUI({
+        tag: 'h2',
+        content: analysisData.analysis.title
+    });
     bodyContent.appendChild(title);
 
-    const subtitle = document.createElement('p');
-    subtitle.className = 'ai-analysis-subtitle';
-    subtitle.textContent = analysisData.analysis.debateSummary;
+    const subtitle = UiModule.createElementUI({
+        tag: 'p',
+        classes: 'ai-analysis-subtitle',
+        content: analysisData.analysis.debateSummary
+    });
     bodyContent.appendChild(subtitle);
 
-    const sentimentContainer = document.createElement('div');
-    sentimentContainer.className = 'ai-analysis-sentiment';
-    sentimentContainer.innerHTML = `
-        <div class="ai-containter">
-            <span class="t">{{opinion}}: ${analysisData.analysis.sentiment.positive} {{positive}},</span> 
-            ${analysisData.analysis.sentiment.neutral} <span class="t">{{neutral}},</span>
-            ${analysisData.analysis.sentiment.negative} <span class="t">{{negative}}</span>
-        </div>
-        <div class="ai-containter">
-            <div class="ai-sentiment-bar">
-                <div class="positive" style="width:${analysisData.analysis.sentiment.positive};"></div>
-                <div class="neutral" style="width:${analysisData.analysis.sentiment.neutral};"></div>
-                <div class="negative" style="width:${analysisData.analysis.sentiment.negative};"></div>
+    const sentimentContainer = UiModule.createElementUI({
+        tag: 'div',
+        classes: 'ai-analysis-sentiment',
+        innerHTML: `
+            <div class="ai-containter">
+                <span class="t">{{opinion}}: ${analysisData.analysis.sentiment.positive} {{positive}},</span> 
+                ${analysisData.analysis.sentiment.neutral} <span class="t">{{neutral}},</span>
+                ${analysisData.analysis.sentiment.negative} <span class="t">{{negative}}</span>
             </div>
-        </div>
-    `;
+            <div class="ai-containter">
+                <div class="ai-sentiment-bar">
+                    <div class="positive" style="width:${analysisData.analysis.sentiment.positive};"></div>
+                    <div class="neutral" style="width:${analysisData.analysis.sentiment.neutral};"></div>
+                    <div class="negative" style="width:${analysisData.analysis.sentiment.negative};"></div>
+                </div>
+            </div>
+        `
+    });
     bodyContent.appendChild(sentimentContainer);
 
     // Render highlighted comments with anchor links
     analysisData.analysis.highlightedComments.forEach(hComment => {
-        const container = document.createElement('div');
-        container.className = 'quelora-to-work';
+        const container = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'quelora-to-work'
+        });
         
         const commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
         commentElement.querySelector('.comment-actions')?.remove();

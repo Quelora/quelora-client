@@ -125,20 +125,22 @@ const removeTimer = () => {
 const createTimer = () => {
   removeTimer();
 
-  timerElement = document.createElement('div');
-  timerElement.className = 'quelora_base-timer';
-  timerElement.innerHTML = `
-    <svg class="quelora_base-timer__svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-      <g class="quelora_base-timer__circle">
-        <circle class="quelora_base-timer__path-elapsed" cx="50" cy="50" r="45"></circle>
-        <path
-          class="quelora_base-timer__path-remaining green"
-          d="M 50, 50 m -45, 0 a 45,45 0 1,0 90,0 a 45,45 0 1,0 -90,0"
-        ></path>
-      </g>
-    </svg>
-    <span class="quelora_base-timer__label">${formatTime(maxRecordingSeconds)}</span>
-  `;
+  timerElement = UiModule.createElementUI({
+      tag: 'div',
+      classes: 'quelora_base-timer',
+      innerHTML: `
+          <svg class="quelora_base-timer__svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+              <g class="quelora_base-timer__circle">
+                  <circle class="quelora_base-timer__path-elapsed" cx="50" cy="50" r="45"></circle>
+                  <path
+                      class="quelora_base-timer__path-remaining green"
+                      d="M 50, 50 m -45, 0 a 45,45 0 1,0 90,0 a 45,45 0 1,0 -90,0"
+                  ></path>
+              </g>
+          </svg>
+          <span class="quelora_base-timer__label">${formatTime(maxRecordingSeconds)}</span>
+      `
+  });
 
   document.body.appendChild(timerElement);
 
@@ -418,9 +420,11 @@ const addVoiceButton = ({ iconReferenceElement, onResult }) => {
     callbackMap.set(iconReferenceElement, onResult);
 
     if (!UtilsModule.isMobile) {
-      const voiceButton = document.createElement('span');
-      voiceButton.classList.add('quelora-icons-outlined', 'voice-button');
-      voiceButton.textContent = 'keyboard_voice';
+      const voiceButton = UiModule.createElementUI({
+          tag: 'span',
+          classes: ['quelora-icons-outlined', 'voice-button'],
+          content: 'keyboard_voice'
+      });
 
       const start = e => {
         e.preventDefault();

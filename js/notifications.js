@@ -130,32 +130,51 @@ async function requestNotificationPermissionWithUI() {
             return true;
         }
 
-        // Create modal elements
-        const permissionModal = document.createElement('div');
-        permissionModal.id = 'QueloraPermissionRequest';
-        permissionModal.className = 'quelora-permission-modal';
+        // Create modal elements using UiModule
+        const permissionModal = UiModule.createElementUI({
+            tag: 'div',
+            id: 'QueloraPermissionRequest',
+            classes: 'quelora-permission-modal'
+        });
         
-        const modalContent = document.createElement('div');
-        modalContent.className = 'quelora-permission-content';
+        const modalContent = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'quelora-permission-content'
+        });
         
-        const title = document.createElement('h2');
-        title.className = 'quelora-permission-title';
-        title.textContent = I18n.getTranslation('enableNotifications');
+        const title = UiModule.createElementUI({
+            tag: 'h2',
+            classes: 'quelora-permission-title',
+            content: I18n.getTranslation('enableNotifications')
+        });
         
-        const message = document.createElement('p');
-        message.className = 'quelora-permission-message';
-        message.textContent = I18n.getTranslation('enableNotificationsMessage');
+        const message = UiModule.createElementUI({
+            tag: 'p',
+            classes: 'quelora-permission-message',
+            content: I18n.getTranslation('enableNotificationsMessage')
+        });
         
-        const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'quelora-permission-buttons';
+        const buttonContainer = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'quelora-permission-buttons'
+        });
         
-        const allowButton = document.createElement('button');
-        allowButton.className = 'quelora-permission-allow';
-        allowButton.textContent = I18n.getTranslation('allowNotifications');
+        const allowButton = UiModule.createElementUI({
+            tag: 'button',
+            classes: 'quelora-permission-allow',
+            content: I18n.getTranslation('allowNotifications')
+        });
         
-        const cancelButton = document.createElement('button');
-        cancelButton.className = 'quelora-permission-cancel';
-        cancelButton.textContent = I18n.getTranslation('notNow');
+        const cancelButton = UiModule.createElementUI({
+            tag: 'button',
+            classes: 'quelora-permission-cancel',
+            content: I18n.getTranslation('notNow')
+        });
+
+        // Only proceed if all elements were created successfully
+        if (!permissionModal || !modalContent || !title || !message || !buttonContainer || !allowButton || !cancelButton) {
+            throw new Error('Failed to create permission modal elements');
+        }
         
         // Build modal structure
         buttonContainer.appendChild(cancelButton);

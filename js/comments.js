@@ -797,9 +797,11 @@ async function fetchAudio(commentId) {
 function createCommentElement(comment, entity, isReply) {
     try {
         // Create main container
-        const commentElement = document.createElement('div');
-        commentElement.classList.add('community-thread');
-        commentElement.setAttribute('data-author-id', comment.author);
+        const commentElement = UiModule.createElementUI({
+            tag: 'div',
+            classes: ['community-thread'],
+            attributes: { 'data-author-id': comment.author }
+        });
         
         // Set default replies count if not provided
         if (comment.repliesCount === undefined) {
@@ -835,50 +837,72 @@ function createCommentElement(comment, entity, isReply) {
                               !comment.hasAudio;
 
         // Create comment header
-        const commentHeader = document.createElement('div');
-        commentHeader.classList.add('comment-header');
-        commentHeader.setAttribute('data-is-reply', isReply);
-        commentHeader.setAttribute('data-comment-id', comment._id);
-        commentHeader.setAttribute('data-can-edit', comment.authorOwner && canEditOrDelete);
-        commentHeader.setAttribute('data-can-delete', comment.authorOwner && canEditOrDelete);
-        commentHeader.setAttribute('data-comment-language', comment.language);
-        commentHeader.setAttribute('data-text-original', comment.text);
-        commentHeader.setAttribute('data-owner', comment.authorOwner);
+        const commentHeader = UiModule.createElementUI({
+            tag: 'div',
+            classes: ['comment-header'],
+            attributes: {
+                'data-is-reply': isReply,
+                'data-comment-id': comment._id,
+                'data-can-edit': comment.authorOwner && canEditOrDelete,
+                'data-can-delete': comment.authorOwner && canEditOrDelete,
+                'data-comment-language': comment.language,
+                'data-text-original': comment.text,
+                'data-owner': comment.authorOwner
+            }
+        });
 
         // Create avatar
-        const commentAvatar = document.createElement('div');
-        commentAvatar.classList.add('comment-avatar');
-        commentAvatar.textContent = initials;
-        commentAvatar.setAttribute('data-visibility', comment.profile?.visibility);
+        const commentAvatar = UiModule.createElementUI({
+            tag: 'div',
+            classes: ['comment-avatar'],
+            content: initials,
+            attributes: { 'data-visibility': comment.profile?.visibility }
+        });
 
         // Create comment info section
-        const commentInfo = document.createElement('div');
-        commentInfo.classList.add('comment-info');
+        const commentInfo = UiModule.createElementUI({
+            tag: 'div',
+            classes: ['comment-info']
+        });
 
-        const commentAuthor = document.createElement('span');
-        commentAuthor.classList.add('comment-author');
-        commentAuthor.setAttribute('data-author-user', comment.profile.author);
-        commentAuthor.textContent = comment.profile.name || I18n.getTranslation('user');
+        const commentAuthor = UiModule.createElementUI({
+            tag: 'span',
+            classes: 'comment-author',
+            attributes: {
+                'data-author-user': comment.profile.author
+            },
+            content: comment.profile.name || I18n.getTranslation('user'),
+            translate: !comment.profile.name
+        });
 
-        const commentTimeElement = document.createElement('span');
-        commentTimeElement.classList.add('comment-time');
+        const commentTimeElement = UiModule.createElementUI({
+            tag: 'span',
+            classes: 'comment-time'
+        });
 
         if (comment.isEdited) {
-            const editedSpan = document.createElement('span');
-            editedSpan.classList.add('t');
-            editedSpan.textContent = '{{edited}}';
+            const editedSpan = UiModule.createElementUI({
+                tag: 'span',
+                content: '{{edited}}',
+                translate: true
+            });
             
-            const timeAgoSpan = document.createElement('span');
-            timeAgoSpan.classList.add('t');
-            timeAgoSpan.textContent = timeAgo;
-            
+            const timeAgoSpan = UiModule.createElementUI({
+                tag: 'span',
+                content: timeAgo,
+                translate: true
+            });
+                
             commentTimeElement.appendChild(editedSpan);
             commentTimeElement.appendChild(document.createTextNode(' - '));
             commentTimeElement.appendChild(timeAgoSpan);
         } else {
-            const timeAgoSpan = document.createElement('span');
-            timeAgoSpan.classList.add('t');
-            timeAgoSpan.textContent = timeAgo;
+            const timeAgoSpan = UiModule.createElementUI({
+                tag: 'span',
+                classes: 't',
+                content: timeAgo,
+                translate: true
+            });
             commentTimeElement.appendChild(timeAgoSpan);
         }
 
@@ -886,16 +910,22 @@ function createCommentElement(comment, entity, isReply) {
         commentInfo.appendChild(commentTimeElement);
 
         // Create like section
-        const commentLike = document.createElement('div');
-        commentLike.classList.add('comment-like');
+        const commentLike = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'comment-like'
+        });
 
-        const likeIconElement = document.createElement('span');
-        likeIconElement.classList.add('like-icon', ...likeIconClass.split(' '));
-        likeIconElement.textContent = likeIcon;
+        const likeIconElement = UiModule.createElementUI({
+            tag: 'span',
+            classes: ['like-icon', ...likeIconClass.split(' ')],
+            content: likeIcon
+        });
 
-        const likeCount = document.createElement('span');
-        likeCount.classList.add('like-count');
-        likeCount.textContent = comment.likes;
+        const likeCount = UiModule.createElementUI({
+            tag: 'span',
+            classes: 'like-count',
+            content: comment.likes?.toString()
+        });
 
         commentLike.appendChild(likeIconElement);
         commentLike.appendChild(likeCount);
@@ -906,8 +936,10 @@ function createCommentElement(comment, entity, isReply) {
         commentHeader.appendChild(commentLike);
 
         // Create comment text
-        const commentText = document.createElement('div');
-        commentText.classList.add('comment-text');
+        const commentText = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'comment-text'
+        });
         commentText.appendChild(
             MentionModule.processTextWithMentions(
                 comment.text, 
@@ -921,8 +953,10 @@ function createCommentElement(comment, entity, isReply) {
 
         // Add audio if available
         if (comment.hasAudio) {
-            const audioContainer = document.createElement('div');
-            audioContainer.classList.add('comment-audio-container');
+            const audioContainer = UiModule.createElementUI({
+                tag: 'div',
+                classes: 'comment-audio-container'
+            });
             const audioUI = UiModule.audioUI(
                 comment.text, 
                 null, 
@@ -937,31 +971,37 @@ function createCommentElement(comment, entity, isReply) {
         }
 
         // Create action buttons
-        const commentActions = document.createElement('div');
-        commentActions.classList.add('comment-actions');
-
+        const commentActions = UiModule.createElementUI({ tag: 'div', classes: ['comment-actions'] });
         // Settings button
-        const settingsIcon = document.createElement('span');
-        settingsIcon.classList.add('quelora-icons-outlined', 'setting-comment');
-        settingsIcon.setAttribute('data-comment-id', comment._id);
-        settingsIcon.textContent = 'settings';
+        const settingsIcon = UiModule.createElementUI({
+            tag: 'span',
+            classes: ['quelora-icons-outlined', 'setting-comment'],
+            attributes: { 'data-comment-id': comment._id },
+            content: 'settings'
+        });
         commentActions.appendChild(settingsIcon);
 
         // Reply button if allowed
         if (UtilsModule.getConfig(entity)?.interaction?.allow_replies) {
-            const replyLink = document.createElement('span');
-            replyLink.classList.add('reply-text', 't');
-            replyLink.setAttribute('data-reply-id', comment._id);
-            replyLink.textContent = '{{reply}}';
+            const replyLink = UiModule.createElementUI({
+                tag: 'span',
+                classes: ['reply-text'],
+                attributes: { 'data-reply-id': comment._id },
+                content: '{{reply}}',
+                translate: true
+            });
             commentActions.appendChild(replyLink);
         }
 
         // Translate button if needed
         if (UtilsModule.getConfig(entity)?.language?.auto_translate) {
-            const translateLink = document.createElement('span');
-            translateLink.classList.add('translate-text', 't');
-            translateLink.setAttribute('data-comment-id', comment._id);
-            translateLink.textContent = '{{translate}}';  
+            const translateLink = UiModule.createElementUI({
+                tag: 'span',
+                classes: ['translate-text'],
+                attributes: { 'data-comment-id': comment._id },
+                content: '{{translate}}',
+                translate: true
+            });
             
             const queloraLanguage = ConfModule.get(
                 'quelora.language', 
@@ -975,29 +1015,40 @@ function createCommentElement(comment, entity, isReply) {
         
         // Share button if allowed
         if (UtilsModule.getConfig(entity)?.interaction?.allow_shares) {
-            const shareLink = document.createElement('span');
-            shareLink.classList.add('share-text', 't');
-            shareLink.setAttribute('data-comment-id', comment._id);
-            shareLink.textContent = '{{share}}';
+            const shareLink = UiModule.createElementUI({
+                tag: 'span',
+                classes: ['share-text'],
+                attributes: { 'data-comment-id': comment._id },
+                content: '{{share}}',
+                translate: true
+            });
             commentActions.appendChild(shareLink);
         }
 
         // View replies button if there are replies
         if (comment.repliesCount > 0) {
-            const viewReplies = document.createElement('span');
-            viewReplies.classList.add('view-replies');
-            viewReplies.setAttribute('data-comment-id', comment._id);
+            const viewReplies = UiModule.createElementUI({
+                tag: 'span',
+                classes: ['view-replies'],
+                attributes: { 'data-comment-id': comment._id }
+            });
             
-            const view = document.createElement('span');
-            view.classList.add('t');
-            view.textContent = `{{view}}`;
-            
-            const counter = document.createElement('span');
-            counter.textContent = ` ${comment.repliesCount} `;
-            
-            const asware = document.createElement('span');
-            asware.classList.add('t');
-            asware.textContent = repliesText;
+            const view = UiModule.createElementUI({
+                tag: 'span',
+                content: `{{view}}`,
+                translate: true
+            });
+
+            const counter = UiModule.createElementUI({
+                tag: 'span',
+                content: ` ${comment.repliesCount} `
+            });
+
+            const asware = UiModule.createElementUI({
+                tag: 'span',
+                content: repliesText,
+                translate: true
+            });
             
             viewReplies.appendChild(view);
             viewReplies.appendChild(counter);
@@ -1009,9 +1060,11 @@ function createCommentElement(comment, entity, isReply) {
         commentElement.appendChild(commentActions);
 
         // Create replies container
-        const commentReplies = document.createElement('div');
-        commentReplies.classList.add('comment-replies');
-        commentReplies.setAttribute('data-reply-id', comment._id);
+        const commentReplies = UiModule.createElementUI({
+            tag: 'div',
+            classes: ['comment-replies'],
+            attributes: { 'data-reply-id': comment._id }
+        });
         commentElement.appendChild(commentReplies);
     
         // Add profile picture if available
@@ -1099,9 +1152,12 @@ function renderCommentList(entity, comments, container) {
     if (!container.classList.contains('comment-replies') && 
         comments.length === 0 && 
         container.children.length === 0) {
-        const emptyContainer = document.createElement('div');
-        emptyContainer.classList.add('quelora-empty-container', 't');
-        emptyContainer.textContent = '{{emptyComments}}';
+        const emptyContainer = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'quelora-empty-container',
+            content: '{{emptyComments}}',
+            translate: true
+        });
         fragment.appendChild(emptyContainer);
     } else {
         comments.forEach(comment => {
@@ -1154,10 +1210,15 @@ function renderComments(payload) {
 
         // Add "Load More" if there are more comments
         if (payload.comments.hasMore) {
-            const loadMoreLink = document.createElement('a');
-            loadMoreLink.href = 'javascript:void(0);';
-            loadMoreLink.textContent = '{{more}}';
-            loadMoreLink.classList.add('load-more-comments', 't');
+            const loadMoreLink = UiModule.createElementUI({
+                tag: 'a',
+                attributes: {
+                    href: 'javascript:void(0);'
+                },
+                content: '{{more}}',
+                classes: 'load-more-comments',
+                translate: true
+            });
             
             loadMoreLink.addEventListener('click', (event) => {
                 try {
@@ -1389,15 +1450,21 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
             .toUpperCase() || '';
 
         // Create preview modal content
-        const editContainer = document.createElement('div');
-        editContainer.className = 'edit-comment-container';
+        const editContainer = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'edit-comment-container'
+        });
 
-        const avatarTextContainer = document.createElement('div');
-        avatarTextContainer.className = 'avatar';
+        const avatarTextContainer = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'avatar'
+        });
 
-        const avatar = document.createElement('div');
-        avatar.className = 'comment-avatar';
-        avatar.textContent = initials;
+        const avatar = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'comment-avatar',
+            content: initials
+        });
 
         // Set profile picture if available
         if (ownProfile?.picture) {
@@ -1408,9 +1475,11 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
             avatar.textContent = '';
         }
 
-        const transcriptText = document.createElement('p');
-        transcriptText.className = 'transcript-text';
-        transcriptText.textContent = transcript;
+        const transcriptText = UiModule.createElementUI({
+            tag: 'p',
+            classes: 'transcript-text',
+            content: transcript
+        });
 
         avatarTextContainer.appendChild(avatar);
         avatarTextContainer.appendChild(transcriptText);

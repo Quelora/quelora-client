@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
-* @license Licensed under the GNU Affero General Public License v3.0
+ * @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -33,6 +33,7 @@
  */
 
 import UtilsModule from "./utils.js";
+import UiModule from "./ui.js";
 
 /**
  * ToastModule manages transient notification toasts on the page.
@@ -54,9 +55,13 @@ const ToastModule = (() => {
    * Create and append the container div to document.body if not already present
    */
   const createContainer = () => {
-    container = document.createElement('div');
-    container.className = 'quelora-toast-container';
-    document.body.appendChild(container);
+    container = UiModule.createElementUI({
+      tag: 'div',
+      classes: 'quelora-toast-container'
+    });
+    if (container) {
+      document.body.appendChild(container);
+    }
   };
 
   /**
@@ -106,67 +111,101 @@ const ToastModule = (() => {
    * @returns {{element: HTMLElement, toastObj: object}} Toast element and wrapper object
    */
   const createToastElement = (icon, title, body, action, type) => {
-    const toast = document.createElement('div');
-    toast.className = `quelora-toast quelora-toast-${type}`;
+    const toast = UiModule.createElementUI({
+      tag: 'div',
+      classes: ['quelora-toast', `quelora-toast-${type}`]
+    });
+
+    if (!toast) return { element: null, toastObj: null };
 
     if (icon) {
-      const iconEl = document.createElement('div');
+      const iconEl = UiModule.createElementUI({
+        tag: 'div'
+      });
 
-      if (isValidBase64(icon) || isValidUrl(icon)) {
-        const img = document.createElement('img');
-        img.src = icon;
-        img.alt = `${type} icon`;
-        img.className = 'quelora-toast-icon';
-        iconEl.appendChild(img);
-      } else if (isValidHtml(icon)) {
-        iconEl.className = 'quelora-icons-outlined';
-        iconEl.innerHTML = icon;
-      } else {
-        console.warn('Invalid icon format provided to ToastModule');
+      if (iconEl) {
+        if (isValidBase64(icon) || isValidUrl(icon)) {
+          const img = UiModule.createElementUI({
+            tag: 'img',
+            attributes: {
+              src: icon,
+              alt: `${type} icon`
+            },
+            classes: 'quelora-toast-icon'
+          });
+          if (img) iconEl.appendChild(img);
+        } else if (isValidHtml(icon)) {
+          iconEl.className = 'quelora-icons-outlined';
+          iconEl.innerHTML = icon;
+        } else {
+          console.warn('Invalid icon format provided to ToastModule');
+        }
+
+        toast.appendChild(iconEl);
       }
-
-      toast.appendChild(iconEl);
     }
 
     // Content wrapper
-    const content = document.createElement('div');
-    content.className = 'quelora-toast-content';
-
-    // Title element
-    const titleEl = document.createElement('div');
-    titleEl.className = 'quelora-toast-title t';
-    titleEl.textContent = title;
-    content.appendChild(titleEl);
-
-    // Body with clickable link
-    const bodyEl = document.createElement('div');
-    bodyEl.className = 'quelora-toast-body';
-
-    const linkEl = document.createElement('a');
-    linkEl.innerHTML = body;  // assumes safe HTML input
-    linkEl.className = 'quelora-toast-link';
-    linkEl.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (typeof action === 'function') {
-        action();
-      } else if (typeof action === 'string' && action) {
-        window.location.href = action;
-      }
-      removeToast(toastObj);
+    const content = UiModule.createElementUI({
+      tag: 'div',
+      classes: 'quelora-toast-content'
     });
-    bodyEl.appendChild(linkEl);
-    content.appendChild(bodyEl);
-    toast.appendChild(content);
+
+    if (content) {
+      // Title element
+      const titleEl = UiModule.createElementUI({
+        tag: 'div',
+        classes: 'quelora-toast-title t',
+        content: title
+      });
+      if (titleEl) content.appendChild(titleEl);
+
+      // Body with clickable link
+      const bodyEl = UiModule.createElementUI({
+        tag: 'div',
+        classes: 'quelora-toast-body'
+      });
+
+      if (bodyEl) {
+        const linkEl = UiModule.createElementUI({
+          tag: 'a',
+          classes: 'quelora-toast-link',
+          innerHTML: body  // assumes safe HTML input
+        });
+
+        if (linkEl) {
+          linkEl.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof action === 'function') {
+              action();
+            } else if (typeof action === 'string' && action) {
+              window.location.href = action;
+            }
+            removeToast(toastObj);
+          });
+          bodyEl.appendChild(linkEl);
+        }
+
+        content.appendChild(bodyEl);
+      }
+
+      toast.appendChild(content);
+    }
 
     // Close button
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'quelora-toast-close';
-    closeBtn.innerHTML = '×';
-    closeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      removeToast(toastObj);
+    const closeBtn = UiModule.createElementUI({
+      tag: 'button',
+      classes: 'quelora-toast-close',
+      content: '×'
     });
-    toast.appendChild(closeBtn);
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeToast(toastObj);
+      });
+      toast.appendChild(closeBtn);
+    }
 
     // Swipe-to-dismiss support for touch devices
     let touchStartX = 0;
@@ -241,8 +280,11 @@ const ToastModule = (() => {
      */
     show(icon, title, body, action, duration = 0, type = 'info') {
       this.init();
+      if (!container) return;
 
       const { element: toastElement, toastObj } = createToastElement(icon, title, body, action, type);
+      if (!toastElement || !toastObj) return;
+
       toastObj.duration = duration;
       container.prepend(toastElement);
       toasts.unshift(toastObj);

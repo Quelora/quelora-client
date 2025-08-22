@@ -39,6 +39,7 @@ import EntityModule from './entity.js';
 import ToastModule from './toast.js';
 import I18n from './i18n.js';
 import AnchorModule from './anchor.js';
+
 /**
  * Posts Module - Handles post interactions, events, and UI updates
  * @module PostsModule

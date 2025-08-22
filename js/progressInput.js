@@ -75,15 +75,19 @@ function createProgressInput() {
             // Try to get existing progress bar or create a new one
             progressBar = document.getElementById(progressBarId);
             if (!progressBar) {
-                progressBar = document.createElement('div');
-                progressBar.id = progressBarId;
-                progressBar.classList.add('progress-bar');
-                
-                // Set initial styles
-                progressBar.style.width = '0';
-                progressBar.style.height = '4px';
-                progressBar.style.backgroundColor = '#4caf50';
-                progressBar.style.transition = 'width 0.3s ease, background-color 0.3s ease';
+                progressBar = UiModule.createElementUI({
+                    tag: 'div',
+                    id: progressBarId,
+                    classes: 'progress-bar',
+                    styles: {
+                        width: '0',
+                        height: '4px',
+                        backgroundColor: '#4caf50',
+                        transition: 'width 0.3s ease, background-color 0.3s ease'
+                    }
+                });
+
+                if (!progressBar) return false;
                 
                 // Insert after the input field
                 inputElement.parentNode.insertBefore(progressBar, inputElement.nextSibling);

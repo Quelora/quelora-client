@@ -571,11 +571,19 @@ const updateProfileSettingsUI = async () => {
 };
 
 // ==================== UI COMPONENTS ====================
-const createButton = (type, user, extraClasses = '') => {
-    const button = document.createElement('button');
-    button.className = `${type}-button ${extraClasses}`;
-    button.dataset.memberId = user.author;
-
+const createButton = (type, user, extraClasses = []) => {
+    const classArray = Array.isArray(extraClasses) ? 
+        extraClasses : 
+        (typeof extraClasses === 'string' ? extraClasses.split(' ') : []);
+    
+    const button = UiModule.createElementUI({
+        tag: 'button',
+        classes: [`${type}-button`, ...classArray],
+        attributes: {
+            'data-member-id': user.author
+        }
+    });
+    
     return button;
 };
 
@@ -588,8 +596,10 @@ const createFollowButton = async (user, options = {}) => {
     const ownProfile = await getOwnProfile();
 
     if (ownProfile?.author === user.author) {
-        const placeholder = document.createElement('span');
-        placeholder.classList.add('follow-placeholder');
+        const placeholder = UiModule.createElementUI({
+            tag: 'span',
+            classes: 'follow-placeholder'
+        });
         return placeholder;
     }
 
@@ -760,13 +770,17 @@ const createFollowerItem = async (user, options = {}) => {
         `;
     }
 
-    const li = document.createElement('li');
-    li.className = 'follower-item';
-    li.tabIndex = -1;
-    li.dataset.memberId = user.author;
-    li.dataset.memberName = user.name || '';
-    li.dataset.memberApproval = user.followerApproval ?? false;
-    if (requestId) li.dataset.requestId = requestId;
+    const li = UiModule.createElementUI({
+        tag: 'li',
+        classes: 'follower-item',
+        attributes: {
+            tabindex: '-1',
+            'data-member-id': user.author,
+            'data-member-name': user.name || '',
+            'data-member-approval': user.followerApproval ?? false,
+            ...(requestId && { 'data-request-id': requestId })
+        }
+    });
 
     li.innerHTML = `
         <div class="comment-avatar" data-member-id="${user.author}" 
@@ -898,26 +912,28 @@ const renderRefererStructure = ({
 };
 
 const renderCommentStructure = (item, user, initials, followButtonHTML) => {
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = `
-        <div class="comment-to-profile" data-member-id="${user.author}">
-            <div class="comment-header" data-comment-id="${item._id || ''}">
-                <div class="comment-avatar" data-member-id="${user.author}" style="background-image: ${user.picture ? `url('${user.picture}')` : 'none'}">
-                    ${user.picture ? '' : initials}
+    const wrapper = UiModule.createElementUI({
+        tag: 'div',
+        innerHTML: `
+            <div class="comment-to-profile" data-member-id="${user.author}">
+                <div class="comment-header" data-comment-id="${item._id || ''}">
+                    <div class="comment-avatar" data-member-id="${user.author}" style="background-image: ${user.picture ? `url('${user.picture}')` : 'none'}">
+                        ${user.picture ? '' : initials}
+                    </div>
+                    <div class="comment-info">
+                        <span class="comment-author" data-member-user="${user.author || ''}">
+                            ${user.name || I18n.getTranslation('user')}
+                        </span>
+                        <span class="comment-time t">
+                            ${UtilsModule.getTimeAgo(item.created_at || new Date())}
+                        </span>
+                    </div>
+                    ${followButtonHTML}
                 </div>
-                <div class="comment-info">
-                    <span class="comment-author" data-member-user="${user.author || ''}">
-                        ${user.name || I18n.getTranslation('user')}
-                    </span>
-                    <span class="comment-time t">
-                        ${UtilsModule.getTimeAgo(item.created_at || new Date())}
-                    </span>
-                </div>
-                ${followButtonHTML}
+                <div class="comment-text"></div>
             </div>
-            <div class="comment-text"></div>
-        </div>
-    `;
+        `
+    });
 
     const commentTextContainer = wrapper.querySelector('.comment-text');
     if (item.text) {
@@ -1012,9 +1028,12 @@ const setupSearchHandlers = () => {
                 });
 
                 if (!hasMatches) {
-                    const message = document.createElement('div');
-                    message.className = 'quelora-empty-container t';
-                    message.textContent = '{{search_min_chars}}';
+                    const message = UiModule.createElementUI({
+                        tag: 'div',
+                        classes: ['quelora-empty-container', 't'],
+                        content: '{{search_min_chars}}',
+                        translate: true
+                    });
                     list.innerHTML = '';
                     list.appendChild(message);
                 }
@@ -1292,10 +1311,14 @@ const handleEditButtons = (profile, isOwnProfile, userProfile) => {
 };
 
 const addEditButton = (profile, userProfile) => {
-    const editBtn = document.createElement('button');
-    editBtn.className = 'quelora-icons-outlined profile-edit quelora-button';
-    editBtn.textContent = 'edit';
-    editBtn.onclick = () => handleNameEdit(profile, editBtn, userProfile.name);
+    const editBtn = UiModule.createElementUI({
+        tag: 'button',
+        classes: ['quelora-icons-outlined', 'profile-edit', 'quelora-button'],
+        content: 'edit',
+        listeners: {
+            click: () => handleNameEdit(profile, editBtn, userProfile.name)
+        }
+    });
     profile.querySelector('.user').insertAdjacentElement('afterend', editBtn);
 };
 
@@ -1348,18 +1371,29 @@ const handleNameEdit = (profile, editBtn, currentName) => {
 
 const addImageUploadButtons = (profile) => {
     ['avatar', 'background'].forEach(type => {
-        const btn = document.createElement('button');
-        btn.className = `quelora-icons-outlined profile-camara${type === 'avatar' ? '-avatar' : ''} quelora-button`;
-        btn.textContent = 'photo';
-        
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.style.display = 'none';
-        input.addEventListener('change', type === 'avatar' ? updateAvatarImage : updateBackgroundImage);
-        
-        btn.onclick = () => input.click();
-        
+        const btn = UiModule.createElementUI({
+            tag: 'button',
+            classes: ['quelora-icons-outlined', `profile-camara${type === 'avatar' ? '-avatar' : ''}`, 'quelora-button'],
+            content: 'photo',
+            listeners: {
+                click: () => input.click()
+            }
+        });
+
+        const input = UiModule.createElementUI({
+            tag: 'input',
+            attributes: {
+                type: 'file',
+                accept: 'image/*'
+            },
+            styles: {
+                display: 'none'
+            },
+            listeners: {
+                change: type === 'avatar' ? updateAvatarImage : updateBackgroundImage
+            }
+        });
+
         const container = type === 'avatar' ? '.container-avatar' : '.profile-user';
         profile.querySelector(container).insertAdjacentElement('afterend', input);
         profile.querySelector(container).appendChild(btn);
@@ -1627,9 +1661,12 @@ const renderProfileListLikes = async (payload) => {
             return;
         }
 
-        const likesList = document.createElement('ul');
+        const likesList = UiModule.createElementUI({
+            tag: 'ul'
+        });
+
         let likesHTML = '';
-        
+
         for (const user of likesData) {
             const likeItem = await createLikeProfileItem(user);
             likesHTML += likeItem;
@@ -1637,7 +1674,6 @@ const renderProfileListLikes = async (payload) => {
         }
 
         likesList.innerHTML = likesHTML;
-
         likesContainer.appendChild(likesList);
 
         attachProfileClickListeners();
@@ -1666,7 +1702,7 @@ const renderProfileLikes = async (payload) => {
         const likesList = UiModule.getLikesListUI();
         if (!likesList) throw new Error('Community-quelora-likes-list element not found');
 
-        const ulLikes = document.createElement('ul');
+        const ulLikes = UiModule.createElementUI({ tag: 'ul' });
         const likes = payload?.likes || [];
 
         const likesCount = likesList.parentElement.querySelector('.likes-count');
@@ -1816,9 +1852,11 @@ const renderCombinedMentionResults = async (profiles, inputElement) => {
     try {
         let container = document.querySelector('.mention-suggestions');
         if (!container) {
-            container = document.createElement('div');
-            container.className = 'mention-suggestions';
-            container.innerHTML = '<ul></ul>';
+            container = UiModule.createElementUI({
+                tag: 'div',
+                classes: 'mention-suggestions',
+                innerHTML: '<ul></ul>'
+            });
             document.body.appendChild(container);
         }
 
@@ -1867,8 +1905,11 @@ const renderCombinedMentionResults = async (profiles, inputElement) => {
         
         if (newItems.length > 0) {
             const fragment = document.createDocumentFragment();
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = newItems.join('');
+            const tempDiv = UiModule.createElementUI({
+                tag: 'div',
+                innerHTML: newItems.join('')
+            });
+
             while (tempDiv.firstChild) {
                 fragment.appendChild(tempDiv.firstChild);
             }
@@ -1876,10 +1917,13 @@ const renderCombinedMentionResults = async (profiles, inputElement) => {
         }else{
             ul.remove();
             const fragment = document.createDocumentFragment();
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML =  createEmptyState('noResultsForQuery');
+            const tempDiv = UiModule.createElementUI({
+                tag: 'div',
+                innerHTML: createEmptyState('noResultsForQuery')
+            });
+
             while (tempDiv.firstChild) {
-                fragment.appendChild(tempDiv.firstChild);
+                fragment.appendChild(tempTempDiv.firstChild);
             }
             container.appendChild(fragment);
         }
@@ -1959,8 +2003,10 @@ const renderSearchAccountsResults = async (payload) => {
         const fragment = document.createDocumentFragment();
         
         htmlStrings.forEach(html => {
-            const template = document.createElement('template');
-            template.innerHTML = html.trim();
+            const template = UiModule.createElementUI({
+                tag: 'template',
+                innerHTML: html.trim()
+            });
             fragment.appendChild(template.content.firstChild);
         });
         

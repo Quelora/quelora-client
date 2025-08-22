@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
-* @license Licensed under the GNU Affero General Public License v3.0
+ * @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -31,6 +31,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+
+import UiModule from './ui.js';
 
 const ImageCropper = (function() {
     class Cropper {
@@ -59,60 +61,90 @@ const ImageCropper = (function() {
         }
         
         createModal() {
-            this.modal = document.createElement('div');
-            this.modal.className = 'quelora-cropper-modal';
+            this.modal = UiModule.createElementUI({
+                tag: 'div',
+                classes: 'quelora-cropper-modal'
+            });
             
-            const container = document.createElement('div');
-            container.className = 'quelora-cropper-container';
+            const container = UiModule.createElementUI({
+                tag: 'div',
+                classes: 'quelora-cropper-container'
+            });
             
-            const instructions = document.createElement('div');
-            instructions.className = 'quelora-cropper-instructions t';
-            instructions.textContent = this.options.type === 'avatar' ? 
-                '{{adjust_square_area_avatar}}' : 
-                '{{adjust_rectangular_area_background}}';
+            const instructions = UiModule.createElementUI({
+                tag: 'div',
+                classes: ['quelora-cropper-instructions', 't'], // Array en lugar de string
+                content: this.options.type === 'avatar' ? 
+                    '{{adjust_square_area_avatar}}' : 
+                    '{{adjust_rectangular_area_background}}'
+            });
             
-            this.imageContainer = document.createElement('div');
-            this.imageContainer.className = 'quelora-cropper-image-container';
+            this.imageContainer = UiModule.createElementUI({
+                tag: 'div',
+                classes: 'quelora-cropper-image-container'
+            });
             
-            this.image = document.createElement('img');
-            this.image.className = 'quelora-cropper-image';
-            this.image.src = this.options.imageSrc;
+            this.image = UiModule.createElementUI({
+                tag: 'img',
+                classes: 'quelora-cropper-image',
+                attributes: {
+                    src: this.options.imageSrc
+                }
+            });
             
-            this.selection = document.createElement('div');
-            this.selection.className = `quelora-cropper-selection quelora-cropper-selection-${this.options.type}`;
+            this.selection = UiModule.createElementUI({
+                tag: 'div',
+                classes: ['quelora-cropper-selection', `quelora-cropper-selection-${this.options.type}`],
+                innerHTML: `
+                    <div class="quelora-cropper-handle tl" data-direction="nw"></div>
+                    <div class="quelora-cropper-handle tr" data-direction="ne"></div>
+                    <div class="quelora-cropper-handle bl" data-direction="sw"></div>
+                    <div class="quelora-cropper-handle br" data-direction="se"></div>
+                `
+            });
             
-            this.selection.innerHTML = `
-                <div class="quelora-cropper-handle tl" data-direction="nw"></div>
-                <div class="quelora-cropper-handle tr" data-direction="ne"></div>
-                <div class="quelora-cropper-handle bl" data-direction="sw"></div>
-                <div class="quelora-cropper-handle br" data-direction="se"></div>
-            `;
+            const buttons = UiModule.createElementUI({
+                tag: 'div',
+                classes: 'quelora-cropper-buttons'
+            });
+                        
+            this.cancelBtn = UiModule.createElementUI({
+                tag: 'button',
+                classes: ['quelora-cropper-button', 'quelora-cropper-button-secondary', 't'], // Array
+                content: '{{cancel}}'
+            });
+
+            this.confirmBtn = UiModule.createElementUI({
+                tag: 'button',
+                classes: ['quelora-cropper-button', 'quelora-cropper-button-primary', 't'], // Array
+                content: '{{confirm}}'
+            });
+
             
-            const buttons = document.createElement('div');
-            buttons.className = 'quelora-cropper-buttons';
+            if (buttons && this.cancelBtn && this.confirmBtn) {
+                buttons.appendChild(this.cancelBtn);
+                buttons.appendChild(this.confirmBtn);
+            }
             
-            this.cancelBtn = document.createElement('button');
-            this.cancelBtn.className = 'quelora-cropper-button quelora-cropper-button-secondary t';
-            this.cancelBtn.textContent = '{{cancel}}';
+            if (this.imageContainer && this.image && this.selection) {
+                this.imageContainer.appendChild(this.image);
+                this.imageContainer.appendChild(this.selection);
+            }
             
-            this.confirmBtn = document.createElement('button');
-            this.confirmBtn.className = 'quelora-cropper-button quelora-cropper-button-primary t';
-            this.confirmBtn.textContent = '{{confirm}}';
+            if (container && instructions && this.imageContainer) {
+                container.appendChild(instructions);
+                container.appendChild(this.imageContainer);
+            }
             
-            buttons.appendChild(this.cancelBtn);
-            buttons.appendChild(this.confirmBtn);
+            if (this.modal && container && buttons) {
+                this.modal.appendChild(container);
+                this.modal.appendChild(buttons);
+            }
             
-            this.imageContainer.appendChild(this.image);
-            this.imageContainer.appendChild(this.selection);
-            
-            container.appendChild(instructions);
-            container.appendChild(this.imageContainer);
-            
-            this.modal.appendChild(container);
-            this.modal.appendChild(buttons);
-            
-            document.body.appendChild(this.modal);
-            document.body.style.overflow = 'hidden';
+            if (this.modal) {
+                document.body.appendChild(this.modal);
+                document.body.style.overflow = 'hidden';
+            }
             
             this.setupInitialSelection();
         }
@@ -164,6 +196,8 @@ const ImageCropper = (function() {
         }
         
         setupEventListeners() {
+            if (!this.selection) return;
+
             this.selection.addEventListener('mousedown', this.handleSelectionStart.bind(this));
             this.selection.addEventListener('touchstart', this.handleSelectionStart.bind(this), { passive: false });
             
@@ -183,16 +217,20 @@ const ImageCropper = (function() {
             document.addEventListener('mouseup', this.handleEnd.bind(this));
             document.addEventListener('touchend', this.handleEnd.bind(this));
             
-            this.cancelBtn.addEventListener('click', () => {
-                this.destroy();
-                this.options.onCancel();
-            });
+            if (this.cancelBtn) {
+                this.cancelBtn.addEventListener('click', () => {
+                    this.destroy();
+                    this.options.onCancel();
+                });
+            }
             
-            this.confirmBtn.addEventListener('click', () => {
-                const result = this.cropImage();
-                this.destroy();
-                this.options.onConfirm(result);
-            });
+            if (this.confirmBtn) {
+                this.confirmBtn.addEventListener('click', () => {
+                    const result = this.cropImage();
+                    this.destroy();
+                    this.options.onConfirm(result);
+                });
+            }
         }
                 
         handleSelectionStart(e) {
@@ -344,7 +382,9 @@ const ImageCropper = (function() {
         }
         
         cropImage() {
-            const canvas = document.createElement('canvas');
+            const canvas = UiModule.createElementUI({
+                tag: 'canvas'
+            });
             const ctx = canvas.getContext('2d');
             
             // Set canvas to max 500x500, maintaining aspect ratio
@@ -383,7 +423,9 @@ const ImageCropper = (function() {
             document.removeEventListener('touchend', this.handleEnd);
             this.image.onload = null;
             document.body.style.overflow = '';
-            this.modal.remove();
+            if (this.modal && this.modal.parentNode) {
+                this.modal.remove();
+            }
         }
     }
 

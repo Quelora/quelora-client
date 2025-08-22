@@ -34,6 +34,7 @@
 
 import ProfileModule from "./profile.js";
 import UtilsModule from "./utils.js"; 
+import UiModule from "./ui.js";
 
 /**
  * Manages mention functionality for input elements, enabling @username suggestions and replacements.
@@ -172,11 +173,16 @@ class MentionModule {
         text.replace(mentionRegex, (match, username, index) => {
             fragment.appendChild(document.createTextNode(text.slice(lastIndex, index)));
 
-            const anchor = document.createElement('a');
-            anchor.href = 'javascript:void(0)';
-            anchor.textContent = `@${username}`;
+            const anchor = UiModule.createElementUI({
+                tag: 'a',
+                attributes: {
+                    href: 'javascript:void(0)',
+                    'data-callback': `mention:${username}`
+                },
+                content: `@${username}`
+            });
+
             const callbackKey = `mention:${username}`;
-            anchor.setAttribute('data-callback', callbackKey);
             this.registerCallback(callbackKey, () => callback(username));
 
             fragment.appendChild(anchor);
