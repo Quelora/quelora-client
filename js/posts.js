@@ -120,7 +120,7 @@ function updateShareCount(interactionElement) {
 async function setLike(entityId, liked) {
     try {
         token = await CoreModule.getTokenIfNeeded(); 
-        const interactionElement = document.querySelector(`[data-entity-interaction="${entityId}"]`);
+        const interactionElement = UiModule.getEntityInteractionUI(entityId);
         if (!interactionElement) {
             console.error(`Element with data-entity-interaction "${entityId}" not found.`);
             return;
@@ -199,7 +199,7 @@ async function fetchStats() {
  */
 async function handleLike(entityId) {
     try {
-        const interactionElement = document.querySelector(`[data-entity-interaction="${entityId}"]`);
+        const interactionElement = UiModule.getEntityInteractionUI(entityId);
         const likeButton = interactionElement?.querySelector('.like-icon');
         if (!likeButton) {
             console.error(`Like button not found for entity: ${entityId}`);
@@ -218,7 +218,7 @@ async function handleLike(entityId) {
  */
 async function handleShare(entityId) {
     try {
-        const interactionElement = document.querySelector(`[data-entity-interaction="${entityId}"]`);
+        const interactionElement = UiModule.getEntityInteractionUI(entityId);
         const shareButton = interactionElement?.querySelector('.share-icon');
 
         const shareHash = AnchorModule.generateLink({
@@ -281,7 +281,7 @@ async function handleShare(entityId) {
  */
 async function handleBookmark(entityId) {
     try {
-        const interactionElement = document.querySelector(`[data-entity-interaction="${entityId}"]`);
+        const interactionElement = UiModule.getEntityInteractionUI(entityId);
         const bookmarkButton = interactionElement?.querySelector('.bookmark');
         if (!bookmarkButton) {
             console.error(`Bookmark button not found for entity: ${entityId}`);
@@ -301,7 +301,7 @@ async function handleBookmark(entityId) {
  */
 function attachEventListeners(entityId) {
     try {
-        const interactionContainer = document.querySelector(`[data-entity-interaction="${entityId}"]`);
+        const interactionContainer = UiModule.getEntityInteractionUI(entityId);
         if (!interactionContainer) {
             console.warn(`Interaction container not found for entity: ${entityId}`);
             return;
@@ -424,7 +424,7 @@ async function loadNested(entityId, commentId, replyId) {
  */
 async function updateAllInteractionBars() {
     try {
-        const entities = Array.from(document.querySelectorAll("[data-entity-interaction]"))
+        const entities = Array.from(UiModule.getEntityInteractionUI())
             .map(el => el.getAttribute("data-entity-interaction"));
 
         if (entities.length === 0) return;

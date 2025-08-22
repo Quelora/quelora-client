@@ -34,7 +34,7 @@
 
 import PostsModule from './posts.js';
 import EntityModule from './entity.js';
-
+import UiModule from './ui.js';
 // Cache for storing post statistics
 const postStatsCache = new Map();
 
@@ -225,7 +225,7 @@ function getConfig(entityId) {
  */
 function setInputLimit(limits = 200) {
     try {
-        const inputElement = document.getElementById('quelora-input');
+        const inputElement = UiModule.getCommentInputUI();
         if (inputElement) {
             inputElement.setAttribute('maxlength', limits);
         }

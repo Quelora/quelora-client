@@ -155,7 +155,7 @@ const commentsDrawerUI = new Drawer({
                             refreshButton = null;
                         }
                         isDragging = false;
-                        const threadsContainer = document.querySelector('.community-threads');
+                        const threadsContainer = getCommunityThreadsUI();
                         if (!threadsContainer) return;
                         const currentEntity = threadsContainer.getAttribute('data-threads-entity');
                         CommentsModule.fetchComments(currentEntity, false, false, true);
@@ -698,7 +698,7 @@ function addLoadingMessageUI(container, { type = 'message', position = 'after', 
 
 async function addProfileSkeletoUI() {
     try {
-        const profile = document.getElementById('quelora-profile');
+        const profile = getProfileContainerUI();
         if (!profile) throw new Error('Profile container not found');
         profile.dataset.profileMemberId = '';
         const avatar = profile.querySelector('.profile-avatar');
@@ -759,7 +759,7 @@ async function addProfileSkeletoUI() {
 }
 
 function renderErrorMessageUI(message) {
-    const threadsContainer = document.querySelector('.community-threads');
+    const threadsContainer = getCommunityThreadsUI();
     if (!threadsContainer) return;
 
     threadsContainer.querySelector('.quelora-loading-message')?.remove();
@@ -860,7 +860,7 @@ const setupModalUI = (bodyContent, buttonConfigs, blurContainer) => {
 
 function showEditCommentUI(commentElement) {
     try {
-        const threadsContainer = document.querySelector('.community-threads');
+        const threadsContainer = getCommunityThreadsUI();;
         if (!threadsContainer) return;
 
         const currentEntity = threadsContainer.getAttribute('data-threads-entity');
@@ -965,7 +965,7 @@ function showEditCommentUI(commentElement) {
                 if (!editInput) return;
         
                 const editComment = editInput.textContent;
-                const pickerContainer = document.getElementById('quelora-picker-container');
+                const pickerContainer = getPickerContainerUI();
                 if (pickerContainer) {
                     pickerContainer.style.display = 'none';
                 }
@@ -1196,7 +1196,7 @@ function audioUI(transcript, audioBase64, audioHash, commentId) {
 
 function showReportCommentUI(commentElement) {
     try {
-        const threadsContainer = document.querySelector('.community-threads');
+        const threadsContainer = getCommunityThreadsUI();
         if (!threadsContainer) return;
 
         const currentEntity = threadsContainer.getAttribute('data-threads-entity');
@@ -1516,7 +1516,7 @@ function updateInteractionCounts(interactionElement, stat) {
 
 function updateCommentUI(entityId, commentData) {
     try {
-        let threadsContainer = document.querySelector('.community-threads');
+        let threadsContainer = getCommunityThreadsUI();;
         if (commentData.replyId) {
             threadsContainer = threadsContainer.querySelector(`.comment-replies[data-reply-id="${commentData.replyId}"]`);
         }
@@ -1644,7 +1644,7 @@ function addReplyHeaderUI(commentHeader) {
 
         const handleCloseButtonClick = () => {
             removeHeaderUI();
-            const commentInput = document.getElementById('quelora-input');
+            const commentInput = UiModule.getCommentInputUI();
             commentInput.removeAttribute('data-reply-id');
             commentInput.value = '';
             commentInput.focus();
@@ -1719,7 +1719,7 @@ function createEmojiPickerBarUI() {
         .join('');
 
     const setupEmojiPicker = () => {
-        const input = document.getElementById('quelora-input');
+        const input = UiModule.getCommentInputUI();
         const emojiPicker = container;
 
         const handleEmojiPickerInteraction = (e) => {
@@ -1780,27 +1780,30 @@ function updateUserUI(dataAuthorUser, newText) {
 }
 
 function updateCommentLikeUI(commentId, likesCount, authorLiked) {
-    try {
-        const commentElements = document.querySelectorAll(`.comment-header[data-comment-id="${commentId}"]`);
-        if (!commentElements) return;
+  try {
+    let commentElements = UiModule.getCommentHeaderUI(commentId);
+    if (!commentElements) return;
+    commentElements = commentElements instanceof NodeList || Array.isArray(commentElements)
+      ? Array.from(commentElements)
+      : [commentElements];
 
-        commentElements.forEach(commentElement => {
-            const likeIcon = commentElement.querySelector('.like-icon');
-            const likeCountElement = commentElement.querySelector('.like-count');
+    commentElements.forEach(commentElement => {
+      const likeIcon = commentElement.querySelector('.like-icon');
+      const likeCountElement = commentElement.querySelector('.like-count');
 
-            if (likeIcon) {
-                likeIcon.textContent = authorLiked ? 'favorite' : 'favorite_border';
-                likeIcon.setAttribute('data-liked', authorLiked);
-                authorLiked ? likeIcon.classList.add('active') : likeIcon.classList.remove('active');
-            }
+      if (likeIcon) {
+        likeIcon.textContent = authorLiked ? 'favorite' : 'favorite_border';
+        likeIcon.setAttribute('data-liked', authorLiked);
+        authorLiked ? likeIcon.classList.add('active') : likeIcon.classList.remove('active');
+      }
 
-            if (likeCountElement) {
-                likeCountElement.textContent = UtilsModule.formatNumberAbbreviated(likesCount);
-            }
-        });
-    } catch (error) {
-        console.error('Error updating comment like UI:', error);
-    }
+      if (likeCountElement) {
+        likeCountElement.textContent = UtilsModule.formatNumberAbbreviated(likesCount);
+      }
+    });
+  } catch (error) {
+    console.error('Error updating comment like UI:', error);
+  }
 }
 
 function resetCommentLikeIconsUI() {
@@ -1832,13 +1835,9 @@ function updateCommentCountUI(entityId, isAdded) {
     }
 }
 
-function getCommunityThreadsUI(){
-    return document.querySelector('#quelora-comments .community-threads');
-}
-
 async function addProfileOptionUI() {
     try {
-        const profileButton = document.querySelector('#quelora-comments .general-settings');
+        const profileButton = getCommunityUI().querySelector('.general-settings');
         if (!profileButton) return;
         const openDrawer = () => {
             generalSettingsDrawerUI.open(); 
@@ -1997,7 +1996,7 @@ function createProfileDropupUI() {
             </ul>
         `;
 
-        const profileButton = document.querySelector('#quelora-comments .profile-settings');
+        const profileButton = getCommunityUI().querySelector('.profile-settings');
         if (!profileButton) return;
 
         profileButton.appendChild(dropup);
@@ -2051,6 +2050,97 @@ function createProfileDropupUI() {
     }
 }
 
+/**
+ * Gets comment header(s).
+ * @param {string} [commentId] - The comment ID (optional). If omitted, returns all.
+ * @param {boolean} [returnParent=false] - Whether to return the parent element(s).
+ * @returns {HTMLElement|NodeList|null} The .comment-header element, its parent, NodeList, or null.
+ */
+const getCommentHeaderUI = (commentId, returnParent = false) => {
+  const selector = commentId
+    ? `#quelora-comments .comment-header[data-comment-id="${commentId}"]`
+    : `#quelora-comments .comment-header`;
+
+  const res = document.querySelectorAll(selector);
+  if (!res.length) return null;
+
+  if (res.length === 1) {
+    return returnParent ? res[0].parentElement : res[0];
+  }
+
+  return returnParent ? Array.from(res, el => el.parentElement) : res;
+};
+
+/**
+* Gets the community container.
+* @returns {HTMLElement|null} The .community element or null.
+*/
+const getCommunityUI = () => {
+    return document.querySelector('#quelora-comments');
+}
+
+/**
+* Gets the community threads container.
+* @returns {HTMLElement|null} The .community-threads element or null.
+*/
+const getCommunityThreadsUI = () => {
+    return document.querySelector('#quelora-comments .community-threads');
+}
+
+/**
+* Gets the parent profile container.
+* @returns {HTMLElement|null} The #quelora-profile element or null.
+*/
+const getProfileContainerUI = () => {
+    return document.getElementById('quelora-profile');
+}
+
+/** 
+* Gets the main comment input. 
+* @returns {HTMLElement|null} The #quelora-input or null element. 
+*/
+const getCommentInputUI  = () =>  { 
+    return document.getElementById('quelora-input');
+}
+
+/** 
+* Gets the replies container for a specific ID. 
+* @param {string} replyId - ID of the reply. 
+* @returns {HTMLElement|null} The .comment-replies or null element. 
+*/
+const getCommentRepliesUI = (replyId) => { 
+    return document.querySelector(`#quelora-comments .comment-replies[data-reply-id="${replyId}"]`);
+}
+
+const getLikesListUI = () => {
+    return document.getElementById('quelora-likes-list');
+}
+
+const getPickerContainerUI = () =>  {
+    return document.getElementById('quelora-picker-container');
+}
+
+const getSendButtonUI = () =>  {
+    return document.getElementById('quelora-send');
+}
+
+const getShareButtonUI = () =>  {
+    return document.getElementById('quelora-share');
+}
+
+/**
+ * Gets the interaction container(s).
+ * @param {string} [entityId] - The entity's ID (optional). If omitted, returns all.
+ * @returns {HTMLElement|NodeList|null} The element(s) with data-entity-interaction, or null if not found.
+ */
+const getEntityInteractionUI = (entityId) => {
+  const selector = entityId ? `[data-entity-interaction="${entityId}"]` : `[data-entity-interaction]`;
+  const res = document.querySelectorAll(selector);
+  if (!res.length) return null;
+
+  return res.length === 1 ? res[0] : res;
+};
+
 const initializeUI = () => {
     try {
         filterListItemsUI('likes-search', '#quelora-likes-list');
@@ -2064,9 +2154,19 @@ const initializeUI = () => {
 };
 
 const UiModule = {
+    getCommentHeaderUI,
+    getCommunityThreadsUI,
+    getProfileContainerUI,
+    getCommentInputUI,
+    getCommunityUI,
+    getCommentRepliesUI,
+    getPickerContainerUI,
+    getSendButtonUI,
+    getLikesListUI,
+    getShareButtonUI,
+    getEntityInteractionUI,
     initializeUI,
     createProfileDropupUI,
-    getCommunityThreadsUI,
     addLoadingMessageUI,
     addProfileSkeletoUI,
     renderReportedUI,

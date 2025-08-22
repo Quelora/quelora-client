@@ -255,9 +255,9 @@ const logout = async () => {
         _memberProfiles.clear();
 
         //Hide the avatar button and show the settings button again
-        const settingBtn = document.querySelector('#quelora-comments .general-settings');
+        const settingBtn = UiModule.getCommunityUI().querySelector('.general-settings');
         if(settingBtn) settingBtn.style.display = 'inline-block';
-        const profileBtn = document.querySelector('#quelora-comments .profile-settings');
+        const profileBtn = UiModule.getCommunityUI().querySelector('.profile-settings');
         if(profileBtn) profileBtn.style.display = 'none';
 
     } catch (error) {
@@ -384,9 +384,9 @@ const saveMemberProfile = (profile) => memberProfiles.set(profile.author, profil
 
 const updateProfileOptionUI = async () => {
     try {
-        const settingBtn = document.querySelector('#quelora-comments .general-settings');
+        const settingBtn = UiModule.getCommunityUI().querySelector('.general-settings');
         if (settingBtn) settingBtn.style.display = 'none';
-        const profileBtn = document.querySelector('#quelora-comments .profile-settings');
+        const profileBtn = UiModule.getCommunityUI().querySelector('.profile-settings');
         if (profileBtn) profileBtn.style.display = 'flex';
 
         const ownProfile = await getOwnProfile();
@@ -973,7 +973,7 @@ const setupSearchHandlers = () => {
             const searchTerm = e.target.value.trim().toLowerCase();
             const tabContent = e.target.closest('.profile-tab-content');
             const tabType = tabContent.classList[1];
-            const memberId = document.getElementById('quelora-profile').getAttribute('data-profile-member-id');
+            const memberId = UiModule.getProfileContainerUI().getAttribute('data-profile-member-id');
             const list = tabContent.querySelector('ul');
 
             if (!originalItemsCache) {
@@ -1204,7 +1204,7 @@ const renderProfile = async (userProfile) => {
 
         memberProfiles.set(userProfile.author, userProfile);
 
-        const profile = document.getElementById('quelora-profile');
+        const profile = UiModule.getProfileContainerUI();
         if (!profile) throw new Error('Profile container not found');
 
         // Set profile data
@@ -1585,7 +1585,7 @@ const initializeInteractions = () => {
 
 const renderProfileListLikes = async (payload) => {
     try {
-        const likesContainer = document.getElementById('quelora-likes-list');
+        const likesContainer = UiModule.getLikesListUI();
         if (!likesContainer) return;
 
         likesContainer.innerHTML = '';
@@ -1645,7 +1645,7 @@ const renderProfileListLikes = async (payload) => {
 
     } catch (error) {
         handleError(error, 'renderProfileListLikes');
-        const likesContainer = document.getElementById('quelora-likes-list');
+        const likesContainer = UiModule.getLikesListUI();
         if (likesContainer) {
             likesContainer.innerHTML = createEmptyState('errorLoadingLikes');
         }
@@ -1663,7 +1663,7 @@ const createLikeProfileItem = async (user) => {
 
 const renderProfileLikes = async (payload) => {
     try {
-        const likesList = document.getElementById('quelora-likes-list');
+        const likesList = UiModule.getLikesListUI();
         if (!likesList) throw new Error('Community-quelora-likes-list element not found');
 
         const ulLikes = document.createElement('ul');
@@ -1828,8 +1828,8 @@ const renderCombinedMentionResults = async (profiles, inputElement) => {
         }
 
         const calculateMaxHeight = () => {
-            const drawerContent = document.querySelector('#quelora-comments .drawer-content');
-            const inputContainer = document.querySelector('#quelora-comments .input-container');
+            const drawerContent = UiModule.getCommunityUI().querySelector('.drawer-content');
+            const inputContainer = UiModule.getCommunityUI().querySelector('.input-container');
             
             if (drawerContent && inputContainer) {
                 const drawerHeight = drawerContent.getBoundingClientRect().height;
@@ -1842,7 +1842,7 @@ const renderCombinedMentionResults = async (profiles, inputElement) => {
         
         calculateMaxHeight();
 
-        const drawerContent = document.querySelector('#quelora-comments .drawer-content');
+        const drawerContent = UiModule.getCommunityUI().querySelector('.drawer-content');
         if (drawerContent) {
             const resizeObserver = new ResizeObserver(() => {
                 calculateMaxHeight();

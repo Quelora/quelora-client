@@ -219,7 +219,7 @@ const Quelora = (() => {
         },
         commentBlocked: (payload) => UiModule.renderErrorMessageUI(payload.message),
         internalError: (payload) => UiModule.renderErrorMessageUI(payload.message),
-        likeCommentUpdated: (payload, originalPayload) => UiModule.updateCounterUI(document.querySelector(`.comment-header[data-comment-id="${originalPayload.commentId}"]`), payload.likesCount, payload.liked),
+        likeCommentUpdated: (payload, originalPayload) => UiModule.updateCounterUI(UiModule.getCommentHeaderUI(originalPayload.commentId, false), payload.likesCount, payload.liked),
         getCommentLikesUpdated: (payload) => ProfileModule.renderProfileListLikes(payload),
         getLikeUpdated: (payload) => ProfileModule.renderProfileListLikes(payload),
         shareUpdated: (payload) => UiModule.updateCommentCountUI(payload.entityId, false),

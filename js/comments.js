@@ -121,7 +121,7 @@ async function handleShare(entityId, commentId, replyId = '') {
         // Fallback
         const toastContent = `
             <div class="share-url-container">${shareUrl}</div>
-            <button class="quelora-btn active" id="copy-share-url-btn">
+            <button class="quelora-btn active" id="quelora-share">
                 ${I18n.getTranslation('copy')}
             </button>
         `;
@@ -135,7 +135,7 @@ async function handleShare(entityId, commentId, replyId = '') {
         );
 
         UtilsModule.startTimeout(() => {
-            const copyBtn = document.getElementById('copy-share-url-btn');
+            const copyBtn = UiModule.getShareButtonUI();
             if (copyBtn) {
                 copyBtn.addEventListener('click', async () => {
                     try {
@@ -357,7 +357,7 @@ async function setToken(newToken) {
  */
 async function fetchComments(entityId, lastCommentId = null, includeLast = false, forceRefresh = false) {
     try {
-        const commentsSection = document.querySelector('#quelora-comments .community-threads');
+        const commentsSection = UiModule.getCommunityThreadsUI();
         
         // Reset scroll position if loading first page
         if (!lastCommentId && commentsSection) {
@@ -468,10 +468,10 @@ async function fetchComment(entityId, comment, replyId = null, audioBase64 = nul
         }
 
         // Determine the appropriate container
-        const container = document.getElementById('quelora-comments');
+        const container = UiModule.getCommunityUI();
         const threadsContainer = replyId
-            ? container.querySelector(`.comment-replies[data-reply-id="${replyId}"]`)
-            : container.querySelector('.community-threads');
+            ? UiModule.getCommentRepliesUI(replyId)
+            : UiModule.getCommunityThreadsUI();
 
         // Remove existing quelora-empty-container
         const emptyContainer = container.querySelector('.quelora-empty-container');
@@ -538,9 +538,7 @@ async function fetchDelComment(entityId, commentId) {
         token = await CoreModule.getTokenIfNeeded(token);
         
         // Remove comment from DOM immediately
-        const commentContainer = document.querySelector(
-            `.comment-header[data-comment-id="${commentId}"]`
-        )?.parentElement;
+        const commentContainer = UiModule.getCommentHeaderUI(commentId, true);
         
         if (commentContainer) {
             commentContainer.remove();
@@ -581,9 +579,7 @@ async function fetchEditComment(entityId, commentId, editComment) {
         };
         
         // Get the comment container
-        const threadsContainer = document.querySelector(
-            `.comment-header[data-comment-id="${commentId}"]`
-        ).parentElement;
+        const threadsContainer = UiModule.getCommentHeaderUI(commentId, true);
         
         threadsContainer.setAttribute('data-comment-id', commentId);
 
@@ -614,9 +610,7 @@ async function fetchEditComment(entityId, commentId, editComment) {
 async function fetchReplies(entityId, commentId, lastCommentId = null) {
     try {
         token = SessionModule.getTokenIfAvailable();
-        const repliesContainer = document.querySelector(
-            `.comment-replies[data-reply-id="${commentId}"]`
-        );
+        const repliesContainer = UiModule.getCommentRepliesUI(commentId);
         
         UiModule.addLoadingMessageUI(repliesContainer, { type: 'message' });
 
@@ -654,7 +648,7 @@ async function fetchGetLikes(entityId, commentId = null) {
         token = await CoreModule.getTokenIfNeeded(token);
         
         // Add loading indicator
-        const likesContainer = document.getElementById('quelora-likes-list');
+        const likesContainer = UiModule.getLikesListUI();
         UiModule.addLoadingMessageUI(likesContainer, { type: 'message' });
         
         // Prepare payload
@@ -711,12 +705,10 @@ async function fetchCommentLike(entityId, commentId, liked) {
  */
 async function setCommentLike(entityId, commentId, liked) {
     try {
-        const interactionElement = document.querySelector(
-            `[data-comment-id="${commentId}"]`
-        );
+        const interactionElement = UiModule.getCommentHeaderUI(commentId, false);
         
         if (!interactionElement) {
-            console.error(`Element with data-comment-id="${commentId}" not found.`);
+            console.error(`Element not found.`);
             return;
         }
         
@@ -745,9 +737,7 @@ async function fetchTranslate(entityId, commentId) {
             cid 
         };
         
-        const threadsContainer = document.querySelector(
-            `.comment-header[data-comment-id="${commentId}"]`
-        ).parentElement;
+        const threadsContainer = UiModule.getCommentHeaderUI(commentId, true).parentElement;
         
         const textContainer = threadsContainer.querySelector('.comment-text');
         
@@ -1050,9 +1040,7 @@ function createCommentElement(comment, entity, isReply) {
  */
 async function renderTranslate(commentId, translation) {
     try {
-        const threadsContainer = document.querySelector(
-            `.comment-header[data-comment-id="${commentId}"]`
-        )?.parentElement;
+        const threadsContainer = UiModule.getCommentHeaderUI(commentId, true);
         
         if (!threadsContainer) {
             throw new Error(`Comment container not found for ID: ${commentId}`);
@@ -1146,7 +1134,7 @@ function renderCommentList(entity, comments, container) {
 function renderComments(payload) {
     try {
         let threadsContainer = payload.commentId
-            ? document.querySelector(`.comment-replies[data-reply-id="${payload.commentId}"]`)
+            ? UiModule.getCommentRepliesUI(payload.commentId)
             : UiModule.getCommunityThreadsUI();
 
         // Clear container if entity changed
@@ -1220,7 +1208,7 @@ async function renderNestedComments(nestedData, scrollTo) {
     let attemptCount = 0;
 
     const tryRender = async () => {
-        const threadRoot = document.querySelector(
+        const threadRoot = UiModule.getCommunityThreadsUI().querySelector(
             `.community-thread [data-comment-id="${nestedData.commentId}"]`
         )?.closest('.community-thread');
 
@@ -1283,8 +1271,8 @@ async function renderNestedComments(nestedData, scrollTo) {
  */
 function attachCommentInputListener(entityId) {
     try {
-        const communityThreads = document.querySelector(".community-threads");
-        const commentSection = document.querySelector(".quelora-comments");
+        const communityThreads = UiModule.getCommunityThreadsUI();
+        const commentSection = UiModule.getCommunityUI();
         const commentBarContainer = commentSection?.querySelector('.comment-bar-container');
         const commentBarContainerDisable = commentSection?.querySelector('.comment-disable-container');
 
@@ -1301,8 +1289,8 @@ function attachCommentInputListener(entityId) {
         if (commentBarContainer) commentBarContainer.style.display = '';
 
         // Get input elements
-        const commentInput = document.getElementById('quelora-input');
-        const sendInput = document.getElementById('quelora-send');
+        const commentInput = UiModule.getCommentInputUI();
+        const sendInput = UiModule.getSendButtonUI();
         
         if (!commentInput) return;
 
@@ -1338,7 +1326,7 @@ function attachCommentInputListener(entityId) {
                     commentInput.blur();
                     
                     // Hide emoji picker if visible
-                    const pickerContainer = document.getElementById('quelora-picker-container');
+                    const pickerContainer = UiModule.getPickerContainerUI();
                     if (pickerContainer) pickerContainer.style.display = 'none';
                 } catch (error) {
                     handleError(error, 'CommentsModule.sendInputClick');
@@ -1381,7 +1369,7 @@ function attachCommentInputListener(entityId) {
  */
 async function callbackRecord(transcript, audioBase64, audioHash) {
     try {
-        const commentInput = document.getElementById('quelora-input');
+        const commentInput = UiModule.getCommentInputUI();
         if (!commentInput) return;
 
         // Set transcript in input field
@@ -1449,7 +1437,7 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
                 textContent: '{{close}}',
                 icon: 'close',
                 onClick: () => {
-                    const commentInput = document.getElementById('quelora-input');
+                    const commentInput = UiModule.getCommentInputUI();
                     if (commentInput) {
                         commentInput.value = '';
                         commentInput.removeAttribute('quelora-audio-data');
@@ -1473,14 +1461,14 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
  */
 async function submitComment() {
     try {
-        const commentInput = document.getElementById('quelora-input');
+        const commentInput = UiModule.getCommentInputUI();
         if (!commentInput) return;
 
         const commentText = commentInput.value.trim();
         if (!commentText) return;
 
         const replyId = commentInput.getAttribute('data-reply-id');
-        const threadsContainer = document.querySelector(".community-threads");
+        const threadsContainer = UiModule.getCommunityThreadsUI();
         const currentEntity = threadsContainer?.getAttribute('data-threads-entity');
         
         if (!currentEntity) {
@@ -1512,7 +1500,7 @@ async function submitComment() {
         ProgressInput("quelora-input", "quelora-input-bar");
 
         // Hide picker if visible
-        const pickerContainer = document.getElementById('quelora-picker-container');
+        const pickerContainer = UiModule.getPickerContainerUI();
         if (pickerContainer) pickerContainer.style.display = 'none';
     } catch (error) {
         handleError(error, 'CommentsModule.submitComment');
@@ -1525,9 +1513,7 @@ async function submitComment() {
  */
 async function shakeComment(commentId) {
     try {
-        const commentElement = document.querySelector(
-            `.comment-header[data-comment-id="${commentId}"]`
-        );
+        const commentElement = UiModule.getCommentHeaderUI(commentId);
         
         if (commentElement) {
             const elementPosition = commentElement.getBoundingClientRect().top + window.scrollY;
@@ -1591,7 +1577,7 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                 const handleLongPress = () => {
                     longPressAction = true;
                     const commentId = commentElement.getAttribute('data-comment-id') || 
-                                    commentElement.querySelector('.comment-header')
+                                      commentElement.querySelector('.comment-header')
                                         .getAttribute('data-comment-id');
                     
                     fetchGetLikes(entity, commentId);
@@ -1652,7 +1638,7 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                 );
                 
                 const replyId = replyLink.getAttribute('data-reply-id');
-                const commentInput = document.getElementById('quelora-input');
+                const commentInput = UiModule.getCommentInputUI();
                 const commentHeader = commentElement.querySelector('.comment-header');
                 
                 if (commentInput && commentHeader) {
@@ -1720,13 +1706,13 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
  */
 async function updateAllCommentLikes() {
     try {
-        const threadsContainer = document.querySelector('.community-threads');
+        const threadsContainer = UiModule.getCommunityThreadsUI();
         if (!threadsContainer) return;
 
         const entityId = threadsContainer.getAttribute('data-threads-entity');
         if (!entityId) return;
 
-        const commentHeaders = document.querySelectorAll('.community-thread .comment-header');
+        const commentHeaders = UiModule.getCommentHeaderUI();
         const commentIds = Array.from(commentHeaders)
             .map(header => header.getAttribute('data-comment-id'));
 

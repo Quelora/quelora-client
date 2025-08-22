@@ -32,6 +32,7 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+import UiModule from './ui.js';
 
 // Private variable to hold the picker container element
 let pickerContainer;
@@ -146,7 +147,7 @@ function adjustPickerPosition(button) {
  * Initializes the emoji picker functionality.
  */
 function setupEmojiPicker() {
-    pickerContainer = document.getElementById('quelora-picker-container');
+    pickerContainer = UiModule.getPickerContainerUI();
 
     if (typeof EmojiMart === 'undefined') {
         hideEmojiButtons();

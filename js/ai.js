@@ -65,7 +65,7 @@ async function initializeAI(dependencies) {
  */
 async function addAIButton() {
     try {
-        const iconReferenceElement = document.getElementById('quelora-input');
+        const iconReferenceElement = UiModule.getCommentInputUI();
         if (iconReferenceElement.parentElement.querySelector('.ai-button')) return;
 
         const AIButton = document.createElement('span');
@@ -75,7 +75,7 @@ async function addAIButton() {
         AIButton.onclick = async function () {
             if (isDisabled) return;
 
-            const threadsContainer = document.querySelector(".community-threads");
+            const threadsContainer = UiModule.getCommunityThreadsUI();
             entityId = threadsContainer?.getAttribute('data-threads-entity');
 
             const bodyContent = document.createElement('div');
