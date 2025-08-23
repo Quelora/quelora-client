@@ -44,6 +44,7 @@ import AudioRecorderModule from './audioRecorder.js';
 import MentionModule from './mention.js';
 import AnchorModule from './anchor.js';
 import AIModule from './ai.js';
+import CaptchaModule from './captcha.js';
 
 // ==================== MODULE CONSTANTS ====================
 const TOUCH_MOVE_THRESHOLD = 10; // pixels
@@ -452,11 +453,13 @@ async function fetchComment(entityId, comment, replyId = null, audioBase64 = nul
     try {
         // Ensure we have a valid token
         token = await CoreModule.getTokenIfNeeded(token);
-        
+        const captchaToken = await CaptchaModule.getToken();
+
         // Prepare payload
         const payload = { 
             token, 
-            entityId, 
+            entityId,
+            captchaToken, 
             comment, 
             cid, 
             audioBase64, 
@@ -972,6 +975,7 @@ function createCommentElement(comment, entity, isReply) {
 
         // Create action buttons
         const commentActions = UiModule.createElementUI({ tag: 'div', classes: ['comment-actions'] });
+        
         // Settings button
         const settingsIcon = UiModule.createElementUI({
             tag: 'span',

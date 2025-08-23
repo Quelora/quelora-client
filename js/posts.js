@@ -39,6 +39,7 @@ import EntityModule from './entity.js';
 import ToastModule from './toast.js';
 import I18n from './i18n.js';
 import AnchorModule from './anchor.js';
+import CaptchaModule from './captcha.js';
 
 /**
  * Posts Module - Handles post interactions, events, and UI updates
@@ -121,6 +122,7 @@ function updateShareCount(interactionElement) {
 async function setLike(entityId, liked) {
     try {
         token = await CoreModule.getTokenIfNeeded(); 
+        const captchaToken = await CaptchaModule.getToken();
         const interactionElement = UiModule.getEntityInteractionUI(entityId);
         if (!interactionElement) {
             console.error(`Element with data-entity-interaction "${entityId}" not found.`);
@@ -130,7 +132,7 @@ async function setLike(entityId, liked) {
         UiModule.updateLikeUI(interactionElement, liked);
         workerInstance.postMessage({
             action: 'setLike',
-            payload: { token, entityId, liked, cid }
+            payload: { token, entityId, liked, cid, captchaToken }
         });
     } catch (error) {
         handleError(error, 'PostsModule.setLike');

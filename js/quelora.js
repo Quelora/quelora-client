@@ -45,6 +45,7 @@ import SessionModule from './session.js';
 import IconsModule from './icons.js';
 import StorageModule from './storage.js';
 import AIModule from './ai.js';
+import CaptchaModule from './captcha.js';
 
 //import WORKER_CONTENT from './queloraWorker.js'; //Just for compile!!
 
@@ -149,7 +150,7 @@ const Quelora = (() => {
             const tempContainer = document.createElement('div');
             tempContainer.innerHTML = `
                 <div id="quelora-picker-container"></div>
-                <div class="quelora-modal">
+                <div class="quelora-modal" id="quelora-modal">
                     <div class="quelora-container">
                         <div class="quelora-body quelora-modal-content"></div>
                         <div class="quelora-modal-footer"></div>
@@ -369,6 +370,22 @@ const Quelora = (() => {
             if (ProfileModule.isLogin()) {
                 ProfileModule.updateProfileOptionUI();
             }
+
+            const captchaConfig = {
+                type: 'turnstile', 
+                siteKey: '0x4AAAAAABuM_hzwcgtHHMkJ',
+                options: { size: 'normal' } 
+            };
+
+            const captchaConfig2 = {
+                type: 'recaptcha', 
+                siteKey: '6LfdVZorAAAAAPDMv_RHGHarOGqjQS4wpr5HnPLo',
+                options: {
+                } 
+            };
+
+            await CaptchaModule.initialize(captchaConfig.type, captchaConfig.siteKey, captchaConfig.options);
+
 
             console.log("%c\uD83D\uDCAC Quelora %cActive", "color: #4a4a4a; font-weight: bold; font-size: 12px;", "background-color: #4a4a4a; color: #ff5a5f; font-weight: bold; border-radius: 4px; padding: 3px 6px; font-size: 12px;");
         } catch (error) {

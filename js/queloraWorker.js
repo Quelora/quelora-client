@@ -76,12 +76,13 @@ self.addEventListener('message', (event) => {
                 return;
             }
         }
-
+        
         try {
             const headersWithData = {
                 ...options.headers,
                 ...(payload.cid && { 'X-Client-ID': payload.cid }),
                 ...(sharedIp && { 'X-IP': sharedIp }),
+                ...(payload.captchaToken && { 'X-Captcha-Token': payload.captchaToken }),
                 ...(sharedLocation && {
                     'X-Country': sharedLocation.country || '',
                     'X-Country-Code': sharedLocation.countryCode || '',
@@ -89,7 +90,7 @@ self.addEventListener('message', (event) => {
                     'X-Region-Code': sharedLocation.regionCode || '',
                     'X-City': sharedLocation.city || '',
                     'X-Lat': sharedLocation.lat || '',
-                    'X-Lon': sharedLocation.lon || ''
+                    'X-Lon': sharedLocation.lon || '',
                 })
             };
 
@@ -142,6 +143,10 @@ self.addEventListener('message', (event) => {
             error.message = 'You have already reported this comment.';
         }
 
+        if (response.status === 499 && text.includes('Invalid captcha')) {
+            error.message = 'Invalid captcha';
+        }
+        
         return error;
     };
 
