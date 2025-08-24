@@ -745,7 +745,7 @@ async function fetchTranslate(entityId, commentId) {
             cid 
         };
         
-        const threadsContainer = UiModule.getCommentHeaderUI(commentId, true).parentElement;
+        const threadsContainer = UiModule.getCommentHeaderUI(commentId, true);
         
         const textContainer = threadsContainer.querySelector('.comment-text');
         
