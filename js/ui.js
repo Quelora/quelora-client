@@ -46,29 +46,211 @@ import AnchorModule from './anchor.js';
 import IconsModule  from './icons.js';
 import StorageModule from './storage.js';
 
+const defaultDrawerConfig = {
+    height: '100%',
+    transitionSpeed: '0.3s',
+    position: 'bottom',
+    closeOnDrag: true
+};
+
+const createLanguageSelect = (id = '') => `
+    <div class="language-select-container">
+        <div class="language-select-wrapper">
+            <span class="quelora-icons-outlined">language</span>
+            <select class="language-select${id ? ` ${id}` : ''}">
+                <option value="auto" class="t">{{autoDetectLanguage}}</option>
+                <option value="es" class="t">{{spanish}}</option>
+                <option value="en" class="t">{{english}}</option>
+                <option value="de" class="t">{{german}}</option>
+                <option value="fr" class="t">{{french}}</option>
+                <option value="it" class="t">{{italian}}</option>
+                <option value="ja" class="t">{{japanese}}</option>
+                <option value="zh" class="t">{{chinese}}</option>
+                <option value="ru" class="t">{{russian}}</option>
+                <option value="ar" class="t">{{arabic}}</option>
+            </select>
+            <span class="quelora-icons-outlined">arrow_drop_down</span>
+        </div>
+    </div>
+`;
+
+const createThemeSelector = () => `
+    <div class="settings-option theme-option">
+        <div class="theme-selector-group">
+            <div class="theme-buttons">
+                <button class="theme-button light-theme">
+                    <span class="quelora-icons-outlined">wb_sunny</span>
+                    <span class="t">{{lightTheme}}</span>
+                </button>
+                <button class="theme-button dark-theme">
+                    <span class="quelora-icons-outlined">nights_stay</span>
+                    <span class="t">{{darkTheme}}</span>
+                </button>
+                <button class="theme-button system-theme active">
+                    <span class="quelora-icons-outlined">devices</span>
+                    <span class="t">{{systemTheme}}</span>
+                </button>
+            </div>
+            <div class="theme-description t">{{themeSelectionDescription}}</div>
+        </div>
+    </div>
+`;
+
+const createSearchContainer = (placeholder) => `
+    <div class="search-container">
+        <span class="quelora-icons-outlined search-icon">search</span>
+        <input type="text" placeholder="${placeholder}" class="search-input">
+    </div>
+`;
+
+const settingsDrawerUI = new Drawer({
+    ...defaultDrawerConfig,
+    id: 'quelora-community-settings',
+    customClass: 'quelora-community-settings',
+    title: '{{settings}}',
+    zIndex: 9002,
+    content: `
+        <div class="settings-menu">
+            <div class="settings-header t">{{session}}</div>
+            <div class="profile-container">
+                <div class="settings-option remember-session">
+                    <span class="t">{{rememberSession}}</span>
+                    <label class="switch">
+                        <input type="checkbox" id="quelora-remember-session-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-header t">{{privacySettings}}</div>
+            <div class="settings-option settings-column">
+                <div class="privacy-option-text">
+                    <span class="t">{{showActivity}}</span>
+                </div>
+                <div class="btn-group">
+                    <button class="privacy-button everyone active" data-value="everyone">
+                        <span class="t">{{everyone}}</span>
+                    </button>
+                    <button class="privacy-button followers" data-value="followers">
+                        <span class="t">{{onlyFollowers}}</span>
+                    </button>
+                    <button class="privacy-button onlyme" data-value="onlyme">
+                        <span class="t">{{onlyMe}}</span>
+                    </button>
+                </div>
+                <div class="option-description t">{{showActivityDescription}}</div>
+            </div>
+            <div class="settings-option">
+                <div class="privacy-option-text">
+                    <span class="t">{{approveFollowers}}</span>
+                    <span class="option-description t">{{approveFollowersDescription}}</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="quelora-approve-followers-toggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-divider"></div>
+            <div class="settings-header t">{{languagePreferences}}</div>
+            ${createLanguageSelect('id="quelora-language-select"')}
+            <div class="settings-divider"></div>
+            <div class="settings-header t">{{themePreferences}}</div>
+            ${createThemeSelector()}
+            <div class="settings-divider"></div>
+            <div class="settings-header t">{{notificationSettings}}</div>
+            <div class="settings-option">
+                <span class="t">{{webNotifications}}</span>
+                <label class="switch">
+                    <input type="checkbox" id="quelora-web-notifications-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-option">
+                <span class="t">{{emailNotifications}}</span>
+                <label class="switch">
+                    <input type="checkbox" id="quelora-email-notifications-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-option">
+                <span class="t">{{pushNotifications}}</span>
+                <label class="switch">
+                    <input type="checkbox" id="quelora-push-notifications-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <fieldset class="notification-suboptions" id="quelora-notification-suboptions">
+                <legend class="t visually-hidden">{{notificationSuboptions}}</legend>
+                <div class="settings-option suboption">
+                    <span class="t">{{notifyReplies}}</span>
+                    <label class="switch">
+                        <input type="checkbox" id="quelora-notify-replies-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="settings-option suboption">
+                    <span class="t">{{notifyLikes}}</span>
+                    <label class="switch">
+                        <input type="checkbox" id="quelora-notify-likes-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="settings-option suboption">
+                    <span class="t">{{notifyNewFollowers}}</span>
+                    <label class="switch">
+                        <input type="checkbox" id="quelora-notify-followers-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="settings-option suboption">
+                    <span class="t">{{notifyNewPosts}}</span>
+                    <label class="switch">
+                        <input type="checkbox" id="quelora-notify-posts-toggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </fieldset>
+        </div>`
+});
+
+const generalSettingsDrawerUI = new Drawer({
+    ...defaultDrawerConfig,
+    id: 'quelora-community-general-settings',
+    customClass: 'quelora-community-settings',
+    title: '{{settings}}',
+    zIndex: 9005,
+    height: '50%',
+    content: `
+        <div class="settings-menu">
+            <div class="quelora-login-option"><span class="quelora-icons-outlined">login</span><span class="quelora-login-label t">{{login}}</span></div>
+            <div class="settings-divider"></div>
+            <div class="settings-header t">{{languagePreferences}}</div>
+            ${createLanguageSelect()}
+            <div class="settings-divider"></div>
+            <div class="settings-header t">{{themePreferences}}</div>
+            ${createThemeSelector()}
+        </div>`
+});
+
 const likesDrawerUI = new Drawer({
+    ...defaultDrawerConfig,
     id: 'likes-list',
     customClass: 'quelora-likes-list',
     title: '{{likes}}',
-    content: `<div class="profile-stats">
-                <div class="stat-item">
-                    <span class="quelora-icons-outlined">favorite</span>
-                    <span class="stat-count likes-count">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="quelora-icons-outlined">visibility</span>
-                    <span class="stat-count views-count">0</span>
-                </div>
-                </div>
-                <div class="search-container">
-                    <span class="quelora-icons-outlined search-icon">search</span>
-                    <input type="text" placeholder="{{search}}" class="search-input" id="likes-search">
-                </div>
-                <div class="quelora-likes-list" id="quelora-likes-list"></div>`,
-    height: '100%',
-    transitionSpeed: '0.3s',
     zIndex: 9000,
-    position: 'bottom'
+    content: `
+        <div class="profile-stats">
+            <div class="stat-item">
+                <span class="quelora-icons-outlined">favorite</span>
+                <span class="stat-count likes-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="quelora-icons-outlined">visibility</span>
+                <span class="stat-count views-count">0</span>
+            </div>
+        </div>
+        ${createSearchContainer('{{search}}')}
+        <div class="quelora-likes-list" id="quelora-likes-list"></div>`
 });
 
 const commentsDrawerUI = new Drawer({
@@ -179,153 +361,6 @@ const commentsDrawerUI = new Drawer({
             isDragging = false;
         });
     }
-});
-
-const settingsDrawerUI = new Drawer({
-    id: 'quelora-community-settings',
-    customClass: 'quelora-community-settings',
-    title: '{{settings}}',
-    content: `<div class="settings-menu">
-                <div class="settings-header t">{{session}}</div>
-                <div class="profile-container">
-                    <div class="settings-option remember-session">
-                        <span class="t">{{rememberSession}}</span>
-                        <label class="switch">
-                            <input type="checkbox" id="quelora-remember-session-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="settings-divider"></div>
-                <div class="settings-header t">{{privacySettings}}</div>
-                <div class="settings-option settings-column">
-                    <div class="privacy-option-text">
-                        <span class="t">{{showActivity}}</span>
-                    </div>
-                    <div class="btn-group">
-                        <button class="privacy-button everyone active" data-value="everyone">
-                            <span class="t">{{everyone}}</span>
-                        </button>
-                        <button class="privacy-button followers" data-value="followers">
-                            <span class="t">{{onlyFollowers}}</span>
-                        </button>
-                        <button class="privacy-button onlyme" data-value="onlyme">
-                            <span class="t">{{onlyMe}}</span>
-                        </button>
-                    </div>
-                    <div class="option-description t">{{showActivityDescription}}</div>
-                </div>
-                <div class="settings-option">
-                    <div class="privacy-option-text">
-                        <span class="t">{{approveFollowers}}</span>
-                        <span class="option-description t">{{approveFollowersDescription}}</span>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="quelora-approve-followers-toggle">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="settings-divider"></div>
-                <div class="settings-header t">{{languagePreferences}}</div>
-                <div class="language-select-container">
-                    <div class="language-select-wrapper">
-                        <span class="quelora-icons-outlined">language</span>
-                        <select class="language-select" id="quelora-language-select">
-                            <option value="auto" class="t">{{autoDetectLanguage}}</option>
-                            <option value="es" class="t">{{spanish}}</option>
-                            <option value="en" class="t">{{english}}</option>
-                            <option value="de" class="t">{{german}}</option>
-                            <option value="fr" class="t">{{french}}</option>
-                            <option value="it" class="t">{{italian}}</option>
-                            <option value="ja" class="t">{{japanese}}</option>
-                            <option value="zh" class="t">{{chinese}}</option>
-                            <option value="ru" class="t">{{russian}}</option>
-                            <option value="ar" class="t">{{arabic}}</option>
-                        </select>
-                        <span class="quelora-icons-outlined">arrow_drop_down</span>
-                    </div>
-                </div>
-                <div class="settings-divider"></div>
-                <div class="settings-header t">{{themePreferences}}</div>
-                <div class="settings-option theme-option" id="quelora-theme-profile">
-                    <div class="theme-selector-group">
-                        <div class="theme-buttons">
-                            <button class="theme-button light-theme">
-                                <span class="quelora-icons-outlined">wb_sunny</span>
-                                <span class="t">{{lightTheme}}</span>
-                            </button>
-                            <button class="theme-button dark-theme">
-                                <span class="quelora-icons-outlined">nights_stay</span>
-                                <span class="t">{{darkTheme}}</span>
-                            </button>
-                            <button class="theme-button system-theme active">
-                                <span class="quelora-icons-outlined">devices</span>
-                                <span class="t">{{systemTheme}}</span>
-                            </button>
-                        </div>
-                        <div class="theme-description t">{{themeSelectionDescription}}</div>
-                    </div>
-                </div>
-                <div class="settings-divider"></div>
-                <div class="settings-header t">{{notificationSettings}}</div>
-                <div class="settings-option">
-                    <span class="t">{{webNotifications}}</span>
-                    <label class="switch">
-                        <input type="checkbox" id="quelora-web-notifications-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="settings-option">
-                    <span class="t">{{emailNotifications}}</span>
-                    <label class="switch">
-                        <input type="checkbox" id="quelora-email-notifications-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div class="settings-option">
-                    <span class="t">{{pushNotifications}}</span>
-                    <label class="switch">
-                        <input type="checkbox" id="quelora-push-notifications-toggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <fieldset class="notification-suboptions" id="quelora-notification-suboptions">
-                    <legend class="t visually-hidden">{{notificationSuboptions}}</legend>
-                    <div class="settings-option suboption">
-                        <span class="t">{{notifyReplies}}</span>
-                        <label class="switch">
-                            <input type="checkbox" id="quelora-notify-replies-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="settings-option suboption">
-                        <span class="t">{{notifyLikes}}</span>
-                        <label class="switch">
-                            <input type="checkbox" id="quelora-notify-likes-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="settings-option suboption">
-                        <span class="t">{{notifyNewFollowers}}</span>
-                        <label class="switch">
-                            <input type="checkbox" id="quelora-notify-followers-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="settings-option suboption">
-                        <span class="t">{{notifyNewPosts}}</span>
-                        <label class="switch">
-                            <input type="checkbox" id="quelora-notify-posts-toggle" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </fieldset>
-            </div>`,
-    transitionSpeed: '0.3s',
-    height: '100%',
-    zIndex: 9002,
-    closeOnDrag: true,
-    position: 'bottom'
 });
 
 const profileDrawerUI = new Drawer({
@@ -472,61 +507,6 @@ const notificationDrawerUI = new Drawer({
     height: '100%',
     transitionSpeed: '0.3s',
     zIndex: 9004,
-    position: 'bottom'
-});
-
-const generalSettingsDrawerUI = new Drawer({
-    id: 'quelora-community-general-settings',
-    customClass: 'quelora-community-settings',
-    title: '{{settings}}',
-    content: `<div class="settings-menu">
-                <div class="quelora-login-option"><span class="quelora-icons-outlined">login</span><span class="quelora-login-label t">{{login}}</span></div>
-                <div class="settings-divider"></div>
-                <div class="settings-header t">{{languagePreferences}}</div>
-                <div class="language-select-container">
-                    <div class="language-select-wrapper">
-                        <span class="quelora-icons-outlined">language</span>
-                        <select class="language-select">
-                            <option value="auto" class="t">{{autoDetectLanguage}}</option>
-                            <option value="es" class="t">{{spanish}}</option>
-                            <option value="en" class="t">{{english}}</option>
-                            <option value="de" class="t">{{german}}</option>
-                            <option value="fr" class="t">{{french}}</option>
-                            <option value="it" class="t">{{italian}}</option>
-                            <option value="ja" class="t">{{japanese}}</option>
-                            <option value="zh" class="t">{{chinese}}</option>
-                            <option value="ru" class="t">{{russian}}</option>
-                            <option value="ar" class="t">{{arabic}}</option>
-                        </select>
-                        <span class="quelora-icons-outlined">arrow_drop_down</span>
-                    </div>
-                </div>
-                <div class="settings-divider"></div>
-                <div class="settings-header t">{{themePreferences}}</div>
-                <div class="settings-option theme-option">
-                    <div class="theme-selector-group">
-                        <div class="theme-buttons">
-                            <button class="theme-button light-theme">
-                                <span class="quelora-icons-outlined">wb_sunny</span>
-                                <span class="t">{{lightTheme}}</span>
-                            </button>
-                            <button class="theme-button dark-theme">
-                                <span class="quelora-icons-outlined">nights_stay</span>
-                                <span class="t">{{darkTheme}}</span>
-                            </button>
-                            <button class="theme-button system-theme active">
-                                <span class="quelora-icons-outlined">devices</span>
-                                <span class="t">{{systemTheme}}</span>
-                            </button>
-                        </div>
-                        <div class="theme-description t">{{themeSelectionDescription}}</div>
-                    </div>
-                </div>
-            </div>`,
-    transitionSpeed: '0.3s',
-    height: '50%',
-    zIndex: 9005,
-    closeOnDrag: true,
     position: 'bottom'
 });
 

@@ -11,7 +11,7 @@
     overflow: hidden;
 }
 
-.community-threads .like-icon{
+.community-threads .like-icon svg{
     width: 18px;
     height: 18px;
 }
