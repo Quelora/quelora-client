@@ -122,7 +122,7 @@ function updateShareCount(interactionElement) {
 async function setLike(entityId, liked) {
     try {
         token = await CoreModule.getTokenIfNeeded(); 
-        const captchaToken = await CaptchaModule.getToken();
+
         const interactionElement = UiModule.getEntityInteractionUI(entityId);
         if (!interactionElement) {
             console.error(`Element with data-entity-interaction "${entityId}" not found.`);
@@ -132,7 +132,7 @@ async function setLike(entityId, liked) {
         UiModule.updateLikeUI(interactionElement, liked);
         workerInstance.postMessage({
             action: 'setLike',
-            payload: { token, entityId, liked, cid, captchaToken }
+            payload: { token, entityId, liked, cid }
         });
     } catch (error) {
         handleError(error, 'PostsModule.setLike');
