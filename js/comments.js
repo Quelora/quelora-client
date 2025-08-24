@@ -59,6 +59,7 @@ let token = null;
 let cid = null;
 let activeCommentElement = null;
 let pressTimer = null;
+let useCaptcha = false;
 
 // ==================== EVENT HANDLER UTILITIES ====================
 
@@ -325,7 +326,8 @@ async function initializeComments(dependencies) {
         workerInstance = dependencies.worker;
         token = dependencies.token;
         cid = dependencies.cid;
-        
+        useCaptcha = dependencies.useCaptcha;
+
         setupGlobalCommentHandlers();
     } catch (error) {
         handleError(error, 'CommentsModule.initializeComments');
@@ -453,18 +455,21 @@ async function fetchComment(entityId, comment, replyId = null, audioBase64 = nul
     try {
         // Ensure we have a valid token
         token = await CoreModule.getTokenIfNeeded(token);
-        const captchaToken = await CaptchaModule.getToken();
 
         // Prepare payload
         const payload = { 
             token, 
             entityId,
-            captchaToken, 
             comment, 
             cid, 
             audioBase64, 
             audioHash 
         };
+
+        // Include captcha token if required
+        if (useCaptcha) {
+            payload.captchaToken = await CaptchaModule.getToken();
+        }
         
         if (replyId) {
             payload.replyId = replyId;

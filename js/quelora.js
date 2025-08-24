@@ -322,8 +322,7 @@ const Quelora = (() => {
     // ==================== INITIALIZATION ====================
     async function init(enableEmojiPicker = true) {
         try {
-         
-
+            const useCaptcha =  ConfModule.get('captcha.enabled') || false;
             // Set configuration and global variables
             currentScriptPath = UtilsModule.getCurrentScriptPath();
             apiUrl = ConfModule.get('apiUrl');
@@ -337,7 +336,7 @@ const Quelora = (() => {
             worker = initWorker(ConfModule);
             const workerMessageHandlers = getWorkerMessageHandlers({ CommentsModule, ProfileModule, UiModule, SessionModule });
             worker.addEventListener('message', (e) => handleWorkerMessage(e, workerMessageHandlers));
-            worker.postMessage({ action: 'init', payload: { ip, location, apiUrl } });
+            worker.postMessage({ action: 'init', payload: { ip, location, apiUrl, useCaptcha } });
 
             initConnectionListeners(PostsModule);
             const anchorHandlers = getAnchorHandlers({ PostsModule, ProfileModule, UiModule });
@@ -352,7 +351,7 @@ const Quelora = (() => {
             UiModule.initializeUI();
 
             // Common configuration for modules that require it
-            const moduleConfig = { worker, token, cid };
+            const moduleConfig = { worker, token, cid, useCaptcha };
             await ProfileModule.initializeProfile(moduleConfig);
             await CoreModule.initializeCore(moduleConfig);
             await PostsModule.initializePost(moduleConfig);
@@ -371,21 +370,14 @@ const Quelora = (() => {
                 ProfileModule.updateProfileOptionUI();
             }
 
-            const captchaConfig = {
-                type: 'turnstile', 
-                siteKey: '0x4AAAAAABuM_hzwcgtHHMkJ',
-                options: { size: 'normal' } 
-            };
-
-            const captchaConfig2 = {
-                type: 'recaptcha', 
-                siteKey: '6LfdVZorAAAAAPDMv_RHGHarOGqjQS4wpr5HnPLo',
-                options: {
-                } 
-            };
-
-            await CaptchaModule.initialize(captchaConfig.type, captchaConfig.siteKey, captchaConfig.options);
-
+            if(useCaptcha){
+                const captchaConfig = {
+                    type: ConfModule.get('captcha.provider'),
+                    siteKey: ConfModule.get('captcha.siteKey'),
+                    options: ConfModule.get('captcha.options', {}),
+                };
+                await CaptchaModule.initialize(captchaConfig.type, captchaConfig.siteKey, captchaConfig.options);
+            }
 
             console.log("%c\uD83D\uDCAC Quelora %cActive", "color: #4a4a4a; font-weight: bold; font-size: 12px;", "background-color: #4a4a4a; color: #ff5a5f; font-weight: bold; border-radius: 4px; padding: 3px 6px; font-size: 12px;");
         } catch (error) {

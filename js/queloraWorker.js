@@ -37,6 +37,7 @@ let sharedLocation = null;
 let apiUrl = 'https://quelora.localhost.ar:444';
 let url = null;
 let queryParams = '';
+let useCaptcha = '';
 
 const cache = new Map();
 const cacheConfig = {
@@ -61,6 +62,7 @@ self.addEventListener('message', (event) => {
         sharedIp = payload.ip;
         sharedLocation = payload.location;
         apiUrl = payload.apiUrl || apiUrl;
+        useCaptcha = payload.useCaptcha || false;
         return;
     }
 
