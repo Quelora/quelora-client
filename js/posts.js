@@ -402,6 +402,10 @@ function attachEventListeners(entityId) {
  * @param {boolean} [includeLast] - Whether to include the last comment in results
  */
 async function loadThread(entityId, lastCommentId = null, includeLast = false) {
+    const threadsContainer = UiModule.getCommunityThreadsUI();
+    if (threadsContainer) {
+        threadsContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    }
     CommentsModule.fetchComments(entityId, lastCommentId, includeLast);
     CommentsModule.attachCommentInputListener(entityId);
     UiModule.createEmojiPickerBarUI();

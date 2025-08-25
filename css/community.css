@@ -89,6 +89,7 @@
     overflow-y: auto;
     padding: var(--spacing-xl);
     margin-bottom: 110px;
+    content-visibility: auto;
 }
 
 .quelora-comments .comment-bar-container {
