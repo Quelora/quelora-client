@@ -33,7 +33,7 @@
  */
 
 const CACHE_NAME = 'quelora-notifications-v3';
-const APP_URL = 'https://www.quelora.org';
+const APP_URL = 'https://quelora.localhost.ar:444';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

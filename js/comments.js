@@ -64,35 +64,6 @@ let useCaptcha = false;
 // ==================== EVENT HANDLER UTILITIES ====================
 
 /**
- * Sets up global event handlers for comment interactions
- * Handles both touch and mouse events for maximum compatibility
- */
-function setupGlobalCommentHandlers() {
-    // Clean up existing listeners first to avoid duplicates
-    const handlers = [
-        ['touchstart', handleGlobalTouchStart],
-        ['touchend', handleGlobalTouchEnd],
-        ['touchmove', handleGlobalTouchMove],
-        ['mousedown', handleGlobalMouseDown],
-        ['mouseup', handleGlobalMouseUp],
-        ['mousemove', handleGlobalMouseMove]
-    ];
-
-    // Remove existing listeners
-    handlers.forEach(([event, handler]) => {
-        document.removeEventListener(event, handler);
-    });
-
-    // Add new listeners with proper passive options
-    document.addEventListener('touchstart', handleGlobalTouchStart, { passive: true });
-    document.addEventListener('touchend', handleGlobalTouchEnd);
-    document.addEventListener('touchmove', handleGlobalTouchMove, { passive: true });
-    document.addEventListener('mousedown', handleGlobalMouseDown);
-    document.addEventListener('mouseup', handleGlobalMouseUp);
-    document.addEventListener('mousemove', handleGlobalMouseMove);
-}
-
-/**
  * Handles comment sharing functionality
  * @param {string} entityId - The entity ID being commented on
  * @param {string} commentId - The comment ID to share
@@ -162,37 +133,55 @@ async function handleShare(entityId, commentId, replyId = '') {
 
 // ==================== TOUCH/MOUSE EVENT HANDLERS ====================
 
+function setupCommentHandlers() {
+    const threadsContainer = UiModule.getCommunityThreadsUI();
+    if (!threadsContainer) return;
+
+    // Clean up existing listeners to avoid duplicates
+    const handlers = [
+        ['touchstart', handleTouchStart, { passive: true }],
+        ['touchend', handleTouchEnd],
+        ['touchmove', handleTouchMove, { passive: true }],
+        ['mousedown', handleMouseDown],
+        ['mouseup', handleMouseUp],
+        ['mousemove', handleMouseMove]
+    ];
+
+    handlers.forEach(([event, handler, options]) => {
+        threadsContainer.removeEventListener(event, handler);
+        threadsContainer.addEventListener(event, handler, options || {});
+    });
+}
+
 /**
  * Handles touch start events for long press detection
  * @param {TouchEvent} e - Touch event
  */
-function handleGlobalTouchStart(e) {
+function handleTouchStart(e) {
     const commentText = e.target.closest('.comment-text');
     if (!commentText) return;
     
     activeCommentElement = commentText.closest('.community-thread');
     if (!activeCommentElement) return;
     
-    // Clear any existing timer
     if (pressTimer) clearTimeout(pressTimer);
     
-    // Store initial touch position
     const touch = e.touches[0];
     activeCommentElement._touchStartX = touch.clientX;
     activeCommentElement._touchStartY = touch.clientY;
     
-    // Set up long press timer
     pressTimer = setTimeout(() => {
-        if (activeCommentElement) {
+        if (activeCommentElement ) {
             UiModule.showEditCommentUI(activeCommentElement);
         }
+        activeCommentElement = null;
     }, LONG_PRESS_DURATION);
 }
 
 /**
  * Handles touch end events
  */
-function handleGlobalTouchEnd() {
+function handleTouchEnd() {
     if (pressTimer) clearTimeout(pressTimer);
     activeCommentElement = null;
 }
@@ -201,14 +190,13 @@ function handleGlobalTouchEnd() {
  * Handles touch move events to cancel long press if user scrolls
  * @param {TouchEvent} e - Touch event
  */
-function handleGlobalTouchMove(e) {
+function handleTouchMove(e) {
     if (!activeCommentElement || !pressTimer) return;
     
     const touch = e.touches[0];
     const startX = activeCommentElement._touchStartX || 0;
     const startY = activeCommentElement._touchStartY || 0;
     
-    // Cancel long press if movement exceeds threshold
     if (Math.abs(touch.clientX - startX) > TOUCH_MOVE_THRESHOLD || 
         Math.abs(touch.clientY - startY) > TOUCH_MOVE_THRESHOLD) {
         clearTimeout(pressTimer);
@@ -220,8 +208,7 @@ function handleGlobalTouchMove(e) {
  * Handles mouse down events for long press detection
  * @param {MouseEvent} e - Mouse event
  */
-function handleGlobalMouseDown(e) {
-    // Only handle left mouse button
+function handleMouseDown(e) {
     if (e.button !== 0) return;
     
     const commentText = e.target.closest('.comment-text');
@@ -232,23 +219,22 @@ function handleGlobalMouseDown(e) {
     
     if (pressTimer) clearTimeout(pressTimer);
     
-    // Store initial mouse position
     activeCommentElement._mouseStartX = e.clientX;
     activeCommentElement._mouseStartY = e.clientY;
     
-    // Set up long press timer
     pressTimer = setTimeout(() => {
         if (activeCommentElement && 
             activeCommentElement.querySelector('.comment-header').getAttribute('data-can-edit') === 'true') {
             UiModule.showEditCommentUI(activeCommentElement);
         }
+        activeCommentElement = null;
     }, LONG_PRESS_DURATION);
 }
 
 /**
  * Handles mouse up events
  */
-function handleGlobalMouseUp() {
+function handleMouseUp() {
     if (pressTimer) clearTimeout(pressTimer);
     activeCommentElement = null;
 }
@@ -257,13 +243,12 @@ function handleGlobalMouseUp() {
  * Handles mouse move events to cancel long press if mouse moves
  * @param {MouseEvent} e - Mouse event
  */
-function handleGlobalMouseMove(e) {
+function handleMouseMove(e) {
     if (!activeCommentElement || !pressTimer) return;
     
     const startX = activeCommentElement._mouseStartX || 0;
     const startY = activeCommentElement._mouseStartY || 0;
     
-    // Cancel long press if movement exceeds threshold
     if (Math.abs(e.clientX - startX) > TOUCH_MOVE_THRESHOLD || 
         Math.abs(e.clientY - startY) > TOUCH_MOVE_THRESHOLD) {
         clearTimeout(pressTimer);
@@ -328,7 +313,7 @@ async function initializeComments(dependencies) {
         cid = dependencies.cid;
         useCaptcha = dependencies.useCaptcha;
 
-        setupGlobalCommentHandlers();
+        setupCommentHandlers();
     } catch (error) {
         handleError(error, 'CommentsModule.initializeComments');
     }
