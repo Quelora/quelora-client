@@ -402,17 +402,20 @@ function attachEventListeners(entityId) {
  * @param {boolean} [includeLast] - Whether to include the last comment in results
  */
 async function loadThread(entityId, lastCommentId = null, includeLast = false) {
-    const threadsContainer = UiModule.getCommunityThreadsUI();
-    if (threadsContainer) {
-        threadsContainer.scrollTo({ top: 0, behavior: 'smooth' });
+    if (lastCommentId === null) {
+        const threadsContainer = UiModule.getCommunityThreadsUI();
+        const parentElement = threadsContainer.parentElement;
+        threadsContainer.style.height = parentElement.offsetHeight + 'px';
+
+        CommentsModule.attachCommentInputListener(entityId);
+        UiModule.createEmojiPickerBarUI();
+        UtilsModule.setInputLimit(
+            UtilsModule.getConfig(entityId)?.limits?.comment_text
+        );
+        UiModule.commentsDrawerUI.open();
     }
     CommentsModule.fetchComments(entityId, lastCommentId, includeLast);
-    CommentsModule.attachCommentInputListener(entityId);
-    UiModule.createEmojiPickerBarUI();
-    UtilsModule.setInputLimit(
-        UtilsModule.getConfig(entityId)?.limits?.comment_text
-    );
-    UiModule.commentsDrawerUI.open();
+
 }
 
 /**

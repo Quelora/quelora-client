@@ -223,8 +223,7 @@ function handleMouseDown(e) {
     activeCommentElement._mouseStartY = e.clientY;
     
     pressTimer = setTimeout(() => {
-        if (activeCommentElement && 
-            activeCommentElement.querySelector('.comment-header').getAttribute('data-can-edit') === 'true') {
+        if (activeCommentElement){
             UiModule.showEditCommentUI(activeCommentElement);
         }
         activeCommentElement = null;
@@ -1815,7 +1814,7 @@ const CommentsModule = {
     fetchCommentLike,
     fetchTranslate,
     shakeComment,
-    callbackRecord
+    callbackRecord,
 };
 
 export default CommentsModule;

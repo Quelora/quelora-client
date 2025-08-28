@@ -19,6 +19,7 @@
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    content-visibility: auto;
 }
 
 .quelora-likes {
@@ -89,7 +90,6 @@
     overflow-y: auto;
     padding: var(--spacing-xl);
     margin-bottom: 110px;
-    content-visibility: auto;
 }
 
 .quelora-comments .comment-bar-container {
@@ -259,6 +259,8 @@
 .quelora-comments .community-thread{
     position: relative;
     padding: var(--spacing-sm);
+    content-visibility: auto;
+    contain-intrinsic-size: 100px;
 }
 
 #likes-list {
