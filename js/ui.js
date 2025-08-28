@@ -830,9 +830,6 @@ const setupModalUI = (bodyContent, buttonConfigs, blurContainer) => {
         const handleContextMenu = (event) => event.preventDefault();
         modal.removeEventListener('contextmenu', handleContextMenu);
         modal.addEventListener('contextmenu', handleContextMenu);
-
-        const communityComments = document.querySelector(blurContainer);
-        if (communityComments) communityComments.style.filter = 'blur(2px) contrast(1.5) hue-rotate(90deg)';
     } catch (error) {
         console.error('Error setting up modal:', error);
     }
