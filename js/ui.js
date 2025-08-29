@@ -836,7 +836,6 @@ const setupModalUI = (bodyContent, buttonConfigs, blurContainer) => {
 };
 
 function showEditCommentUI(commentElement) {
-    alert("showEditCommentUI");
     try {
         const threadsContainer = getCommunityThreadsUI();
         if (!threadsContainer) return;
