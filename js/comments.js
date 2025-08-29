@@ -52,7 +52,8 @@ const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
-      
+const LOAD_MORE_ROOT_MARGIN = '0px 0px 400px 0px'; //pixels
+
 const VISIBILITY_THRESHOLD = 1000; // pixels
 const VISIBILITY_DEBOUNCE = 100;   // ms
 const VISIBLE_THRESHOLD = 20;      // nodes
@@ -523,6 +524,8 @@ async function fetchComments(entityId, lastCommentId = null, includeLast = false
         // Reset scroll position if loading first page
         if (!lastCommentId && commentsSection) {
             commentsSection.scrollTo({ top: 0, behavior: 'smooth' });
+            storedComments.clear();
+            cleanupVisibilityObservers();
         }
         
         // Get current token
@@ -1417,7 +1420,10 @@ function renderComments(payload) {
                     loadMoreLink.click();
                     observer.disconnect();
                 }
-            }, { threshold: 1.0 });
+            }, { 
+                threshold: 1.0,
+                rootMargin: LOAD_MORE_ROOT_MARGIN
+            });
             
             observer.observe(loadMoreLink);
         }
