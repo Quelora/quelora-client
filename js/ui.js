@@ -537,15 +537,18 @@ const searchFollowRequestDrawerUI = new Drawer({
 });
 
 const closeModalUI = () => {
-    const modal = document.querySelector('.quelora-modal');
-    if (!modal) return;
+  const modal = document.querySelector('.quelora-modal');
+  if (!modal) return;
 
-    const blurContainer = modal.dataset.blur;
-    modal.style.display = 'none';
-    
-    if (blurContainer) {
-        document.querySelector(blurContainer)?.style.removeProperty('filter');
-    }
+  const blurClass = modal.dataset.blur; // viene del atributo data-blur
+  modal.style.display = 'none';
+
+  if (blurClass) {
+    const blurContainers = document.querySelectorAll(blurClass);
+    blurContainers.forEach(container => {
+      container.style.removeProperty('filter');
+    });
+  }
 };
 
 function renderActivitiesUI(activities) {
@@ -793,48 +796,67 @@ function renderReportedUI(message) {
     }
 }
 
-const setupModalUI = (bodyContent, buttonConfigs, blurContainer) => {
-    try {
-        const modal = document.querySelector('.quelora-modal');
-        if (!modal) return;
+const setupModalUI = (bodyContent, buttonConfigs, blurClass) => {
+  try {
+    const modal = document.querySelector('.quelora-modal');
+    if (!modal) return;
 
-        const modalBody = modal.querySelector('.quelora-body');
-        const footer = modal.querySelector('.quelora-modal-footer');
-        
-        modalBody.innerHTML = '';
-        footer.innerHTML = '';
+    const modalBody = modal.querySelector('.quelora-body');
+    const footer = modal.querySelector('.quelora-modal-footer');
 
-        if (bodyContent) modalBody.appendChild(bodyContent);
-
-        const handleButtonClick = (onClick) => (event) => onClick && onClick(event); // Pass event to onClick
-        buttonConfigs.forEach(({ className, textContent, onClick, icon }) => {
-            const button = document.createElement('button');
-            button.className = className;
-            button.innerHTML = `<span class="quelora-icons-outlined">${icon}</span> ${textContent}`;
-            if (onClick) {
-                button.removeEventListener('click', handleButtonClick(onClick));
-                button.addEventListener('click', handleButtonClick(onClick));
-            }
-            footer.appendChild(button);
-        });
-
-        modal.style.display = 'flex';
-        modal.setAttribute('data-blur', blurContainer);
-
-        const handleModalClick = (event) => {
-            if (event.target === modal) closeModalUI();
-        };
-        modal.removeEventListener('click', handleModalClick);
-        modal.addEventListener('click', handleModalClick, { once: true });
-
-        const handleContextMenu = (event) => event.preventDefault();
-        modal.removeEventListener('contextmenu', handleContextMenu);
-        modal.addEventListener('contextmenu', handleContextMenu);
-    } catch (error) {
-        console.error('Error setting up modal:', error);
+    const blurContainers = document.querySelectorAll(blurClass);
+    if (blurContainers.length > 0) {
+      blurContainers.forEach(container => {
+        container.style.filter = 'blur(2px) contrast(1.5) hue-rotate(90deg)';
+      });
     }
-};
+    modal.setAttribute('data-blur', blurClass);
 
+    modalBody.innerHTML = '';
+    footer.innerHTML = '';
+
+    if (bodyContent) {
+      if (typeof bodyContent === 'string') {
+        UiModule.addLoadingMessageUI(modalBody, {
+          type: bodyContent === 'skeleton' ? 'skeleton' : 'message',
+          position: 'after',
+          empty: true,
+          count: 1
+        });
+      } else {
+        modalBody.appendChild(bodyContent);
+      }
+    }
+
+    if (Array.isArray(buttonConfigs) && buttonConfigs.length > 0) {
+      const handleButtonClick = (onClick) => (event) => onClick && onClick(event);
+      buttonConfigs.forEach(({ className, textContent, onClick, icon }) => {
+        const button = document.createElement('button');
+        button.className = className;
+        button.innerHTML = `<span class="quelora-icons-outlined">${icon}</span> ${textContent}`;
+        if (onClick) {
+          button.removeEventListener('click', handleButtonClick(onClick));
+          button.addEventListener('click', handleButtonClick(onClick));
+        }
+        footer.appendChild(button);
+      });
+    }
+
+    modal.style.display = 'flex';
+
+    const handleModalClick = (event) => {
+      if (event.target === modal) closeModalUI();
+    };
+    modal.removeEventListener('click', handleModalClick);
+    modal.addEventListener('click', handleModalClick, { once: true });
+
+    const handleContextMenu = (event) => event.preventDefault();
+    modal.removeEventListener('contextmenu', handleContextMenu);
+    modal.addEventListener('contextmenu', handleContextMenu);
+  } catch (error) {
+    console.error('Error setting up modal:', error);
+  }
+};
 
 function showEditCommentUI(commentElement) {
     try {
@@ -842,6 +864,8 @@ function showEditCommentUI(commentElement) {
         const modal = document.querySelector('.quelora-modal');
         const threadsContainer = UiModule.getCommunityThreadsUI();
         if (!modal || !threadsContainer || !commentElement) return;
+
+        UiModule.setupModalUI( 'skeleton', {}, '.community-threads');
 
         const commentHeader = commentElement.querySelector('.comment-header');
         if (!commentHeader) return;
@@ -943,7 +967,7 @@ function showEditCommentUI(commentElement) {
         }
 
         // Configurar modal
-        UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
+        UiModule.setupModalUI(bodyContent, buttons, '.community-threads');
 
         // Configurar input editable y progress bar de forma asíncrona
         if (canEdit) {
@@ -1262,7 +1286,7 @@ function showReportCommentUI(commentElement) {
             { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
         ];
     
-        setupModalUI(reportContent, buttons,'.quelora-comments');
+        setupModalUI(reportContent, buttons,'.community-threads');
 
         function handleReport(event, currentEntity, commentId) {
             try {
