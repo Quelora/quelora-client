@@ -2229,6 +2229,7 @@ const initializeUI = () => {
         setupSettingsOptions();
         createProfileDropupUI();
         filterListAccountUI();
+
     } catch (error) {
         console.error('Error initializing likes search or settings:', error);
     }

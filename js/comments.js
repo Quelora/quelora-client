@@ -345,16 +345,10 @@ function handleTouchStart(e) {
     
     if (pressTimer) clearTimeout(pressTimer);
     
-    const touch = e.touches[0];
-    activeCommentElement._touchStartX = touch.clientX;
-    activeCommentElement._touchStartY = touch.clientY;
-    
     pressTimer = setTimeout(() => {
-        if (activeCommentElement) {
-            setTimeout(() => {
-                UiModule.showEditCommentUI(activeCommentElement);
-            }, 0);
-        }
+
+        UiModule.showEditCommentUI(activeCommentElement);
+        
         activeCommentElement = null;
     }, LONG_PRESS_DURATION);
 }
