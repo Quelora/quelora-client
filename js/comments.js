@@ -351,12 +351,9 @@ function handleTouchStart(e) {
     
     pressTimer = setTimeout(() => {
         if (activeCommentElement) {
-            const container = UiModule.getCommunityThreadsUI();
-            container.style.overflow = 'hidden'; 
-            requestAnimationFrame(() => {
+            setTimeout(() => {
                 UiModule.showEditCommentUI(activeCommentElement);
-                container.style.overflow = ''; 
-            });
+            }, 0);
         }
         activeCommentElement = null;
     }, LONG_PRESS_DURATION);
