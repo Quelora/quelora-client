@@ -405,7 +405,7 @@ async function loadThread(entityId, lastCommentId = null, includeLast = false) {
     if (lastCommentId === null) {
         const threadsContainer = UiModule.getCommunityThreadsUI();
         const parentElement = threadsContainer.parentElement;
-        threadsContainer.style.height = parentElement.offsetHeight + 'px';
+       // threadsContainer.style.height = parentElement.offsetHeight + 'px';
 
         CommentsModule.attachCommentInputListener(entityId);
         UiModule.createEmojiPickerBarUI();

@@ -837,7 +837,7 @@ const setupModalUI = (bodyContent, buttonConfigs, blurContainer) => {
 
 function showEditCommentUI(commentElement) {
     try {
-        const threadsContainer = getCommunityThreadsUI();;
+        const threadsContainer = getCommunityThreadsUI();
         if (!threadsContainer) return;
 
         const currentEntity = threadsContainer.getAttribute('data-threads-entity');
@@ -1493,7 +1493,7 @@ function updateInteractionCounts(interactionElement, stat) {
 
 function updateCommentUI(entityId, commentData) {
     try {
-        let threadsContainer = getCommunityThreadsUI();;
+        let threadsContainer = getCommunityThreadsUI();
         if (commentData.replyId) {
             threadsContainer = threadsContainer.querySelector(`.comment-replies[data-reply-id="${commentData.replyId}"]`);
         }

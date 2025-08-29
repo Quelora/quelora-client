@@ -52,6 +52,10 @@ const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
+      
+const VISIBILITY_THRESHOLD = 1000; // pixels
+const VISIBILITY_DEBOUNCE = 100;   // ms
+const VISIBLE_THRESHOLD = 20;      // nodes
 
 // ==================== PRIVATE VARIABLES ====================
 let workerInstance = null;
@@ -61,7 +65,182 @@ let activeCommentElement = null;
 let pressTimer = null;
 let useCaptcha = false;
 
+let resizeObserver  = null;
+let visibilityObserver = null;
+
+let storedComments = new Map();
+
 // ==================== EVENT HANDLER UTILITIES ====================
+function setupVisibilityObservers() {
+    const parentThreadsContainer = UiModule.getCommunityThreadsUI()?.parentElement;
+    
+    if (!parentThreadsContainer) {
+        console.log('No threads container found');
+        return;
+    }
+    
+    cleanupVisibilityObservers();
+    
+    let timeoutId = null;
+    
+    function handleCommentVisibility() {
+        const containerRect = parentThreadsContainer.getBoundingClientRect();
+        const comments = Array.from(parentThreadsContainer.querySelectorAll('.community-thread'));
+        if (comments.length === 0) return;
+
+        let invisibleUpCount = 0;
+        let invisibleDownCount = 0;
+
+        comments.forEach(comment => {
+            const commentRect = comment.getBoundingClientRect();
+            const header = comment.querySelector('.comment-header[data-comment-id]');
+            const commentId = header ? header.getAttribute('data-comment-id') : null;
+            const isVisible = (
+                commentRect.bottom >= (containerRect.top - VISIBILITY_THRESHOLD) &&
+                commentRect.top <= (containerRect.bottom + VISIBILITY_THRESHOLD)
+            );
+
+            if (isVisible) {
+                comment.setAttribute('data-comment-visible', 'true');
+                if (comment.hasAttribute('data-comment-dehydrated')) {
+                    rehydrateComment(comment);
+                }
+            } else {
+                comment.setAttribute('data-comment-visible', 'false');
+                if (commentRect.bottom < containerRect.top) {
+                    invisibleUpCount++;
+                } else if (commentRect.top > containerRect.bottom) {
+                    invisibleDownCount++;
+                }
+            }
+        });
+
+        function dehydrateUpwards() {
+            let count = 0;
+            for (let i = comments.length - 1; i >= 0; i--) {
+                const c = comments[i];
+                const header = c.querySelector('.comment-header[data-comment-id]');
+                const commentId = header ? header.getAttribute('data-comment-id') : null;
+                if (!commentId) continue;
+                if (c.getAttribute('data-comment-visible') === 'false' &&
+                    c.getBoundingClientRect().bottom < containerRect.top) {
+                    count++;
+                    if (count > VISIBLE_THRESHOLD) {
+                        dehydrateComment(c, commentId);
+                    }
+                }
+            }
+        }
+
+        function dehydrateDownwards() {
+            let count = 0;
+            for (let i = 0; i < comments.length; i++) {
+                const c = comments[i];
+                const header = c.querySelector('.comment-header[data-comment-id]');
+                const commentId = header ? header.getAttribute('data-comment-id') : null;
+                if (!commentId) continue;
+                if (c.getAttribute('data-comment-visible') === 'false' &&
+                    c.getBoundingClientRect().top > containerRect.bottom) {
+                    count++;
+                    if (count > VISIBLE_THRESHOLD) {
+                        dehydrateComment(c, commentId);
+                    }
+                }
+            }
+        }
+
+        if (invisibleUpCount > VISIBLE_THRESHOLD) {
+            dehydrateUpwards();
+        }
+        if (invisibleDownCount > VISIBLE_THRESHOLD) {
+            dehydrateDownwards();
+        }
+
+        function dehydrateComment(c, commentId) {
+            if (c.hasAttribute('data-comment-dehydrated')) return;
+
+            const originalDisplay = c.style.display;
+            c.style.display = 'block';
+
+            const rect = c.getBoundingClientRect();
+            let totalHeight = rect.height;
+
+            const repliesContainer = c.querySelector('.comment-replies');
+            let repliesHeight = 0;
+            if (repliesContainer) {
+                const repliesRect = repliesContainer.getBoundingClientRect();
+                repliesHeight = repliesRect.height;
+            }
+            
+            c.style.display = originalDisplay;
+            c.style.minHeight = Math.max(totalHeight - repliesHeight, 0) + "px";
+        
+            c.replaceChildren();
+            c.setAttribute('data-comment-dehydrated', commentId);
+        }
+
+        function rehydrateComment(c) {
+            if (!c.hasAttribute('data-comment-dehydrated')) return;
+            const fragment = document.createDocumentFragment();
+            const entity = UiModule.getCommunityThreadsUI().getAttribute('data-threads-entity');
+            const commentId = c.getAttribute('data-comment-dehydrated');
+
+            UiModule.addLoadingMessageUI(c, {
+                type: 'skeleton',
+                position: 'after',
+                empty: true,
+                count: 1
+            });
+
+            const commentElement = createCommentElement(storedComments.get(commentId), entity);
+            
+            while (commentElement.firstChild) {
+                fragment.appendChild(commentElement.firstChild);
+            }
+            
+            c.replaceChildren();
+            c.appendChild(fragment);
+            c.removeAttribute('data-comment-dehydrated');
+        }
+
+    }
+
+    const debouncedCheck = () => {
+        if (timeoutId) clearTimeout(timeoutId);
+        timeoutId = setTimeout(handleCommentVisibility, VISIBILITY_DEBOUNCE);
+    };
+
+    parentThreadsContainer.addEventListener('scroll', debouncedCheck, { passive: true });
+    resizeObserver = new ResizeObserver(debouncedCheck);
+    resizeObserver.observe(parentThreadsContainer);
+
+    handleCommentVisibility();
+    
+    visibilityObserver = {
+        disconnect: () => {
+            parentThreadsContainer.removeEventListener('scroll', debouncedCheck);
+            if (timeoutId) clearTimeout(timeoutId);
+
+            const commentHeaders = parentThreadsContainer.querySelectorAll('.comment-header[data-comment-id]');
+            commentHeaders.forEach(header => {
+                header.removeAttribute('data-comment-visible');
+                header.removeAttribute('data-comment-up');
+                header.removeAttribute('data-comment-down');
+            });
+        }
+    };
+}
+
+function cleanupVisibilityObservers() {
+    if (visibilityObserver) {
+        visibilityObserver.disconnect();
+        visibilityObserver = null;
+    }
+    if (resizeObserver) {
+        resizeObserver.disconnect();
+        resizeObserver = null;
+    }
+}
 
 /**
  * Handles comment sharing functionality
@@ -313,6 +492,7 @@ async function initializeComments(dependencies) {
         useCaptcha = dependencies.useCaptcha;
 
         setupCommentHandlers();
+        setupVisibilityObservers();
     } catch (error) {
         handleError(error, 'CommentsModule.initializeComments');
     }
@@ -1072,6 +1252,8 @@ function createCommentElement(comment, entity, isReply) {
         // Attach event listeners
         attachCommentEventListeners(commentElement, comment, entity);
 
+        // Save comment
+        storedComments.set(comment._id, comment);
         return commentElement;
     } catch (error) {
         handleError(error, 'CommentsModule.createCommentElement');

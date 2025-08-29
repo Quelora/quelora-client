@@ -69,7 +69,7 @@ async function generateHash(input) {
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        return hashHex.substring(0, 24).toLowerCase();;
+        return hashHex.substring(0, 24).toLowerCase();
     } catch (error) {
         console.error('Error generating hash:', error);
         return null;
