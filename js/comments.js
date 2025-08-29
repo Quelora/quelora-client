@@ -350,8 +350,13 @@ function handleTouchStart(e) {
     activeCommentElement._touchStartY = touch.clientY;
     
     pressTimer = setTimeout(() => {
-        if (activeCommentElement ) {
-            UiModule.showEditCommentUI(activeCommentElement);
+        if (activeCommentElement) {
+            const container = UiModule.getCommunityThreadsUI();
+            container.style.overflow = 'hidden'; 
+            requestAnimationFrame(() => {
+                UiModule.showEditCommentUI(activeCommentElement);
+                container.style.overflow = ''; 
+            });
         }
         activeCommentElement = null;
     }, LONG_PRESS_DURATION);
