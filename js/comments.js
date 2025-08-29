@@ -346,9 +346,7 @@ function handleTouchStart(e) {
     if (pressTimer) clearTimeout(pressTimer);
     
     pressTimer = setTimeout(() => {
-
         UiModule.showEditCommentUI(activeCommentElement);
-        
         activeCommentElement = null;
     }, LONG_PRESS_DURATION);
 }

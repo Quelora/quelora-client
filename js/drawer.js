@@ -148,6 +148,7 @@ class Drawer {
         document.addEventListener('mouseup', this.stopDragging.bind(this));
         document.addEventListener('touchend', this.stopDragging.bind(this));
         this.element.addEventListener('transitionend', this.handleTransitionEnd.bind(this));
+        this.element.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
     /**
