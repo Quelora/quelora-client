@@ -47,6 +47,7 @@ import AIModule from './ai.js';
 import CaptchaModule from './captcha.js';
 
 // ==================== MODULE CONSTANTS ====================
+const SCROLL_THRESHOLD = 10; 
 const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
@@ -67,6 +68,9 @@ let useCaptcha = false;
 
 let resizeObserver  = null;
 let visibilityObserver = null;
+let activeAction = null;
+let touchStartX = 0;
+let touchStartY = 0;
 
 let storedComments = new Map();
 
@@ -312,13 +316,16 @@ async function handleShare(entityId, commentId, replyId = '') {
 }
 
 // ==================== TOUCH/MOUSE EVENT HANDLERS ====================
+
 function setupCommentHandlers() {
     const threadsContainer = UiModule.getCommunityThreadsUI();
     if (!threadsContainer) return;
 
     const handlers = [
         ['touchstart', handleTouchStart, { passive: true }],
+        ['touchmove', handleTouchMove, { passive: true }],
         ['touchend', handleTouchEnd],
+        ['touchcancel', handleTouchEnd]
     ];
 
     handlers.forEach(([event, handler, options]) => {
@@ -329,27 +336,27 @@ function setupCommentHandlers() {
 
 /**
  * Handles touch start events for long press detection
- * @param {TouchEvent} e - Touch event
+ * @param {TouchEvent} e
  */
 function handleTouchStart(e) {
     const threadsContainer = UiModule.getCommunityThreadsUI();
     if (!threadsContainer) return;
 
-    // Detects whether the event was triggered on the like or on the comment text
     const likeButton = e.target.closest('.comment-like');
     const commentText = e.target.closest('.comment-text');
     if (!likeButton && !commentText) return;
 
-    // Guardamos el elemento activo (el comment-thread)
     activeCommentElement = e.target.closest('.community-thread');
     if (!activeCommentElement) return;
 
-    // Guardamos qué acción queremos disparar
-    let activeAction = likeButton ? 'like' : 'edit';
+    activeAction = likeButton ? 'like' : 'edit';
 
-    // Inicializamos el timer
+    // Guardamos la posición inicial del toque
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+
     if (pressTimer) clearTimeout(pressTimer);
-
     pressTimer = setTimeout(() => {
         if (!activeCommentElement) return;
 
@@ -358,17 +365,32 @@ function handleTouchStart(e) {
             const commentId = activeCommentElement.getAttribute('data-comment-id') ||
                               activeCommentElement.querySelector('.comment-header')
                                 .getAttribute('data-comment-id');
-            fetchGetLikes(entity, commentId); 
+            fetchGetLikes(entity, commentId);
         } else if (activeAction === 'edit') {
-            UiModule.showEditCommentUI(activeCommentElement); 
+            UiModule.showEditCommentUI(activeCommentElement);
         }
 
-        // Limpiamos
         activeCommentElement = null;
         activeAction = null;
     }, LONG_PRESS_DURATION);
 }
 
+/**
+ * Cancela el longpress si detecta scroll
+ * @param {TouchEvent} e
+ */
+function handleTouchMove(e) {
+    if (!activeCommentElement) return;
+    const touch = e.touches[0];
+    const deltaX = Math.abs(touch.clientX - touchStartX);
+    const deltaY = Math.abs(touch.clientY - touchStartY);
+
+    if (deltaX > SCROLL_THRESHOLD || deltaY > SCROLL_THRESHOLD) {
+        if (pressTimer) clearTimeout(pressTimer);
+        activeCommentElement = null;
+        activeAction = null;
+    }
+}
 
 /**
  * Handles touch end events
@@ -376,6 +398,7 @@ function handleTouchStart(e) {
 function handleTouchEnd() {
     if (pressTimer) clearTimeout(pressTimer);
     activeCommentElement = null;
+    activeAction = null;
 }
 
 // ==================== HELPER FUNCTIONS ====================
