@@ -47,7 +47,6 @@ import AIModule from './ai.js';
 import CaptchaModule from './captcha.js';
 
 // ==================== MODULE CONSTANTS ====================
-const TOUCH_MOVE_THRESHOLD = 10; // pixels
 const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
@@ -312,19 +311,13 @@ async function handleShare(entityId, commentId, replyId = '') {
 }
 
 // ==================== TOUCH/MOUSE EVENT HANDLERS ====================
-
 function setupCommentHandlers() {
     const threadsContainer = UiModule.getCommunityThreadsUI();
     if (!threadsContainer) return;
 
-    // Clean up existing listeners to avoid duplicates
     const handlers = [
         ['touchstart', handleTouchStart, { passive: true }],
         ['touchend', handleTouchEnd],
-        ['touchmove', handleTouchMove, { passive: true }],
-        ['mousedown', handleMouseDown],
-        ['mouseup', handleMouseUp],
-        ['mousemove', handleMouseMove]
     ];
 
     handlers.forEach(([event, handler, options]) => {
@@ -338,19 +331,43 @@ function setupCommentHandlers() {
  * @param {TouchEvent} e - Touch event
  */
 function handleTouchStart(e) {
+    const threadsContainer = UiModule.getCommunityThreadsUI();
+    if (!threadsContainer) return;
+
+    // Detects whether the event was triggered on the like or on the comment text
+    const likeButton = e.target.closest('.comment-like');
     const commentText = e.target.closest('.comment-text');
-    if (!commentText) return;
-    
-    activeCommentElement = commentText.closest('.community-thread');
+    if (!likeButton && !commentText) return;
+
+    // Guardamos el elemento activo (el comment-thread)
+    activeCommentElement = e.target.closest('.community-thread');
     if (!activeCommentElement) return;
-    
+
+    // Guardamos qué acción queremos disparar
+    let activeAction = likeButton ? 'like' : 'edit';
+
+    // Inicializamos el timer
     if (pressTimer) clearTimeout(pressTimer);
-    
+
     pressTimer = setTimeout(() => {
-        UiModule.showEditCommentUI(activeCommentElement);
+        if (!activeCommentElement) return;
+
+        if (activeAction === 'like') {
+            const entity = threadsContainer.getAttribute('data-threads-entity');
+            const commentId = activeCommentElement.getAttribute('data-comment-id') ||
+                              activeCommentElement.querySelector('.comment-header')
+                                .getAttribute('data-comment-id');
+            fetchGetLikes(entity, commentId); 
+        } else if (activeAction === 'edit') {
+            UiModule.showEditCommentUI(activeCommentElement); 
+        }
+
+        // Limpiamos
         activeCommentElement = null;
+        activeAction = null;
     }, LONG_PRESS_DURATION);
 }
+
 
 /**
  * Handles touch end events
@@ -358,75 +375,6 @@ function handleTouchStart(e) {
 function handleTouchEnd() {
     if (pressTimer) clearTimeout(pressTimer);
     activeCommentElement = null;
-}
-
-/**
- * Handles touch move events to cancel long press if user scrolls
- * @param {TouchEvent} e - Touch event
- */
-function handleTouchMove(e) {
-    if (!activeCommentElement || !pressTimer) return;
-    
-    const touch = e.touches[0];
-    const startX = activeCommentElement._touchStartX || 0;
-    const startY = activeCommentElement._touchStartY || 0;
-    
-    if (Math.abs(touch.clientX - startX) > TOUCH_MOVE_THRESHOLD || 
-        Math.abs(touch.clientY - startY) > TOUCH_MOVE_THRESHOLD) {
-        clearTimeout(pressTimer);
-        activeCommentElement = null;
-    }
-}
-
-/**
- * Handles mouse down events for long press detection
- * @param {MouseEvent} e - Mouse event
- */
-function handleMouseDown(e) {
-    if (e.button !== 0) return;
-    
-    const commentText = e.target.closest('.comment-text');
-    if (!commentText) return;
-    
-    activeCommentElement = commentText.closest('.community-thread');
-    if (!activeCommentElement) return;
-    
-    if (pressTimer) clearTimeout(pressTimer);
-    
-    activeCommentElement._mouseStartX = e.clientX;
-    activeCommentElement._mouseStartY = e.clientY;
-    
-    pressTimer = setTimeout(() => {
-        if (activeCommentElement){
-            UiModule.showEditCommentUI(activeCommentElement);
-        }
-        activeCommentElement = null;
-    }, LONG_PRESS_DURATION);
-}
-
-/**
- * Handles mouse up events
- */
-function handleMouseUp() {
-    if (pressTimer) clearTimeout(pressTimer);
-    activeCommentElement = null;
-}
-
-/**
- * Handles mouse move events to cancel long press if mouse moves
- * @param {MouseEvent} e - Mouse event
- */
-function handleMouseMove(e) {
-    if (!activeCommentElement || !pressTimer) return;
-    
-    const startX = activeCommentElement._mouseStartX || 0;
-    const startY = activeCommentElement._mouseStartY || 0;
-    
-    if (Math.abs(e.clientX - startX) > TOUCH_MOVE_THRESHOLD || 
-        Math.abs(e.clientY - startY) > TOUCH_MOVE_THRESHOLD) {
-        clearTimeout(pressTimer);
-        activeCommentElement = null;
-    }
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -1781,6 +1729,17 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
         // Cache profile data
         ProfileModule.memberProfiles.set(comment.author, comment?.profile);
 
+        // Like button handlers
+        const viewLikeButton = commentElement.querySelector('.comment-like');
+        const likeButton = commentElement.querySelector('.like-icon');
+        if (likeButton && viewLikeButton) {
+            viewLikeButton.addEventListener('click', (event) => {
+                event.preventDefault();
+                const liked = likeButton.textContent === "favorite_border";
+                setCommentLike(entity, comment._id, liked);
+            });
+        }
+
         // View replies button
         const viewRepliesButton = commentElement.querySelector('.view-replies');
         if (viewRepliesButton) {
@@ -1798,66 +1757,6 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                 event.preventDefault();
                 ProfileModule.getProfile(comment.author);
             });
-        }
-
-        // Like button handlers
-        const viewLikeButton = commentElement.querySelector('.comment-like');
-        const likeButton = commentElement.querySelector('.like-icon');
-
-        if (likeButton && viewLikeButton) {
-            let pressTimer = null;
-            let longPressAction = false;
-            let startX, startY;
-
-            const handlePressStart = (event) => {
-                longPressAction = false;
-                
-                // Store initial position for touch events
-                if (event.type === 'touchstart') {
-                    startX = event.touches[0].clientX;
-                    startY = event.touches[0].clientY;
-                }
-
-                const handleLongPress = () => {
-                    longPressAction = true;
-                    const commentId = commentElement.getAttribute('data-comment-id') || 
-                                      commentElement.querySelector('.comment-header')
-                                        .getAttribute('data-comment-id');
-                    
-                    fetchGetLikes(entity, commentId);
-                };
-
-                pressTimer = UtilsModule.startTimeout(handleLongPress, LONG_PRESS_DURATION);
-            };
-
-            const handlePressEnd = (event) => {
-                clearTimeout(pressTimer);
-                if (!longPressAction) {
-                    const liked = likeButton.textContent === "favorite_border";
-                    setCommentLike(entity, comment._id, liked);
-                }
-                event.preventDefault();
-            };
-
-            const handlePressMove = (event) => {
-                if (event.type === 'touchmove') {
-                    const moveX = event.touches[0].clientX;
-                    const moveY = event.touches[0].clientY;
-                    if (Math.abs(moveX - startX) > TOUCH_MOVE_THRESHOLD || 
-                        Math.abs(moveY - startY) > TOUCH_MOVE_THRESHOLD) {
-                        clearTimeout(pressTimer);
-                    }
-                }
-            };
-
-            // Add event listeners
-            viewLikeButton.addEventListener('touchstart', handlePressStart, { passive: true });
-            viewLikeButton.addEventListener('touchend', handlePressEnd);
-            viewLikeButton.addEventListener('touchmove', handlePressMove, { passive: true });
-            
-            viewLikeButton.addEventListener('mousedown', handlePressStart);
-            viewLikeButton.addEventListener('mouseup', handlePressEnd);
-            viewLikeButton.addEventListener('mouseleave', () => clearTimeout(pressTimer));
         }
 
         // Settings button
@@ -1924,7 +1823,6 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
             }
             return findOriginalComment(element.parentElement, lastCommentId);
         }
-
         // Share button
         const shareButton = commentElement.querySelector('.share-text');
         if (shareButton) {

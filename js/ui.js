@@ -46,6 +46,15 @@ import AnchorModule from './anchor.js';
 import IconsModule  from './icons.js';
 import StorageModule from './storage.js';
 
+let cachedCommunityUI = null;
+let cachedCommunityThreadsUI = null;
+let cachedProfileContainerUI = null;
+let cachedCommentInputUI = null;
+let cachedLikesListUI = null;
+let cachedPickerContainerUI = null;
+let cachedSendButtonUI = null;
+let cachedShareButtonUI = null;
+
 const defaultDrawerConfig = {
     height: '100%',
     transitionSpeed: '0.3s',
@@ -551,6 +560,88 @@ const closeModalUI = () => {
   }
 };
 
+// Cache selectors and reuse elements to reduce DOM queries
+const modalCache = {
+  modal: null,
+  modalBody: null,
+  footer: null,
+  blurContainers: new Map()
+};
+
+const setupModalUI = (bodyContent, buttonConfigs = [], blurClass) => {
+  try {
+    // Initialize cache if not already done
+    if (!modalCache.modal) {
+      modalCache.modal = document.querySelector('.quelora-modal');
+      if (!modalCache.modal) return;
+      modalCache.modalBody = modalCache.modal.querySelector('.quelora-body');
+      modalCache.footer = modalCache.modal.querySelector('.quelora-modal-footer');
+    }
+
+    const { modal, modalBody, footer } = modalCache;
+
+    // Cache blur containers for reuse
+    if (!modalCache.blurContainers.has(blurClass)) {
+      modalCache.blurContainers.set(blurClass, document.querySelectorAll(blurClass));
+    }
+    const blurContainers = modalCache.blurContainers.get(blurClass);
+    blurContainers.forEach(container => {
+      container.style.filter = 'blur(2px) contrast(1.5) hue-rotate(90deg)';
+    });
+    modal.setAttribute('data-blur', blurClass);
+
+    // Use DocumentFragment to batch DOM updates
+    const fragment = document.createDocumentFragment();
+    modalBody.innerHTML = '';
+    footer.innerHTML = '';
+
+    if (bodyContent) {
+      if (typeof bodyContent === 'string') {
+        UiModule.addLoadingMessageUI(modalBody, {
+          type: bodyContent === 'skeleton' ? 'skeleton' : 'message',
+          position: 'after',
+          empty: true,
+          count: 1
+        });
+      } else {
+        fragment.appendChild(bodyContent);
+      }
+    }
+    modalBody.appendChild(fragment);
+
+    // Batch button creation
+    if (buttonConfigs.length > 0) {
+      const buttonFragment = document.createDocumentFragment();
+      const handleButtonClick = (onClick) => (event) => onClick?.(event);
+      
+      buttonConfigs.forEach(({ className, textContent, onClick, icon }) => {
+        const button = document.createElement('button');
+        button.className = className;
+        button.innerHTML = `<span class="quelora-icons-outlined">${icon}</span> ${textContent}`;
+        if (onClick) {
+          // Use single event listener with closure
+          button.onclick = handleButtonClick(onClick);
+        }
+        buttonFragment.appendChild(button);
+      });
+      footer.appendChild(buttonFragment);
+    }
+
+    modal.style.display = 'flex';
+
+    // Optimize event listeners by reusing handlers
+    const handleModalClick = (event) => {
+      if (event.target === modal) closeModalUI();
+    };
+    modal.onclick = handleModalClick;
+
+    const handleContextMenu = (event) => event.preventDefault();
+    modal.oncontextmenu = handleContextMenu;
+  } catch (error) {
+    console.error('Error setting up modal:', error);
+  }
+};
+
 function renderActivitiesUI(activities) {
     const notificationList = document.querySelector('#community-quelora-notification-list');
     if (!notificationList) return;
@@ -796,276 +887,201 @@ function renderReportedUI(message) {
     }
 }
 
-const setupModalUI = (bodyContent, buttonConfigs, blurClass) => {
+function showEditCommentUI(commentElement) {
   try {
-    const modal = document.querySelector('.quelora-modal');
-    if (!modal) return;
+    // Early validation and cache DOM elements
+    const modal = modalCache.modal || document.querySelector('.quelora-modal');
+    const threadsContainer = UiModule.getCommunityThreadsUI();
+    if (!modal || !threadsContainer || !commentElement) return;
 
-    const modalBody = modal.querySelector('.quelora-body');
-    const footer = modal.querySelector('.quelora-modal-footer');
+    setupModalUI('skeleton', [], '.community-threads');
 
-    const blurContainers = document.querySelectorAll(blurClass);
-    if (blurContainers.length > 0) {
-      blurContainers.forEach(container => {
-        container.style.filter = 'blur(2px) contrast(1.5) hue-rotate(90deg)';
+    const commentHeader = commentElement.querySelector('.comment-header');
+    if (!commentHeader) return;
+
+    // Extract attributes once
+    const currentEntity = threadsContainer.getAttribute('data-threads-entity');
+    const config = UtilsModule.getConfig(currentEntity) || {};
+    const { limits = {}, editing = {} } = config;
+    const commentId = commentHeader.getAttribute('data-comment-id');
+    const canEdit = commentHeader.getAttribute('data-can-edit') === 'true';
+    const canDelete = commentHeader.getAttribute('data-can-delete') === 'true';
+    const isReply = commentHeader.getAttribute('data-is-reply') === 'true';
+    const isOwner = commentHeader.getAttribute('data-owner') === 'true';
+
+    // Create body content
+    const fragment = document.createDocumentFragment();
+    const bodyContent = document.createElement('div');
+    bodyContent.className = 'quelora-to-work';
+
+    // Optimize cloning and cleanup
+    const clonedCommentElement = commentElement.cloneNode(true);
+    ['.community-thread', '.comment-actions', '.comment-like'].forEach(selector => {
+      clonedCommentElement.querySelector(selector)?.remove();
+    });
+    bodyContent.appendChild(clonedCommentElement);
+
+    let editInput = null;
+    if (canEdit) {
+      const editContainer = document.createElement('div');
+      editContainer.className = 'edit-container';
+
+      const commentText = commentElement.querySelector('.comment-text')?.textContent || '';
+      editInput = document.createElement('div');
+      editInput.contentEditable = 'true';
+      editInput.textContent = commentText;
+      editInput.className = 'comment-input';
+      editInput.id = 'quelora-input-edit';
+      editInput.setAttribute('placeholder', '{{addcomment}}');
+      editInput.setAttribute('enterkeyhint', 'send');
+      editInput.setAttribute('maxlength', isReply ? limits.reply_text || 200 : limits.comment_text || 200);
+
+      const editBar = document.createElement('div');
+      editBar.className = 'progress-bar';
+      editBar.id = 'quelora-input-edit-bar';
+
+      const inputContainer = document.createElement('div');
+      inputContainer.className = 'input-container';
+      inputContainer.append(editInput, editBar);
+
+      if (!UtilsModule.isMobile) {
+        const emojiButton = document.createElement('span');
+        emojiButton.classList.add('quelora-icons-outlined', 'emoji-button');
+        emojiButton.setAttribute('data-target-id', 'quelora-input-edit');
+        emojiButton.textContent = 'add_reaction';
+        inputContainer.appendChild(emojiButton);
+      }
+
+      editContainer.appendChild(inputContainer);
+      bodyContent.appendChild(editContainer);
+    }
+
+    // Configure buttons
+    const buttons = [];
+    if (canEdit) {
+      buttons.push({
+        className: 'quelora-btn save-button t',
+        textContent: '{{send}}',
+        onClick: handleConfirmEdit,
+        icon: 'send'
       });
     }
-    modal.setAttribute('data-blur', blurClass);
+    buttons.push({
+      className: 'quelora-btn close-button t',
+      textContent: '{{close}}',
+      onClick: UiModule.closeModalUI,
+      icon: 'close'
+    });
+    if (!isOwner) {
+      buttons.push({
+        className: 'quelora-btn report-button t',
+        textContent: '{{report}}',
+        onClick: () => UiModule.showReportCommentUI(commentElement),
+        icon: 'flag'
+      });
+    }
+    if (editing.allow_delete && canDelete) {
+      buttons.push({
+        className: 'quelora-btn delete-button t',
+        textContent: '{{delete}}',
+        onClick: handleConfirmDelete,
+        icon: 'delete'
+      });
+    }
 
-    modalBody.innerHTML = '';
-    footer.innerHTML = '';
+    // Setup modal with batched updates
+    setupModalUI(bodyContent, buttons, '.community-threads');
 
-    if (bodyContent) {
-      if (typeof bodyContent === 'string') {
-        UiModule.addLoadingMessageUI(modalBody, {
-          type: bodyContent === 'skeleton' ? 'skeleton' : 'message',
-          position: 'after',
-          empty: true,
-          count: 1
-        });
-      } else {
-        modalBody.appendChild(bodyContent);
+    // Async setup for editable input
+    if (canEdit) {
+      requestAnimationFrame(() => {
+        UtilsModule.makeEditableDivInput(editInput);
+        ProgressInput('quelora-input-edit', 'quelora-input-edit-bar');
+      });
+
+      const handleKeydown = (event) => {
+        try {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleConfirmEdit(event);
+          }
+        } catch (error) {
+          console.error('Error handling input keydown:', error);
+        }
+      };
+      editInput.onkeydown = handleKeydown;
+    }
+
+    function handleConfirmEdit(event) {
+      try {
+        event.preventDefault();
+        if (!editInput) return;
+
+        const editComment = editInput.textContent;
+        const pickerContainer = UiModule.getPickerContainerUI();
+        if (pickerContainer) pickerContainer.style.display = 'none';
+
+        CommentsModule.fetchEditComment(currentEntity, commentId, editComment);
+        UiModule.closeModalUI();
+      } catch (error) {
+        console.error('Error confirming edit:', error);
       }
     }
 
-    if (Array.isArray(buttonConfigs) && buttonConfigs.length > 0) {
-      const handleButtonClick = (onClick) => (event) => onClick && onClick(event);
-      buttonConfigs.forEach(({ className, textContent, onClick, icon }) => {
-        const button = document.createElement('button');
-        button.className = className;
-        button.innerHTML = `<span class="quelora-icons-outlined">${icon}</span> ${textContent}`;
-        if (onClick) {
-          button.removeEventListener('click', handleButtonClick(onClick));
-          button.addEventListener('click', handleButtonClick(onClick));
+    let deleteTimeout;
+    let deleteCountdown = 5;
+    let countdownInterval;
+
+    function handleConfirmDelete() {
+      try {
+        const deleteButton = modal.querySelector('.delete-button');
+        if (!deleteButton) return;
+
+        const currentState = deleteButton.getAttribute('data-state') || 'delete';
+
+        if (currentState === 'cancel') {
+          clearTimeout(deleteTimeout);
+          clearInterval(countdownInterval);
+          deleteButton.innerHTML = `<span class="quelora-icons-outlined">delete</span> ${I18n.getTranslation('delete')}`;
+          deleteButton.classList.remove('counting');
+          deleteButton.setAttribute('data-state', 'delete');
+          deleteCountdown = 5;
+          return;
         }
-        footer.appendChild(button);
-      });
+
+        deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
+        deleteButton.classList.add('counting');
+        deleteButton.setAttribute('data-state', 'cancel');
+
+        const executeDeleteComment = () => {
+          UiModule.closeModalUI();
+          CommentsModule.fetchDelComment(currentEntity, commentId);
+        };
+
+        deleteTimeout = UtilsModule.startTimeout(executeDeleteComment, deleteCountdown * 1000);
+
+        countdownInterval = setInterval(() => {
+          try {
+            deleteCountdown--;
+            if (deleteCountdown > 0) {
+              deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
+            } else {
+              clearInterval(countdownInterval);
+              deleteButton.classList.remove('counting');
+              deleteButton.setAttribute('data-state', 'delete');
+            }
+          } catch (error) {
+            console.error('Error in countdown interval:', error);
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+      } catch (error) {
+        console.error('Error confirming delete:', error);
+      }
     }
-
-    modal.style.display = 'flex';
-
-    const handleModalClick = (event) => {
-      if (event.target === modal) closeModalUI();
-    };
-    modal.removeEventListener('click', handleModalClick);
-    modal.addEventListener('click', handleModalClick, { once: true });
-
-    const handleContextMenu = (event) => event.preventDefault();
-    modal.removeEventListener('contextmenu', handleContextMenu);
-    modal.addEventListener('contextmenu', handleContextMenu);
   } catch (error) {
-    console.error('Error setting up modal:', error);
+    console.error('Error showing edit comment modal:', error);
   }
-};
-
-function showEditCommentUI(commentElement) {
-    try {
-        // Cachear elementos del DOM al inicio
-        const modal = document.querySelector('.quelora-modal');
-        const threadsContainer = UiModule.getCommunityThreadsUI();
-        if (!modal || !threadsContainer || !commentElement) return;
-
-        UiModule.setupModalUI( 'skeleton', {}, '.community-threads');
-
-        const commentHeader = commentElement.querySelector('.comment-header');
-        if (!commentHeader) return;
-
-        // Obtener configuración una sola vez
-        const currentEntity = threadsContainer.getAttribute('data-threads-entity');
-        const config = UtilsModule.getConfig(currentEntity) || {};
-        const limits = config.limits || {};
-        const editing = config.editing || {};
-
-        // Extraer atributos del comentario
-        const commentId = commentHeader.getAttribute('data-comment-id');
-        const canEdit = commentHeader.getAttribute('data-can-edit') === 'true';
-        const canDelete = commentHeader.getAttribute('data-can-delete') === 'true';
-        const isReply = commentHeader.getAttribute('data-is-reply') === 'true';
-        const isOwner = commentHeader.getAttribute('data-owner') === 'true';
-
-        // Crear fragmento para minimizar reflujos
-        const fragment = document.createDocumentFragment();
-        const bodyContent = document.createElement('div');
-        bodyContent.className = 'quelora-to-work';
-        fragment.appendChild(bodyContent);
-
-        // Clonar comentario y limpiar elementos innecesarios
-        const clonedCommentElement = commentElement.cloneNode(true);
-        clonedCommentElement.querySelector('.community-thread')?.remove();
-        clonedCommentElement.querySelector('.comment-actions')?.remove();
-        clonedCommentElement.querySelector('.comment-like')?.remove();
-        bodyContent.appendChild(clonedCommentElement);
-
-        // Configurar input editable si se permite editar
-        let editInput = null;
-        if (canEdit) {
-            const editContainer = document.createElement('div');
-            editContainer.className = 'edit-container';
-            
-            const commentText = commentElement.querySelector('.comment-text')?.textContent || '';
-            editInput = document.createElement('div');
-            editInput.contentEditable = 'true';
-            editInput.textContent = commentText;
-            editInput.className = 'comment-input';
-            editInput.id = 'quelora-input-edit';
-            editInput.setAttribute('placeholder', '{{addcomment}}');
-            editInput.setAttribute('enterkeyhint', 'send');
-            editInput.setAttribute('maxlength', isReply ? limits.reply_text || 200 : limits.comment_text || 200);
-
-            const editBar = document.createElement('div');
-            editBar.className = 'progress-bar';
-            editBar.id = 'quelora-input-edit-bar';
-
-            const inputContainer = document.createElement('div');
-            inputContainer.className = 'input-container';
-            inputContainer.appendChild(editInput);
-            inputContainer.appendChild(editBar);
-
-            if (!UtilsModule.isMobile) {
-                const emojiButton = document.createElement('span');
-                emojiButton.classList.add('quelora-icons-outlined', 'emoji-button');
-                emojiButton.setAttribute('data-target-id', 'quelora-input-edit');
-                emojiButton.textContent = 'add_reaction';
-                inputContainer.appendChild(emojiButton);
-            }
-
-            editContainer.appendChild(inputContainer);
-            bodyContent.appendChild(editContainer);
-        }
-
-        // Configurar botones
-        const buttons = [];
-        if (canEdit) {
-            buttons.push({
-                className: 'quelora-btn save-button t',
-                textContent: '{{send}}',
-                onClick: handleConfirmEdit,
-                icon: 'send'
-            });
-        }
-        buttons.push({
-            className: 'quelora-btn close-button t',
-            textContent: '{{close}}',
-            onClick: UiModule.closeModalUI,
-            icon: 'close'
-        });
-        if (!isOwner) {
-            buttons.push({
-                className: 'quelora-btn report-button t',
-                textContent: '{{report}}',
-                onClick: () => UiModule.showReportCommentUI(commentElement),
-                icon: 'flag'
-            });
-        }
-        if (editing.allow_delete && canDelete) {
-            buttons.push({
-                className: 'quelora-btn delete-button t',
-                textContent: '{{delete}}',
-                onClick: handleConfirmDelete,
-                icon: 'delete'
-            });
-        }
-
-        // Configurar modal
-        UiModule.setupModalUI(bodyContent, buttons, '.community-threads');
-
-        // Configurar input editable y progress bar de forma asíncrona
-        if (canEdit) {
-            requestAnimationFrame(() => {
-                UtilsModule.makeEditableDivInput(editInput);
-                ProgressInput("quelora-input-edit", "quelora-input-edit-bar");
-            });
-
-            const handleKeydown = (event) => {
-                try {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        handleConfirmEdit(event);
-                    }
-                } catch (error) {
-                    console.error('Error handling input keydown:', error);
-                }
-            };
-
-            editInput.removeEventListener('keydown', handleKeydown);
-            editInput.addEventListener('keydown', handleKeydown);
-        }
-
-        function handleConfirmEdit(event) {
-            try {
-                event.preventDefault();
-                if (!editInput) return;
-
-                const editComment = editInput.textContent;
-                const pickerContainer = UiModule.getPickerContainerUI();
-                if (pickerContainer) pickerContainer.style.display = 'none';
-
-                CommentsModule.fetchEditComment(currentEntity, commentId, editComment);
-                UiModule.closeModalUI();
-            } catch (error) {
-                console.error('Error confirming edit:', error);
-            }
-        }
-
-        let deleteTimeout;
-        let deleteCountdown = 5;
-        let countdownInterval;
-
-        function handleConfirmDelete() {
-            try {
-                const deleteButton = modal.querySelector('.delete-button');
-                if (!deleteButton) return;
-
-                const currentState = deleteButton.getAttribute('data-state') || 'delete';
-
-                if (currentState === 'cancel') {
-                    clearTimeout(deleteTimeout);
-                    clearInterval(countdownInterval);
-                    deleteButton.textContent = '';
-                    deleteButton.appendChild(Object.assign(document.createElement('span'), {
-                        className: 'quelora-icons-outlined',
-                        textContent: 'delete'
-                    }));
-                    deleteButton.appendChild(document.createTextNode(` ${I18n.getTranslation('delete')}`));
-                    deleteButton.classList.remove('counting');
-                    deleteButton.setAttribute('data-state', 'delete');
-                    deleteCountdown = 5;
-                    return;
-                }
-
-                deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
-                deleteButton.classList.add('counting');
-                deleteButton.setAttribute('data-state', 'cancel');
-
-                const executeDeleteComment = () => {
-                    UiModule.closeModalUI();
-                    CommentsModule.fetchDelComment(currentEntity, commentId);
-                };
-
-                deleteTimeout = UtilsModule.startTimeout(executeDeleteComment, deleteCountdown * 1000);
-
-                countdownInterval = setInterval(() => {
-                    try {
-                        deleteCountdown--;
-                        if (deleteCountdown > 0) {
-                            deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
-                        } else {
-                            clearInterval(countdownInterval);
-                            deleteButton.classList.remove('counting');
-                            deleteButton.setAttribute('data-state', 'delete');
-                        }
-                    } catch (error) {
-                        console.error('Error in countdown interval:', error);
-                        clearInterval(countdownInterval);
-                    }
-                }, 1000);
-            } catch (error) {
-                console.error('Error confirming delete:', error);
-            }
-        }
-    } catch (error) {
-        console.error('Error showing edit comment modal:', error);
-    }
 }
 
 function handleAudioResponseUI(commentId, audioBase64) {
@@ -2093,7 +2109,10 @@ const getCommentHeaderUI = (commentId, returnParent = false) => {
 * @returns {HTMLElement|null} The .community element or null.
 */
 const getCommunityUI = () => {
-    return document.querySelector('#quelora-comments');
+    if (!cachedCommunityUI) {
+        cachedCommunityUI = document.querySelector('#quelora-comments');
+    }
+    return cachedCommunityUI;
 }
 
 /**
@@ -2101,7 +2120,10 @@ const getCommunityUI = () => {
 * @returns {HTMLElement|null} The .community-threads element or null.
 */
 const getCommunityThreadsUI = () => {
-    return document.querySelector('#quelora-comments .community-threads');
+    if (!cachedCommunityThreadsUI) {
+        cachedCommunityThreadsUI = document.querySelector('#quelora-comments .community-threads');
+    }
+    return cachedCommunityThreadsUI;
 }
 
 /**
@@ -2109,15 +2131,22 @@ const getCommunityThreadsUI = () => {
 * @returns {HTMLElement|null} The #quelora-profile element or null.
 */
 const getProfileContainerUI = () => {
-    return document.getElementById('quelora-profile');
+    if (!cachedProfileContainerUI) {
+        cachedProfileContainerUI = document.getElementById('quelora-profile');
+    }
+    return cachedProfileContainerUI;
 }
+
 
 /** 
 * Gets the main comment input. 
 * @returns {HTMLElement|null} The #quelora-input or null element. 
 */
 const getCommentInputUI  = () =>  { 
-    return document.getElementById('quelora-input');
+    if (!cachedCommentInputUI) {
+        cachedCommentInputUI = document.getElementById('quelora-input');
+    }
+    return cachedCommentInputUI;
 }
 
 /** 
@@ -2130,19 +2159,23 @@ const getCommentRepliesUI = (replyId) => {
 }
 
 const getLikesListUI = () => {
-    return document.getElementById('quelora-likes-list');
+    if (!cachedLikesListUI) cachedLikesListUI = document.getElementById('quelora-likes-list');
+    return cachedLikesListUI;
 }
 
 const getPickerContainerUI = () =>  {
-    return document.getElementById('quelora-picker-container');
+    if (!cachedPickerContainerUI) cachedPickerContainerUI = document.getElementById('quelora-picker-container');
+    return cachedPickerContainerUI;
 }
 
 const getSendButtonUI = () =>  {
-    return document.getElementById('quelora-send');
+    if (!cachedSendButtonUI) cachedSendButtonUI = document.getElementById('quelora-send');
+    return cachedSendButtonUI;
 }
 
 const getShareButtonUI = () =>  {
-    return document.getElementById('quelora-share');
+    if (!cachedShareButtonUI) cachedShareButtonUI = document.getElementById('quelora-share');
+    return cachedShareButtonUI;
 }
 
 /**
