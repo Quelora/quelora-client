@@ -472,7 +472,6 @@ async function fetchComments(entityId, lastCommentId = null, includeLast = false
         
         // Reset scroll position if loading first page
         if (!lastCommentId && commentsSection) {
-            commentsSection.scrollTo({ top: 0, behavior: 'smooth' });
             storedComments.clear();
             cleanupVisibilityObservers();
             setupVisibilityObservers();
@@ -531,10 +530,13 @@ async function fetchNested(entityId, commentId, replyId) {
     try {
         token = SessionModule.getTokenIfAvailable();
         const threadsContainer = UiModule.getCommunityThreadsUI();
-        
+        UiModule.commentsDrawerUI.open();
         // Clear container if no commentId provided
         if (!commentId) {
-            threadsContainer?.replaceChildren();
+            storedComments.clear();
+            cleanupVisibilityObservers();
+            setupVisibilityObservers();
+            threadsContainer.replaceChildren();
         }
         
         // Show loading message

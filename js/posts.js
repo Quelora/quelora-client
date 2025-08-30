@@ -403,17 +403,14 @@ function attachEventListeners(entityId) {
  */
 async function loadThread(entityId, lastCommentId = null, includeLast = false) {
     if (lastCommentId === null) {
-        const threadsContainer = UiModule.getCommunityThreadsUI();
-        const parentElement = threadsContainer.parentElement;
-       // threadsContainer.style.height = parentElement.offsetHeight + 'px';
-
         CommentsModule.attachCommentInputListener(entityId);
         UiModule.createEmojiPickerBarUI();
         UtilsModule.setInputLimit(
             UtilsModule.getConfig(entityId)?.limits?.comment_text
         );
-        UiModule.commentsDrawerUI.open();
+       
     }
+    UiModule.commentsDrawerUI.open();
     CommentsModule.fetchComments(entityId, lastCommentId, includeLast);
 
 }
