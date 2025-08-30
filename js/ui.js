@@ -894,8 +894,6 @@ function showEditCommentUI(commentElement) {
     const threadsContainer = UiModule.getCommunityThreadsUI();
     if (!modal || !threadsContainer || !commentElement) return;
 
-    setupModalUI('skeleton', [], '.community-threads');
-
     const commentHeader = commentElement.querySelector('.comment-header');
     if (!commentHeader) return;
 
@@ -908,18 +906,6 @@ function showEditCommentUI(commentElement) {
     const canDelete = commentHeader.getAttribute('data-can-delete') === 'true';
     const isReply = commentHeader.getAttribute('data-is-reply') === 'true';
     const isOwner = commentHeader.getAttribute('data-owner') === 'true';
-
-    // Create body content
-    const fragment = document.createDocumentFragment();
-    const bodyContent = document.createElement('div');
-    bodyContent.className = 'quelora-to-work';
-
-    // Optimize cloning and cleanup
-    const clonedCommentElement = commentElement.cloneNode(true);
-    ['.community-thread', '.comment-actions', '.comment-like'].forEach(selector => {
-      clonedCommentElement.querySelector(selector)?.remove();
-    });
-    bodyContent.appendChild(clonedCommentElement);
 
     let editInput = null;
     if (canEdit) {
@@ -990,7 +976,21 @@ function showEditCommentUI(commentElement) {
     }
 
     // Setup modal with batched updates
-    setupModalUI(bodyContent, buttons, '.community-threads');
+    setupModalUI('skeleton', buttons, '.community-threads');
+
+    setTimeout(() => {
+        const containter = modal.querySelector('#quelora-modal .quelora-body');
+        const bodyContent = document.createElement('div');
+        bodyContent.className = 'quelora-to-work';
+        const cloned = commentElement.cloneNode(true);
+        ['.community-thread', '.comment-actions', '.comment-like'].forEach(sel => {
+            cloned.querySelector(sel)?.remove();
+        });
+        bodyContent.innerHTML = '';
+        bodyContent.appendChild(cloned);
+        containter.replaceChildren();
+        containter.appendChild(bodyContent);
+    }, 0);
 
     // Async setup for editable input
     if (canEdit) {
@@ -1010,7 +1010,7 @@ function showEditCommentUI(commentElement) {
         }
       };
       editInput.onkeydown = handleKeydown;
-    }
+    }   
 
     function handleConfirmEdit(event) {
       try {

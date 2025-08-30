@@ -235,7 +235,6 @@ function setupVisibilityObservers() {
     };
 }
 
-
 function cleanupVisibilityObservers() {
     if (visibilityObserver) {
         visibilityObserver.disconnect();
