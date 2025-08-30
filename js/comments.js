@@ -231,6 +231,7 @@ function setupVisibilityObservers() {
     };
 }
 
+
 function cleanupVisibilityObservers() {
     if (visibilityObserver) {
         visibilityObserver.disconnect();
@@ -474,6 +475,7 @@ async function fetchComments(entityId, lastCommentId = null, includeLast = false
             commentsSection.scrollTo({ top: 0, behavior: 'smooth' });
             storedComments.clear();
             cleanupVisibilityObservers();
+            setupVisibilityObservers();
         }
         
         // Get current token
