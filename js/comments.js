@@ -55,8 +55,7 @@ const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 const LOAD_MORE_ROOT_MARGIN = '0px 0px 400px 0px'; //pixels
 
-const VISIBILITY_THRESHOLD = 1500; // pixels
-const VISIBLE_THRESHOLD = 30;      // nodes
+const DEHYDRATION_THRESHOLD = 2;
 
 // ==================== PRIVATE VARIABLES ====================
 let workerInstance = null;
@@ -178,7 +177,7 @@ function setupVisibilityObservers() {
             if (c.getAttribute('data-comment-visible') === 'false' &&
                 c.getBoundingClientRect().bottom < containerRect.top) {
                 count++;
-                if (count > 2) {
+                if (count > DEHYDRATION_THRESHOLD) {
                     //console.log(`Dehydrating comment ${commentId}`);
                     dehydrateComment(c, commentId);
                 }
@@ -196,7 +195,7 @@ function setupVisibilityObservers() {
             if (c.getAttribute('data-comment-visible') === 'false' &&
                 c.getBoundingClientRect().top > containerRect.bottom) {
                 count++;
-                if (count > 2) {
+                if (count > DEHYDRATION_THRESHOLD) {
                     //console.log(`Dehydrating comment ${commentId}`);
                     dehydrateComment(c, commentId);
                 }
