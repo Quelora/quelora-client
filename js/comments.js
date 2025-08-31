@@ -55,9 +55,8 @@ const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 const LOAD_MORE_ROOT_MARGIN = '0px 0px 400px 0px'; //pixels
 
-const VISIBILITY_THRESHOLD = 1000; // pixels
-const VISIBILITY_THROTTLE = 300;   // ms
-const VISIBLE_THRESHOLD = 20;      // nodes
+const VISIBILITY_THRESHOLD = 1500; // pixels
+const VISIBLE_THRESHOLD = 30;      // nodes
 
 // ==================== PRIVATE VARIABLES ====================
 let workerInstance = null;
@@ -76,61 +75,45 @@ let touchStartY = 0;
 let storedComments = new Map();
 let storedRenderedComments  = new Map();
 
-// ==================== UTILITY FUNCTIONS ====================
-function throttle(func, limit) {
-    let lastFunc;
-    let lastRan;
-    return function(...args) {
-        if (!lastRan) {
-            func.apply(null, args);
-            lastRan = Date.now();
-        } else {
-            clearTimeout(lastFunc);
-            lastFunc = setTimeout(() => {
-                if ((Date.now() - lastRan) >= limit) {
-                    func.apply(null, args);
-                    lastRan = Date.now();
-                }
-            }, limit - (Date.now() - lastRan));
-        }
-    };
-}
 
 // ==================== EVENT HANDLER UTILITIES ====================
+
 function setupVisibilityObservers() {
-    const parentThreadsContainer = UiModule.getCommunityThreadsUI()?.parentElement;
+    const threadsContainer = UiModule.getCommunityThreadsUI();
+    const drawerContent = threadsContainer?.closest('.drawer-content') || document.querySelector('.drawer-content');
     
-    if (!parentThreadsContainer) {
-        console.log('No threads container found');
+    if (!threadsContainer || !drawerContent) {
+        //console.log('No threads container or drawer-content found');
         return;
     }
     
     cleanupVisibilityObservers();
     
-    function handleCommentVisibility() {
-        const containerRect = parentThreadsContainer.getBoundingClientRect();
-        const comments = Array.from(parentThreadsContainer.querySelectorAll('.community-thread'));
-        if (comments.length === 0) return;
-
+    const observer = new IntersectionObserver((entries) => {
+        const containerRect = drawerContent.getBoundingClientRect();
+        const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
         let invisibleUpCount = 0;
         let invisibleDownCount = 0;
-
-        comments.forEach(comment => {
-            const commentRect = comment.getBoundingClientRect();
+        
+        entries.forEach(entry => {
+            const comment = entry.target;
             const header = comment.querySelector('.comment-header[data-comment-id]');
             const commentId = header ? header.getAttribute('data-comment-id') : null;
-            const isVisible = (
-                commentRect.bottom >= (containerRect.top - VISIBILITY_THRESHOLD) &&
-                commentRect.top <= (containerRect.bottom + VISIBILITY_THRESHOLD)
-            );
-
-            if (isVisible) {
+            if (!commentId) {
+                //console.log('No commentId found for comment element:', comment);
+                return;
+            }
+            
+            if (entry.isIntersecting) {
                 comment.setAttribute('data-comment-visible', 'true');
+                //console.log(`Comment ${commentId} is visible: ${entry.isIntersecting}`);
                 if (comment.hasAttribute('data-comment-dehydrated')) {
+                    //console.log(`Attempting to rehydrate comment ${commentId}`);
                     rehydrateComment(comment);
                 }
             } else {
                 comment.setAttribute('data-comment-visible', 'false');
+                const commentRect = comment.getBoundingClientRect();
                 if (commentRect.bottom < containerRect.top) {
                     invisibleUpCount++;
                 } else if (commentRect.top > containerRect.bottom) {
@@ -138,96 +121,134 @@ function setupVisibilityObservers() {
                 }
             }
         });
-
-        function dehydrateUpwards() {
-            let count = 0;
-            for (let i = comments.length - 1; i >= 0; i--) {
-                const c = comments[i];
-                const header = c.querySelector('.comment-header[data-comment-id]');
-                const commentId = header ? header.getAttribute('data-comment-id') : null;
-                if (!commentId) continue;
-                if (c.getAttribute('data-comment-visible') === 'false' &&
-                    c.getBoundingClientRect().bottom < containerRect.top) {
-                    count++;
-                    if (count > VISIBLE_THRESHOLD) {
-                        dehydrateComment(c, commentId);
-                    }
-                }
-            }
-        }
-
-        function dehydrateDownwards() {
-            let count = 0;
-            for (let i = 0; i < comments.length; i++) {
-                const c = comments[i];
-                const header = c.querySelector('.comment-header[data-comment-id]');
-                const commentId = header ? header.getAttribute('data-comment-id') : null;
-                if (!commentId) continue;
-                if (c.getAttribute('data-comment-visible') === 'false' &&
-                    c.getBoundingClientRect().top > containerRect.bottom) {
-                    count++;
-                    if (count > VISIBLE_THRESHOLD) {
-                        dehydrateComment(c, commentId);
-                    }
-                }
-            }
-        }
-
-        if (invisibleUpCount > VISIBLE_THRESHOLD) {
-            dehydrateUpwards();
-        }
-        if (invisibleDownCount > VISIBLE_THRESHOLD) {
-            dehydrateDownwards();
-        }
-
-        function dehydrateComment(c, commentId) {
-            if (c.hasAttribute('data-comment-dehydrated')) return;
-
-            const originalDisplay = c.style.display;
-            c.style.display = 'block';
-
-            const rect = c.getBoundingClientRect();
-            let totalHeight = rect.height;
-
-            const repliesContainer = c.querySelector('.comment-replies');
-            let repliesHeight = 0;
-            if (repliesContainer) {
-                const repliesRect = repliesContainer.getBoundingClientRect();
-                repliesHeight = repliesRect.height;
-            }
-            
-            c.style.display = originalDisplay;
-            c.style.minHeight = Math.max(totalHeight - repliesHeight, 0) + "px";
         
-            c.replaceChildren();
-            c.setAttribute('data-comment-dehydrated', commentId);
+        //console.log(`Invisible comments: Up=${invisibleUpCount}, Down=${invisibleDownCount}`);
+        
+        if (invisibleUpCount > 2) {
+            //console.log(`Dehydrating upwards, ${invisibleUpCount} invisible comments`);
+            UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect), 100);
         }
-
-        async function rehydrateComment(c) {
-            if (!c.hasAttribute('data-comment-dehydrated')) return;
-            const entity = UiModule.getCommunityThreadsUI().getAttribute('data-threads-entity');
-            const commentId = c.getAttribute('data-comment-dehydrated');
-            const commentElement = createCommentElement(storedComments.get(commentId), entity);
-            c.replaceChildren(...commentElement.childNodes);
-            c.removeAttribute('data-comment-dehydrated');
+        if (invisibleDownCount > 2) {
+            //console.log(`Dehydrating downwards, ${invisibleDownCount} invisible comments`);
+            UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect), 100);
         }
-    }
-
-    const throttledCheck = throttle(handleCommentVisibility, VISIBILITY_THROTTLE);
-
-    parentThreadsContainer.addEventListener('scroll', throttledCheck, { passive: true });
-
-    handleCommentVisibility();
+    }, {
+        root: drawerContent,
+        rootMargin: '500px',
+        threshold: 0
+    });
+    
+    const observeComments = () => {
+        const comments = threadsContainer.querySelectorAll('.community-thread');
+        //console.log(`Observing ${comments.length} comments`);
+        comments.forEach(comment => {
+            if (!comment.dataset.observed) {
+                observer.observe(comment);
+                comment.dataset.observed = 'true';
+            }
+        });
+    };
+    
+    observeComments();
+    
+    const mutationObserver = new MutationObserver(() => {
+        observeComments();
+    });
+    
+    mutationObserver.observe(threadsContainer, { childList: true, subtree: true });
     
     visibilityObserver = {
         disconnect: () => {
-            parentThreadsContainer.removeEventListener('scroll', throttledCheck);
-            const commentHeaders = parentThreadsContainer.querySelectorAll('.comment-header[data-comment-id]');
+            observer.disconnect();
+            mutationObserver.disconnect();
+            const commentHeaders = threadsContainer.querySelectorAll('.comment-header[data-comment-id]');
             commentHeaders.forEach(header => {
                 header.removeAttribute('data-comment-visible');
             });
         }
     };
+
+    function dehydrateUpwards(comments, containerRect) {
+        let count = 0;
+        for (let i = comments.length - 1; i >= 0; i--) {
+            const c = comments[i];
+            const header = c.querySelector('.comment-header[data-comment-id]');
+            const commentId = header ? header.getAttribute('data-comment-id') : null;
+            if (!commentId) continue;
+            if (c.getAttribute('data-comment-visible') === 'false' &&
+                c.getBoundingClientRect().bottom < containerRect.top) {
+                count++;
+                if (count > 2) {
+                    //console.log(`Dehydrating comment ${commentId}`);
+                    dehydrateComment(c, commentId);
+                }
+            }
+        }
+    }
+
+    function dehydrateDownwards(comments, containerRect) {
+        let count = 0;
+        for (let i = 0; i < comments.length; i++) {
+            const c = comments[i];
+            const header = c.querySelector('.comment-header[data-comment-id]');
+            const commentId = header ? header.getAttribute('data-comment-id') : null;
+            if (!commentId) continue;
+            if (c.getAttribute('data-comment-visible') === 'false' &&
+                c.getBoundingClientRect().top > containerRect.bottom) {
+                count++;
+                if (count > 2) {
+                    //console.log(`Dehydrating comment ${commentId}`);
+                    dehydrateComment(c, commentId);
+                }
+            }
+        }
+    }
+
+    function dehydrateComment(c, commentId) {
+        if (c.hasAttribute('data-comment-dehydrated')) return;
+        const originalDisplay = c.style.display;
+        c.style.display = 'block';
+        const rect = c.getBoundingClientRect();
+        let totalHeight = rect.height;
+        const repliesContainer = c.querySelector('.comment-replies');
+        let repliesHeight = 0;
+        if (repliesContainer) {
+            const repliesRect = repliesContainer.getBoundingClientRect();
+            repliesHeight = repliesRect.height;
+        }
+        const header = c.querySelector('.comment-header[data-comment-id]');
+        c.replaceChildren(header);
+        c.style.display = originalDisplay;
+        c.style.minHeight = Math.max(totalHeight - repliesHeight, 0) + "px";
+        c.setAttribute('data-comment-dehydrated', commentId);
+        c.dataset.observed = 'false';
+        observer.observe(c);
+        //console.log(`Dehydrated comment ${commentId}, minHeight set to ${c.style.minHeight}`);
+    }
+
+    async function rehydrateComment(c) {
+        if (!c.hasAttribute('data-comment-dehydrated')) return;
+        const entity = UiModule.getCommunityThreadsUI()?.getAttribute('data-threads-entity');
+        const commentId = c.getAttribute('data-comment-dehydrated');
+        //console.log(`Rehydrating comment ${commentId}, entity: ${entity}`);
+        const commentData = storedComments.get(commentId);
+        if (!commentData) {
+            //console.log(`No stored comment data for ${commentId}`);
+            return;
+        }
+        //console.log(`Comment data for ${commentId}:`, commentData);
+        const commentElement = createCommentElement(commentData, entity);
+        if (commentElement) {
+            c.replaceChildren(...commentElement.childNodes);
+            c.removeAttribute('data-comment-dehydrated');
+            c.style.minHeight = '';
+            c.dataset.observed = 'false';
+            observer.observe(c);
+            //console.log(`Rehydrated comment ${commentId}`);
+        } else {
+            //console.log(`Failed to create comment element for ${commentId}`);
+        }
+    }
 }
 
 function cleanupVisibilityObservers() {
@@ -939,6 +960,9 @@ async function fetchAudio(commentId) {
  */
 function createCommentElement(comment, entity, isReply) {
     try {
+        // Basic validation
+        if (!comment || !comment._id) return;
+
         // Check if HTML is already stored in storedRenderedComments
         const storedRendered = storedRenderedComments.get(comment._id);
         if (storedRendered) {
