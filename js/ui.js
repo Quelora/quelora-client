@@ -568,33 +568,34 @@ const modalCache = {
   blurContainers: new Map()
 };
 
-const setupModalUI = (bodyContent, buttonConfigs = [], blurClass) => {
+const setupModalUI = (bodyContent, blurClass) => {
   try {
-    // Initialize cache if not already done
+    // Init cache
     if (!modalCache.modal) {
       modalCache.modal = document.querySelector('.quelora-modal');
       if (!modalCache.modal) return;
       modalCache.modalBody = modalCache.modal.querySelector('.quelora-body');
       modalCache.footer = modalCache.modal.querySelector('.quelora-modal-footer');
+      modalCache.blurContainers ??= new Map();
     }
 
     const { modal, modalBody, footer } = modalCache;
 
-    // Cache blur containers for reuse
+    // Cache blur containers
     if (!modalCache.blurContainers.has(blurClass)) {
       modalCache.blurContainers.set(blurClass, document.querySelectorAll(blurClass));
     }
-    const blurContainers = modalCache.blurContainers.get(blurClass);
+    const blurContainers = modalCache.blurContainers.get(blurClass) || [];
     blurContainers.forEach(container => {
       container.style.filter = 'blur(2px) contrast(1.5) hue-rotate(90deg)';
     });
     modal.setAttribute('data-blur', blurClass);
 
-    // Use DocumentFragment to batch DOM updates
-    const fragment = document.createDocumentFragment();
+    // Reset body + footer
     modalBody.innerHTML = '';
     footer.innerHTML = '';
 
+    // Render body
     if (bodyContent) {
       if (typeof bodyContent === 'string') {
         UiModule.addLoadingMessageUI(modalBody, {
@@ -604,43 +605,194 @@ const setupModalUI = (bodyContent, buttonConfigs = [], blurClass) => {
           count: 1
         });
       } else {
+        const fragment = document.createDocumentFragment();
         fragment.appendChild(bodyContent);
+        modalBody.appendChild(fragment);
       }
-    }
-    modalBody.appendChild(fragment);
-
-    // Batch button creation
-    if (buttonConfigs.length > 0) {
-      const buttonFragment = document.createDocumentFragment();
-      const handleButtonClick = (onClick) => (event) => onClick?.(event);
-      
-      buttonConfigs.forEach(({ className, textContent, onClick, icon }) => {
-        const button = document.createElement('button');
-        button.className = className;
-        button.innerHTML = `<span class="quelora-icons-outlined">${icon}</span> ${textContent}`;
-        if (onClick) {
-          // Use single event listener with closure
-          button.onclick = handleButtonClick(onClick);
-        }
-        buttonFragment.appendChild(button);
-      });
-      footer.appendChild(buttonFragment);
     }
 
     modal.style.display = 'flex';
 
-    // Optimize event listeners by reusing handlers
-    const handleModalClick = (event) => {
-      if (event.target === modal) closeModalUI();
-    };
-    modal.onclick = handleModalClick;
+    // Limpia handlers anteriores antes de asignar nuevos
+    modal.onclick = null;
+    modal.oncontextmenu = null;
 
-    const handleContextMenu = (event) => event.preventDefault();
-    modal.oncontextmenu = handleContextMenu;
+    modal.onclick = (event) => {
+      if (event.target === modal) UiModule.closeModalUI();
+    };
+    modal.oncontextmenu = (event) => event.preventDefault();
   } catch (error) {
     console.error('Error setting up modal:', error);
   }
 };
+
+function showEditCommentUI(commentElement) {
+  try {
+    const modal = modalCache.modal || document.querySelector('.quelora-modal');
+    const threadsContainer = UiModule.getCommunityThreadsUI();
+    if (!modal || !threadsContainer || !commentElement) return;
+
+    // Skeleton inicial
+    setupModalUI('skeleton', '.community-threads');
+
+    const commentHeader = commentElement.querySelector('.comment-header');
+    if (!commentHeader) return;
+
+    // Atributos / config
+    const currentEntity = threadsContainer.getAttribute('data-threads-entity');
+    const config = UtilsModule.getConfig(currentEntity) || {};
+    const { limits = {}, editing = {} } = config;
+    const commentId = commentHeader.getAttribute('data-comment-id');
+    const canEdit = commentHeader.getAttribute('data-can-edit') === 'true';
+    const canDelete = commentHeader.getAttribute('data-can-delete') === 'true';
+    const isReply = commentHeader.getAttribute('data-is-reply') === 'true';
+    const isOwner = commentHeader.getAttribute('data-owner') === 'true';
+
+    // Body content sin botones
+    const bodyContent = document.createElement('div');
+    bodyContent.className = 'quelora-to-work';
+
+    const clonedCommentElement = commentElement.cloneNode(true);
+    ['.community-thread', '.comment-actions', '.comment-like'].forEach(selector => {
+      clonedCommentElement.querySelector(selector)?.remove();
+    });
+    bodyContent.appendChild(clonedCommentElement);
+
+    // Editor
+    let editInput = null;
+    if (canEdit) {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = `
+        <div class="edit-container">
+          <div class="input-container">
+            <div contenteditable="true" class="comment-input" id="quelora-input-edit"
+                 placeholder="{{addcomment}}" enterkeyhint="send"
+                 data-maxlength="${isReply ? limits.reply_text || 200 : limits.comment_text || 200}"></div>
+            <div class="progress-bar" id="quelora-input-edit-bar"></div>
+            ${!UtilsModule.isMobile ? '<span class="quelora-icons-outlined emoji-button" data-target-id="quelora-input-edit">add_reaction</span>' : ''}
+          </div>
+        </div>
+      `;
+      bodyContent.appendChild(tpl.content);
+    }
+
+    // Render body (esto también limpia footer)
+    setupModalUI(bodyContent, '.community-threads');
+
+    // Seteamos el texto del input luego de insertarlo para evitar interpretar HTML
+    const originalText = commentElement.querySelector('.comment-text')?.textContent || '';
+    editInput = modalCache.modalBody.querySelector('#quelora-input-edit');
+    if (editInput) editInput.textContent = originalText;
+
+    // ----- BOTONES EN FOOTER -----
+    const footerTpl = document.createElement('template');
+    footerTpl.innerHTML = `
+      ${canEdit ? `<button class="quelora-btn save-button t"><span class="quelora-icons-outlined">send</span> {{send}}</button>` : ''}
+      <button class="quelora-btn close-button t"><span class="quelora-icons-outlined">close</span> {{close}}</button>
+      ${!isOwner ? `<button class="quelora-btn report-button t"><span class="quelora-icons-outlined">flag</span> {{report}}</button>` : ''}
+      ${(editing.allow_delete && canDelete) ? `<button class="quelora-btn delete-button t"><span class="quelora-icons-outlined">delete</span> {{delete}}</button>` : ''}
+    `;
+    modalCache.footer.appendChild(footerTpl.content);
+
+    // Listeners de botones (no se duplican porque el footer se limpia en setup)
+    const saveBtn = modalCache.footer.querySelector('.save-button');
+    const closeBtn = modalCache.footer.querySelector('.close-button');
+    const reportBtn = modalCache.footer.querySelector('.report-button');
+    const deleteBtn = modalCache.footer.querySelector('.delete-button');
+
+    if (saveBtn) saveBtn.onclick = handleConfirmEdit;
+    if (closeBtn) closeBtn.onclick = UiModule.closeModalUI;
+    if (reportBtn) reportBtn.onclick = () => UiModule.showReportCommentUI(commentElement);
+    if (deleteBtn) deleteBtn.onclick = handleConfirmDelete;
+
+    // Setup de input editable
+    if (canEdit && editInput) {
+      requestAnimationFrame(() => {
+        UtilsModule.makeEditableDivInput(editInput);
+        ProgressInput('quelora-input-edit', 'quelora-input-edit-bar');
+      });
+
+      editInput.onkeydown = (event) => {
+        try {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleConfirmEdit(event);
+          }
+        } catch (error) {
+          console.error('Error handling input keydown:', error);
+        }
+      };
+    }
+
+    function handleConfirmEdit(event) {
+      try {
+        event.preventDefault();
+        if (!editInput) return;
+        const editComment = editInput.textContent;
+        const pickerContainer = UiModule.getPickerContainerUI();
+        if (pickerContainer) pickerContainer.style.display = 'none';
+        CommentsModule.fetchEditComment(currentEntity, commentId, editComment);
+        UiModule.closeModalUI();
+      } catch (error) {
+        console.error('Error confirming edit:', error);
+      }
+    }
+
+    let deleteTimeout;
+    let deleteCountdown = 5;
+    let countdownInterval;
+
+    function handleConfirmDelete() {
+      try {
+        const deleteButton = modalCache.footer.querySelector('.delete-button');
+        if (!deleteButton) return;
+
+        const currentState = deleteButton.getAttribute('data-state') || 'delete';
+
+        if (currentState === 'cancel') {
+          clearTimeout(deleteTimeout);
+          clearInterval(countdownInterval);
+          deleteButton.innerHTML = `<span class="quelora-icons-outlined">delete</span> ${I18n.getTranslation('delete')}`;
+          deleteButton.classList.remove('counting');
+          deleteButton.setAttribute('data-state', 'delete');
+          deleteCountdown = 5;
+          return;
+        }
+
+        deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
+        deleteButton.classList.add('counting');
+        deleteButton.setAttribute('data-state', 'cancel');
+
+        const executeDeleteComment = () => {
+          UiModule.closeModalUI();
+          CommentsModule.fetchDelComment(currentEntity, commentId);
+        };
+
+        deleteTimeout = UtilsModule.startTimeout(executeDeleteComment, deleteCountdown * 1000);
+
+        countdownInterval = setInterval(() => {
+          try {
+            deleteCountdown--;
+            if (deleteCountdown > 0) {
+              deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
+            } else {
+              clearInterval(countdownInterval);
+              deleteButton.classList.remove('counting');
+              deleteButton.setAttribute('data-state', 'delete');
+            }
+          } catch (error) {
+            console.error('Error in countdown interval:', error);
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+      } catch (error) {
+        console.error('Error confirming delete:', error);
+      }
+    }
+  } catch (error) {
+    console.error('Error showing edit comment modal:', error);
+  }
+}
 
 function renderActivitiesUI(activities) {
     const notificationList = document.querySelector('#community-quelora-notification-list');
@@ -887,203 +1039,6 @@ function renderReportedUI(message) {
     }
 }
 
-function showEditCommentUI(commentElement) {
-  try {
-    // Early validation and cache DOM elements
-    const modal = modalCache.modal || document.querySelector('.quelora-modal');
-    const threadsContainer = UiModule.getCommunityThreadsUI();
-    if (!modal || !threadsContainer || !commentElement) return;
-
-    const commentHeader = commentElement.querySelector('.comment-header');
-    if (!commentHeader) return;
-
-    // Extract attributes once
-    const currentEntity = threadsContainer.getAttribute('data-threads-entity');
-    const config = UtilsModule.getConfig(currentEntity) || {};
-    const { limits = {}, editing = {} } = config;
-    const commentId = commentHeader.getAttribute('data-comment-id');
-    const canEdit = commentHeader.getAttribute('data-can-edit') === 'true';
-    const canDelete = commentHeader.getAttribute('data-can-delete') === 'true';
-    const isReply = commentHeader.getAttribute('data-is-reply') === 'true';
-    const isOwner = commentHeader.getAttribute('data-owner') === 'true';
-
-    let editInput = null;
-    if (canEdit) {
-      const editContainer = document.createElement('div');
-      editContainer.className = 'edit-container';
-
-      const commentText = commentElement.querySelector('.comment-text')?.textContent || '';
-      editInput = document.createElement('div');
-      editInput.contentEditable = 'true';
-      editInput.textContent = commentText;
-      editInput.className = 'comment-input';
-      editInput.id = 'quelora-input-edit';
-      editInput.setAttribute('placeholder', '{{addcomment}}');
-      editInput.setAttribute('enterkeyhint', 'send');
-      editInput.setAttribute('maxlength', isReply ? limits.reply_text || 200 : limits.comment_text || 200);
-
-      const editBar = document.createElement('div');
-      editBar.className = 'progress-bar';
-      editBar.id = 'quelora-input-edit-bar';
-
-      const inputContainer = document.createElement('div');
-      inputContainer.className = 'input-container';
-      inputContainer.append(editInput, editBar);
-
-      if (!UtilsModule.isMobile) {
-        const emojiButton = document.createElement('span');
-        emojiButton.classList.add('quelora-icons-outlined', 'emoji-button');
-        emojiButton.setAttribute('data-target-id', 'quelora-input-edit');
-        emojiButton.textContent = 'add_reaction';
-        inputContainer.appendChild(emojiButton);
-      }
-
-      editContainer.appendChild(inputContainer);
-      bodyContent.appendChild(editContainer);
-    }
-
-    // Configure buttons
-    const buttons = [];
-    if (canEdit) {
-      buttons.push({
-        className: 'quelora-btn save-button t',
-        textContent: '{{send}}',
-        onClick: handleConfirmEdit,
-        icon: 'send'
-      });
-    }
-    buttons.push({
-      className: 'quelora-btn close-button t',
-      textContent: '{{close}}',
-      onClick: UiModule.closeModalUI,
-      icon: 'close'
-    });
-    if (!isOwner) {
-      buttons.push({
-        className: 'quelora-btn report-button t',
-        textContent: '{{report}}',
-        onClick: () => UiModule.showReportCommentUI(commentElement),
-        icon: 'flag'
-      });
-    }
-    if (editing.allow_delete && canDelete) {
-      buttons.push({
-        className: 'quelora-btn delete-button t',
-        textContent: '{{delete}}',
-        onClick: handleConfirmDelete,
-        icon: 'delete'
-      });
-    }
-
-    // Setup modal with batched updates
-    setupModalUI('skeleton', buttons, '.community-threads');
-
-    setTimeout(() => {
-        const containter = modal.querySelector('#quelora-modal .quelora-body');
-        const bodyContent = document.createElement('div');
-        bodyContent.className = 'quelora-to-work';
-        const cloned = commentElement.cloneNode(true);
-        ['.community-thread', '.comment-actions', '.comment-like'].forEach(sel => {
-            cloned.querySelector(sel)?.remove();
-        });
-        bodyContent.innerHTML = '';
-        bodyContent.appendChild(cloned);
-        containter.replaceChildren();
-        containter.appendChild(bodyContent);
-    }, 0);
-
-    // Async setup for editable input
-    if (canEdit) {
-      requestAnimationFrame(() => {
-        UtilsModule.makeEditableDivInput(editInput);
-        ProgressInput('quelora-input-edit', 'quelora-input-edit-bar');
-      });
-
-      const handleKeydown = (event) => {
-        try {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            handleConfirmEdit(event);
-          }
-        } catch (error) {
-          console.error('Error handling input keydown:', error);
-        }
-      };
-      editInput.onkeydown = handleKeydown;
-    }   
-
-    function handleConfirmEdit(event) {
-      try {
-        event.preventDefault();
-        if (!editInput) return;
-
-        const editComment = editInput.textContent;
-        const pickerContainer = UiModule.getPickerContainerUI();
-        if (pickerContainer) pickerContainer.style.display = 'none';
-
-        CommentsModule.fetchEditComment(currentEntity, commentId, editComment);
-        UiModule.closeModalUI();
-      } catch (error) {
-        console.error('Error confirming edit:', error);
-      }
-    }
-
-    let deleteTimeout;
-    let deleteCountdown = 5;
-    let countdownInterval;
-
-    function handleConfirmDelete() {
-      try {
-        const deleteButton = modal.querySelector('.delete-button');
-        if (!deleteButton) return;
-
-        const currentState = deleteButton.getAttribute('data-state') || 'delete';
-
-        if (currentState === 'cancel') {
-          clearTimeout(deleteTimeout);
-          clearInterval(countdownInterval);
-          deleteButton.innerHTML = `<span class="quelora-icons-outlined">delete</span> ${I18n.getTranslation('delete')}`;
-          deleteButton.classList.remove('counting');
-          deleteButton.setAttribute('data-state', 'delete');
-          deleteCountdown = 5;
-          return;
-        }
-
-        deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
-        deleteButton.classList.add('counting');
-        deleteButton.setAttribute('data-state', 'cancel');
-
-        const executeDeleteComment = () => {
-          UiModule.closeModalUI();
-          CommentsModule.fetchDelComment(currentEntity, commentId);
-        };
-
-        deleteTimeout = UtilsModule.startTimeout(executeDeleteComment, deleteCountdown * 1000);
-
-        countdownInterval = setInterval(() => {
-          try {
-            deleteCountdown--;
-            if (deleteCountdown > 0) {
-              deleteButton.textContent = `${I18n.getTranslation('cancel')} (${deleteCountdown})`;
-            } else {
-              clearInterval(countdownInterval);
-              deleteButton.classList.remove('counting');
-              deleteButton.setAttribute('data-state', 'delete');
-            }
-          } catch (error) {
-            console.error('Error in countdown interval:', error);
-            clearInterval(countdownInterval);
-          }
-        }, 1000);
-      } catch (error) {
-        console.error('Error confirming delete:', error);
-      }
-    }
-  } catch (error) {
-    console.error('Error showing edit comment modal:', error);
-  }
-}
-
 function handleAudioResponseUI(commentId, audioBase64) {
     const audioContainer = document.querySelector(`.quelora-audio-container[data-comment-id="${commentId}"]`);
     if (!audioContainer) return;
@@ -1228,105 +1183,93 @@ function audioUI(transcript, audioBase64, audioHash, commentId) {
 }
 
 function showReportCommentUI(commentElement) {
-    try {
-        const threadsContainer = getCommunityThreadsUI();
-        if (!threadsContainer) return;
+  try {
+    const threadsContainer = getCommunityThreadsUI();
+    if (!threadsContainer) return;
 
-        const currentEntity = threadsContainer.getAttribute('data-threads-entity');
-        const commentHeader = commentElement?.querySelector('.comment-header');
-        if (!commentHeader) return;
+    const currentEntity = threadsContainer.getAttribute('data-threads-entity');
+    const commentHeader = commentElement?.querySelector('.comment-header');
+    if (!commentHeader) return;
 
-        const commentId = commentHeader.getAttribute('data-comment-id');
-        const authorId = commentHeader.parentElement.getAttribute('data-author-id');
-    
-        const reportContent = document.createElement('div');
-        reportContent.classList.add('report-content');
-    
-        const paragraph = document.createElement('p');
-        paragraph.classList.add('t');
-        paragraph.textContent = '{{reportReasonQuestion}}';
-    
-        const advertencia = document.createElement('div');
-        advertencia.classList.add('adv', 't');
-        advertencia.textContent = '{{anonymousReportWarning}}';
-    
-        const optionsList = document.createElement('ul');
-        optionsList.classList.add('report-options-list');
-    
-        const options = [
-            { id: 'option-spam', text: '{{spam}}', type: 'spam' },
-            { id: 'option-abuse', text: '{{abuse}}', type: 'abuse' },
-            { id: 'option-offensive', text: '{{offensive}}', type: 'offensive' },
-            { id: 'option-political', text: '{{political}}', type: 'political' },
-            { id: 'option-other', text: '{{other}}', type: 'other' }
-        ];
-    
-        options.forEach(option => {
-            try {
-                const listItem = document.createElement('li');
-                const handleReportClick = (event) => handleReport(event, currentEntity, commentId);
-                listItem.id = option.id;
-                listItem.classList.add('report-option', 't');
-                listItem.setAttribute('data-type', option.type);
-                listItem.textContent = option.text;
-                listItem.removeEventListener('click', handleReportClick);
-                listItem.addEventListener('click', handleReportClick);
-                optionsList.appendChild(listItem);
-            } catch (error) {
-                console.error('Error creating report option:', error);
-            }
-        });
+    const commentId = commentHeader.getAttribute('data-comment-id');
+    const authorId = commentHeader.parentElement.getAttribute('data-author-id');
 
-        const hideAuthorContainer = document.createElement('div');
-        hideAuthorContainer.classList.add('hide-author-container');
-        
-        const hideAuthorCheckbox = document.createElement('input');
-        hideAuthorCheckbox.type = 'checkbox';
-        hideAuthorCheckbox.id = 'hide-author-content';
-        hideAuthorCheckbox.name = 'hide-author-content';
-        
-        const hideAuthorLabel = document.createElement('label');
-        hideAuthorLabel.classList.add('t');
-        hideAuthorLabel.htmlFor = 'hide-author-content';
-        hideAuthorLabel.textContent = '{{hideAuthorContent}}'; 
-        
-        hideAuthorContainer.appendChild(hideAuthorCheckbox);
-        hideAuthorContainer.appendChild(hideAuthorLabel);
-    
-        reportContent.appendChild(paragraph);
-        reportContent.appendChild(advertencia);
-        reportContent.appendChild(optionsList);
-        reportContent.appendChild(hideAuthorContainer);
-    
-        const buttons = [
-            { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => closeModalUI(), icon: 'close' }
-        ];
-    
-        setupModalUI(reportContent, buttons,'.community-threads');
+    // Template SOLO para el body (sin footer)
+    const tpl = document.createElement('template');
+    tpl.innerHTML = `
+      <div class="report-content">
+        <p class="t">{{reportReasonQuestion}}</p>
+        <div class="adv t">{{anonymousReportWarning}}</div>
 
-        function handleReport(event, currentEntity, commentId) {
-            try {
-                event.preventDefault();
-                const type = event.target.getAttribute('data-type');
-                const hideAuthorContent = document.getElementById('hide-author-content').checked;
-                CommentsModule.fetchReportComment(currentEntity, commentId, type, hideAuthorContent);
-                if (hideAuthorContent && authorId) {
-                    const hiddenAuthors = JSON.parse(StorageModule.getSessionItem('quelora_hidden_authors') || '[]');
-                    if (!hiddenAuthors.includes(authorId)) {
-                        hiddenAuthors.push(authorId);
-                        StorageModule.setSessionItem('quelora_hidden_authors', JSON.stringify(hiddenAuthors));
-                    }
+        <ul class="report-options-list">
+          <li id="option-spam" class="report-option t" data-type="spam">{{spam}}</li>
+          <li id="option-abuse" class="report-option t" data-type="abuse">{{abuse}}</li>
+          <li id="option-offensive" class="report-option t" data-type="offensive">{{offensive}}</li>
+          <li id="option-political" class="report-option t" data-type="political">{{political}}</li>
+          <li id="option-other" class="report-option t" data-type="other">{{other}}</li>
+        </ul>
 
-                    ProfileModule.refreshBlockedAuthors();
-                    destroyElementsByUI(authorId);
-                }
-            } catch (error) {
-                console.error('Error handling report:', error);
-            }
+        <div class="hide-author-container">
+          <input type="checkbox" id="hide-author-content" name="hide-author-content" />
+          <label for="hide-author-content" class="t">{{hideAuthorContent}}</label>
+        </div>
+      </div>
+    `;
+
+    // extraemos el nodo principal del template (NO pasamos DocumentFragment a setupModalUI)
+    const bodyNode = tpl.content.querySelector('.report-content');
+
+    // Inicializa modal (esto limpia body y footer según tu setupModalUI)
+    setupModalUI(bodyNode, '.community-threads');
+
+    // Obtener referencias actualizadas del modal y footer (setupModalUI ya las cachea)
+    const modal = modalCache.modal || document.querySelector('.quelora-modal');
+    const footer = modalCache.footer || modal.querySelector('.quelora-modal-footer');
+
+    // --- Agregar botón Close en el footer (solo aquí) ---
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'quelora-btn close-button t';
+    closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+    closeBtn.onclick = () => UiModule.closeModalUI();
+    footer.appendChild(closeBtn);
+
+    // --- Añadir listeners a las opciones de reporte (ya presentes en el modal DOM) ---
+    const reportOptions = modal.querySelectorAll('.report-option');
+    reportOptions.forEach(option => {
+      option.addEventListener('click', (event) => {
+        handleReport(event, currentEntity, commentId);
+      });
+    });
+
+    // Handler de reporte (cierra modal al terminar)
+    function handleReport(event, currentEntity, commentId) {
+      try {
+        event.preventDefault();
+        const li = event.currentTarget || event.target;
+        const type = li.getAttribute('data-type');
+        const hideAuthorContent = modal.querySelector('#hide-author-content')?.checked;
+
+        CommentsModule.fetchReportComment(currentEntity, commentId, type, hideAuthorContent);
+
+        if (hideAuthorContent && authorId) {
+          const hiddenAuthors = JSON.parse(StorageModule.getSessionItem('quelora_hidden_authors') || '[]');
+          if (!hiddenAuthors.includes(authorId)) {
+            hiddenAuthors.push(authorId);
+            StorageModule.setSessionItem('quelora_hidden_authors', JSON.stringify(hiddenAuthors));
+          }
+
+          ProfileModule.refreshBlockedAuthors();
+          destroyElementsByUI(authorId);
         }
-    } catch (error) {
-        console.error('Error showing report comment modal:', error);
+
+        UiModule.closeModalUI();
+      } catch (error) {
+        console.error('Error handling report:', error);
+      }
     }
+  } catch (error) {
+    console.error('Error showing report comment modal:', error);
+  }
 }
 
 function destroyElementsByUI(id) {
@@ -2120,9 +2063,9 @@ const getCommunityUI = () => {
 * @returns {HTMLElement|null} The .community-threads element or null.
 */
 const getCommunityThreadsUI = () => {
-    if (!cachedCommunityThreadsUI) {
+
         cachedCommunityThreadsUI = document.querySelector('#quelora-comments .community-threads');
-    }
+    
     return cachedCommunityThreadsUI;
 }
 
@@ -2333,6 +2276,7 @@ const UiModule = {
     renderStatsUI,
     renderActivitiesUI,
     closeModalUI,
+    modalCache,
     likesDrawerUI,
     commentsDrawerUI,
     settingsDrawerUI,

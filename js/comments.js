@@ -50,12 +50,13 @@ import CaptchaModule from './captcha.js';
 const SCROLL_THRESHOLD = 10; 
 const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
+const MAX_RENDERED_COMMENTS = 100;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 const LOAD_MORE_ROOT_MARGIN = '0px 0px 400px 0px'; //pixels
 
 const VISIBILITY_THRESHOLD = 1000; // pixels
-const VISIBILITY_DEBOUNCE = 100;   // ms
+const VISIBILITY_THROTTLE = 300;   // ms
 const VISIBLE_THRESHOLD = 20;      // nodes
 
 // ==================== PRIVATE VARIABLES ====================
@@ -66,13 +67,34 @@ let activeCommentElement = null;
 let pressTimer = null;
 let useCaptcha = false;
 
-let resizeObserver  = null;
+
 let visibilityObserver = null;
 let activeAction = null;
 let touchStartX = 0;
 let touchStartY = 0;
 
 let storedComments = new Map();
+let storedRenderedComments  = new Map();
+
+// ==================== UTILITY FUNCTIONS ====================
+function throttle(func, limit) {
+    let lastFunc;
+    let lastRan;
+    return function(...args) {
+        if (!lastRan) {
+            func.apply(null, args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(() => {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(null, args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    };
+}
 
 // ==================== EVENT HANDLER UTILITIES ====================
 function setupVisibilityObservers() {
@@ -84,8 +106,6 @@ function setupVisibilityObservers() {
     }
     
     cleanupVisibilityObservers();
-    
-    let timeoutId = null;
     
     function handleCommentVisibility() {
         const containerRect = parentThreadsContainer.getBoundingClientRect();
@@ -183,53 +203,28 @@ function setupVisibilityObservers() {
             c.setAttribute('data-comment-dehydrated', commentId);
         }
 
-        function rehydrateComment(c) {
+        async function rehydrateComment(c) {
             if (!c.hasAttribute('data-comment-dehydrated')) return;
-            const fragment = document.createDocumentFragment();
             const entity = UiModule.getCommunityThreadsUI().getAttribute('data-threads-entity');
             const commentId = c.getAttribute('data-comment-dehydrated');
-
-            UiModule.addLoadingMessageUI(c, {
-                type: 'skeleton',
-                position: 'after',
-                empty: true,
-                count: 1
-            });
-
             const commentElement = createCommentElement(storedComments.get(commentId), entity);
-            
-            while (commentElement.firstChild) {
-                fragment.appendChild(commentElement.firstChild);
-            }
-            
-            c.replaceChildren();
-            c.appendChild(fragment);
+            c.replaceChildren(...commentElement.childNodes);
             c.removeAttribute('data-comment-dehydrated');
         }
-
     }
 
-    const debouncedCheck = () => {
-        if (timeoutId) clearTimeout(timeoutId);
-        timeoutId = setTimeout(handleCommentVisibility, VISIBILITY_DEBOUNCE);
-    };
+    const throttledCheck = throttle(handleCommentVisibility, VISIBILITY_THROTTLE);
 
-    parentThreadsContainer.addEventListener('scroll', debouncedCheck, { passive: true });
-    resizeObserver = new ResizeObserver(debouncedCheck);
-    resizeObserver.observe(parentThreadsContainer);
+    parentThreadsContainer.addEventListener('scroll', throttledCheck, { passive: true });
 
     handleCommentVisibility();
     
     visibilityObserver = {
         disconnect: () => {
-            parentThreadsContainer.removeEventListener('scroll', debouncedCheck);
-            if (timeoutId) clearTimeout(timeoutId);
-
+            parentThreadsContainer.removeEventListener('scroll', throttledCheck);
             const commentHeaders = parentThreadsContainer.querySelectorAll('.comment-header[data-comment-id]');
             commentHeaders.forEach(header => {
                 header.removeAttribute('data-comment-visible');
-                header.removeAttribute('data-comment-up');
-                header.removeAttribute('data-comment-down');
             });
         }
     };
@@ -239,10 +234,6 @@ function cleanupVisibilityObservers() {
     if (visibilityObserver) {
         visibilityObserver.disconnect();
         visibilityObserver = null;
-    }
-    if (resizeObserver) {
-        resizeObserver.disconnect();
-        resizeObserver = null;
     }
 }
 
@@ -724,6 +715,15 @@ async function fetchEditComment(entityId, commentId, editComment) {
         // Get the comment container
         const threadsContainer = UiModule.getCommentHeaderUI(commentId, true);
         
+        // Remove comment render from storedRenderedComments & storedComments
+        if (storedRenderedComments.has(commentId)) {
+            storedRenderedComments.delete(commentId);
+        }
+
+        if (storedComments.has(commentId)) {
+            storedComments.delete(commentId);
+        }
+
         threadsContainer.setAttribute('data-comment-id', commentId);
 
         // Add loading indicator
@@ -931,53 +931,57 @@ async function fetchAudio(commentId) {
 // ==================== UI COMPONENT CREATION ====================
 
 /**
- * Creates a comment DOM element
- * @param {Object} comment - Comment data
- * @param {Object} entity - Entity data
- * @param {boolean} isReply - Whether this is a reply
- * @returns {HTMLElement|null} The created comment element or null on error
+ * Constructs a DOM element for a comment
+ * @param {Object} comment - Comment data object
+ * @param {Object} entity - Entity data object
+ * @param {boolean} isReply - Indicates if the comment is a reply
+ * @returns {HTMLElement|null} The constructed comment element or null if an error occurs
  */
 function createCommentElement(comment, entity, isReply) {
     try {
+        // Check if HTML is already stored in storedRenderedComments
+        const storedRendered = storedRenderedComments.get(comment._id);
+        if (storedRendered) {
+            // Reuse stored HTML
+            const commentElement = document.createElement('div');
+            commentElement.innerHTML = storedRendered;
+            const wrapper = commentElement.firstElementChild;
+            attachCommentEventListeners(wrapper, comment, entity);
+            return wrapper;
+        }
+
+        // Cache configuration to avoid multiple accesses
+        const config = UtilsModule.getConfig(entity) || {};
+        const interactionConfig = config.interaction || {};
+        const languageConfig = config.language || {};
+        const editLimitTime = config.editing?.edit_time_limit || Infinity;
+
         // Create main container
         const commentElement = UiModule.createElementUI({
             tag: 'div',
             classes: ['community-thread'],
             attributes: { 'data-author-id': comment.author }
         });
-        
-        // Set default replies count if not provided
-        if (comment.repliesCount === undefined) {
-            comment.repliesCount = 0;
-        }
+
+        // Set default replies count
+        comment.repliesCount = comment.repliesCount ?? 0;
 
         // Prepare comment data
-        const initials = comment.profile?.name?.split(' ')
+        const initials = comment.profile?.name
+            ?.split(' ')
             .map(name => name[0])
             .join('')
             .toUpperCase() || '';
-            
+
         const timeAgo = UtilsModule.getTimeAgo(comment.timestamp ?? comment.created_at);
-        const repliesText = comment.repliesCount === 1 
-            ? "{{answer}}" 
-            : "{{answers}}";
-            
-        const likeIconClass = comment.authorLiked 
-            ? 'quelora-icons-outlined active' 
-            : 'quelora-icons-outlined';
-            
-        const likeIcon = comment.authorLiked 
-            ? 'favorite' 
-            : 'favorite_border';
+        const repliesText = comment.repliesCount === 1 ? "{{answer}}" : "{{answers}}";
+        const likeIconClass = comment.authorLiked ? 'quelora-icons-outlined active' : 'quelora-icons-outlined';
+        const likeIcon = comment.authorLiked ? 'favorite' : 'favorite_border';
 
         // Calculate edit permissions
-        const editLimitTime = UtilsModule.getConfig(entity)?.editing?.edit_time_limit;
-        const currentTime = new Date();
         const commentTime = new Date(comment.timestamp ?? comment.created_at);
-        const timeDiff = (currentTime - commentTime) / (1000 * 60);
-        const canEditOrDelete = timeDiff < editLimitTime && 
-                              comment.repliesCount === 0 && 
-                              !comment.hasAudio;
+        const timeDiff = (Date.now() - commentTime) / (1000 * 60);
+        const canEditOrDelete = timeDiff < editLimitTime && comment.repliesCount === 0 && !comment.hasAudio;
 
         // Create comment header
         const commentHeader = UiModule.createElementUI({
@@ -994,15 +998,20 @@ function createCommentElement(comment, entity, isReply) {
             }
         });
 
-        // Create avatar
+        // Create avatar with CSS class for static styles
         const commentAvatar = UiModule.createElementUI({
             tag: 'div',
-            classes: ['comment-avatar'],
-            content: initials,
+            classes: ['comment-avatar', comment.profile?.picture ? 'has-picture' : ''],
+            content: comment.profile?.picture ? '' : initials,
             attributes: { 'data-visibility': comment.profile?.visibility }
         });
 
-        // Create comment info section
+        // Apply profile picture if available
+        if (comment.profile?.picture) {
+            commentAvatar.style.backgroundImage = `url('${comment.profile.picture}')`;
+        }
+
+        // Create info section
         const commentInfo = UiModule.createElementUI({
             tag: 'div',
             classes: ['comment-info']
@@ -1011,9 +1020,7 @@ function createCommentElement(comment, entity, isReply) {
         const commentAuthor = UiModule.createElementUI({
             tag: 'span',
             classes: 'comment-author',
-            attributes: {
-                'data-author-user': comment.profile.author
-            },
+            attributes: { 'data-author-user': comment.profile.author },
             content: comment.profile.name || I18n.getTranslation('user'),
             translate: !comment.profile.name
         });
@@ -1023,36 +1030,31 @@ function createCommentElement(comment, entity, isReply) {
             classes: 'comment-time'
         });
 
-        if (comment.isEdited) {
-            const editedSpan = UiModule.createElementUI({
-                tag: 'span',
-                content: '{{edited}}',
-                translate: true
-            });
-            
-            const timeAgoSpan = UiModule.createElementUI({
-                tag: 'span',
-                content: timeAgo,
-                translate: true
-            });
-                
-            commentTimeElement.appendChild(editedSpan);
-            commentTimeElement.appendChild(document.createTextNode(' - '));
-            commentTimeElement.appendChild(timeAgoSpan);
-        } else {
-            const timeAgoSpan = UiModule.createElementUI({
-                tag: 'span',
-                classes: 't',
-                content: timeAgo,
-                translate: true
-            });
-            commentTimeElement.appendChild(timeAgoSpan);
-        }
+        // Optimize time creation
+        const timeContent = comment.isEdited
+            ? [
+                  { tag: 'span', content: '{{edited}}', translate: true },
+                  { tag: 'span', content: ' - ' },
+                  { tag: 'span', content: timeAgo, translate: true }
+              ]
+            : [{ tag: 'span', classes: 't', content: timeAgo, translate: true }];
+
+        timeContent.forEach(item => {
+            const element = item.tag === 'span'
+                ? UiModule.createElementUI({
+                      tag: 'span',
+                      classes: item.classes,
+                      content: item.content,
+                      translate: item.translate
+                  })
+                : document.createTextNode(item.content);
+            commentTimeElement.appendChild(element);
+        });
 
         commentInfo.appendChild(commentAuthor);
         commentInfo.appendChild(commentTimeElement);
 
-        // Create like section
+        // Create likes section
         const commentLike = UiModule.createElementUI({
             tag: 'div',
             classes: 'comment-like'
@@ -1067,7 +1069,7 @@ function createCommentElement(comment, entity, isReply) {
         const likeCount = UiModule.createElementUI({
             tag: 'span',
             classes: 'like-count',
-            content: comment.likes?.toString()
+            content: comment.likes?.toString() || '0'
         });
 
         commentLike.appendChild(likeIconElement);
@@ -1078,17 +1080,20 @@ function createCommentElement(comment, entity, isReply) {
         commentHeader.appendChild(commentInfo);
         commentHeader.appendChild(commentLike);
 
-        // Create comment text
+        // Create comment text (cache result)
         const commentText = UiModule.createElementUI({
             tag: 'div',
             classes: 'comment-text'
         });
-        commentText.appendChild(
-            MentionModule.processTextWithMentions(
-                comment.text, 
+
+        // Cache processed text
+        if (!comment.processedText) {
+            comment.processedText = MentionModule.processTextWithMentions(
+                comment.text,
                 ProfileModule.getMention
-            )
-        );
+            );
+        }
+        commentText.appendChild(comment.processedText.cloneNode(true));
 
         // Add elements to main container
         commentElement.appendChild(commentHeader);
@@ -1101,12 +1106,12 @@ function createCommentElement(comment, entity, isReply) {
                 classes: 'comment-audio-container'
             });
             const audioUI = UiModule.audioUI(
-                comment.text, 
-                null, 
-                comment.audioHash, 
+                comment.text,
+                null,
+                comment.audioHash,
                 comment._id
             );
-            
+
             if (audioContainer && audioUI) {
                 audioContainer.appendChild(audioUI);
                 commentElement.appendChild(audioContainer);
@@ -1114,59 +1119,61 @@ function createCommentElement(comment, entity, isReply) {
         }
 
         // Create action buttons
-        const commentActions = UiModule.createElementUI({ tag: 'div', classes: ['comment-actions'] });
-        
-        // Settings button
-        const settingsIcon = UiModule.createElementUI({
-            tag: 'span',
-            classes: ['quelora-icons-outlined', 'setting-comment'],
-            attributes: { 'data-comment-id': comment._id },
-            content: 'settings'
+        const commentActions = UiModule.createElementUI({
+            tag: 'div',
+            classes: ['comment-actions']
         });
-        commentActions.appendChild(settingsIcon);
+
+        // Settings button
+        commentActions.appendChild(
+            UiModule.createElementUI({
+                tag: 'span',
+                classes: ['quelora-icons-outlined', 'setting-comment'],
+                attributes: { 'data-comment-id': comment._id },
+                content: 'settings'
+            })
+        );
 
         // Reply button if allowed
-        if (UtilsModule.getConfig(entity)?.interaction?.allow_replies) {
-            const replyLink = UiModule.createElementUI({
-                tag: 'span',
-                classes: ['reply-text'],
-                attributes: { 'data-reply-id': comment._id },
-                content: '{{reply}}',
-                translate: true
-            });
-            commentActions.appendChild(replyLink);
+        if (interactionConfig.allow_replies) {
+            commentActions.appendChild(
+                UiModule.createElementUI({
+                    tag: 'span',
+                    classes: ['reply-text'],
+                    attributes: { 'data-reply-id': comment._id },
+                    content: '{{reply}}',
+                    translate: true
+                })
+            );
         }
 
         // Translate button if needed
-        if (UtilsModule.getConfig(entity)?.language?.auto_translate) {
-            const translateLink = UiModule.createElementUI({
-                tag: 'span',
-                classes: ['translate-text'],
-                attributes: { 'data-comment-id': comment._id },
-                content: '{{translate}}',
-                translate: true
-            });
-            
-            const queloraLanguage = ConfModule.get(
-                'quelora.language', 
-                navigator.language.substring(0, 2)
-            );
-            
+        if (languageConfig.auto_translate) {
+            const queloraLanguage = ConfModule.get('quelora.language', navigator.language.substring(0, 2));
             if (comment.language !== queloraLanguage) {
-                commentActions.appendChild(translateLink);
+                commentActions.appendChild(
+                    UiModule.createElementUI({
+                        tag: 'span',
+                        classes: ['translate-text'],
+                        attributes: { 'data-comment-id': comment._id },
+                        content: '{{translate}}',
+                        translate: true
+                    })
+                );
             }
-        } 
-        
+        }
+
         // Share button if allowed
-        if (UtilsModule.getConfig(entity)?.interaction?.allow_shares) {
-            const shareLink = UiModule.createElementUI({
-                tag: 'span',
-                classes: ['share-text'],
-                attributes: { 'data-comment-id': comment._id },
-                content: '{{share}}',
-                translate: true
-            });
-            commentActions.appendChild(shareLink);
+        if (interactionConfig.allow_shares) {
+            commentActions.appendChild(
+                UiModule.createElementUI({
+                    tag: 'span',
+                    classes: ['share-text'],
+                    attributes: { 'data-comment-id': comment._id },
+                    content: '{{share}}',
+                    translate: true
+                })
+            );
         }
 
         // View replies button if there are replies
@@ -1176,55 +1183,61 @@ function createCommentElement(comment, entity, isReply) {
                 classes: ['view-replies'],
                 attributes: { 'data-comment-id': comment._id }
             });
-            
-            const view = UiModule.createElementUI({
-                tag: 'span',
-                content: `{{view}}`,
-                translate: true
-            });
 
-            const counter = UiModule.createElementUI({
-                tag: 'span',
-                content: ` ${comment.repliesCount} `
-            });
+            viewReplies.appendChild(
+                UiModule.createElementUI({
+                    tag: 'span',
+                    content: `{{view}}`,
+                    translate: true
+                })
+            );
+            viewReplies.appendChild(
+                UiModule.createElementUI({
+                    tag: 'span',
+                    content: ` ${comment.repliesCount} `
+                })
+            );
+            viewReplies.appendChild(
+                UiModule.createElementUI({
+                    tag: 'span',
+                    content: repliesText,
+                    translate: true
+                })
+            );
 
-            const asware = UiModule.createElementUI({
-                tag: 'span',
-                content: repliesText,
-                translate: true
-            });
-            
-            viewReplies.appendChild(view);
-            viewReplies.appendChild(counter);
-            viewReplies.appendChild(asware);
-            
             commentActions.appendChild(viewReplies);
         }
 
         commentElement.appendChild(commentActions);
 
         // Create replies container
-        const commentReplies = UiModule.createElementUI({
-            tag: 'div',
-            classes: ['comment-replies'],
-            attributes: { 'data-reply-id': comment._id }
-        });
-        commentElement.appendChild(commentReplies);
-    
-        // Add profile picture if available
-        if (comment.profile.picture) {
-            commentAvatar.style.backgroundImage = `url('${comment.profile.picture}')`;
-            commentAvatar.style.backgroundSize = 'cover';
-            commentAvatar.style.backgroundPosition = 'center';
-            commentAvatar.style.backgroundRepeat = 'no-repeat';
-            commentAvatar.innerHTML = '';
-        }
+        commentElement.appendChild(
+            UiModule.createElementUI({
+                tag: 'div',
+                classes: ['comment-replies'],
+                attributes: { 'data-reply-id': comment._id }
+            })
+        );
 
         // Attach event listeners
         attachCommentEventListeners(commentElement, comment, entity);
 
-        // Save comment
-        storedComments.set(comment._id, comment);
+        // Store JSON data in storedComments (no limit) if not already present
+        if (!storedComments.has(comment._id)) {
+            storedComments.set(comment._id, comment);
+        }
+
+        // Store HTML in storedRenderedComments (limit of 100) if not already present
+        if (!storedRenderedComments.has(comment._id)) {
+            storedRenderedComments.set(comment._id, commentElement.outerHTML);
+
+            // Manage limit of 100 in storedRenderedComments
+            if (storedRenderedComments.size > MAX_RENDERED_COMMENTS) {
+                const oldestKey = storedRenderedComments.keys().next().value;
+                storedRenderedComments.delete(oldestKey);
+            }
+        }
+
         return commentElement;
     } catch (error) {
         handleError(error, 'CommentsModule.createCommentElement');
@@ -1584,7 +1597,7 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
 
         // Set transcript in input field
         commentInput.value = transcript;
-        
+
         // Store audio data if configured
         if (ConfModule.get('audio.save_comment_audio', false)) {
             commentInput.setAttribute('quelora-audio-data', audioBase64);
@@ -1598,81 +1611,72 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
             .join('')
             .toUpperCase() || '';
 
-        // Create preview modal content
-        const editContainer = UiModule.createElementUI({
-            tag: 'div',
-            classes: 'edit-comment-container'
-        });
+        // Crear contenido del modal
+        const tpl = document.createElement('template');
+        tpl.innerHTML = `
+          <div class="edit-comment-container">
+            <div class="avatar">
+              <div class="comment-avatar">${initials}</div>
+              <p class="transcript-text">${transcript}</p>
+            </div>
+            <div class="audio-container"></div>
+          </div>
+        `;
+        const bodyNode = tpl.content.querySelector('.edit-comment-container');
 
-        const avatarTextContainer = UiModule.createElementUI({
-            tag: 'div',
-            classes: 'avatar'
-        });
-
-        const avatar = UiModule.createElementUI({
-            tag: 'div',
-            classes: 'comment-avatar',
-            content: initials
-        });
-
-        // Set profile picture if available
+        // Reemplazar avatar por imagen si existe
+        const avatarDiv = bodyNode.querySelector('.comment-avatar');
         if (ownProfile?.picture) {
-            avatar.style.backgroundImage = `url('${ownProfile.picture}')`;
-            avatar.style.backgroundSize = 'cover';
-            avatar.style.backgroundPosition = 'center';
-            avatar.style.backgroundRepeat = 'no-repeat';
-            avatar.textContent = '';
+            avatarDiv.style.backgroundImage = `url('${ownProfile.picture}')`;
+            avatarDiv.style.backgroundSize = 'cover';
+            avatarDiv.style.backgroundPosition = 'center';
+            avatarDiv.style.backgroundRepeat = 'no-repeat';
+            avatarDiv.textContent = '';
         }
 
-        const transcriptText = UiModule.createElementUI({
-            tag: 'p',
-            classes: 'transcript-text',
-            content: transcript
-        });
-
-        avatarTextContainer.appendChild(avatar);
-        avatarTextContainer.appendChild(transcriptText);
-
-        // Add audio player
+        // Generar audio player
         const audioContainer = UiModule.audioUI(transcript, audioBase64, audioHash);
+        bodyNode.querySelector('.audio-container').appendChild(audioContainer);
 
-        editContainer.appendChild(avatarTextContainer);
-        editContainer.appendChild(audioContainer);
+        // Inicializar modal (solo body y blur)
+        UiModule.setupModalUI(bodyNode, '.quelora-comments');
 
-        // Modal action buttons
-        const buttons = [
-            {
-                className: 'quelora-btn send-button t',
-                textContent: '{{send}}',
-                icon: 'send',
-                onClick: () => {
-                    submitComment();
-                    UiModule.closeModalUI();
-                }
-            },
-            {
-                className: 'quelora-btn close-button t',
-                textContent: '{{close}}',
-                icon: 'close',
-                onClick: () => {
-                    const commentInput = UiModule.getCommentInputUI();
-                    if (commentInput) {
-                        commentInput.value = '';
-                        commentInput.removeAttribute('quelora-audio-data');
-                        commentInput.removeAttribute('quelora-audio-hash');
-                        commentInput.removeAttribute('data-reply-id');
-                    }
-                    UiModule.closeModalUI();
-                }
+        // Footer: agregar botón enviar y cerrar
+        const footer = UiModule.modalCache.footer;
+        if (!footer) return;
+
+        // Botón Enviar
+        const sendBtn = document.createElement('button');
+        sendBtn.className = 'quelora-btn send-button t';
+        sendBtn.innerHTML = `<span class="quelora-icons-outlined">send</span> {{send}}`;
+        sendBtn.onclick = () => {
+            submitComment();
+            UiModule.closeModalUI();
+        };
+        footer.appendChild(sendBtn);
+
+        // Botón Close
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'quelora-btn close-button t';
+        closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+        closeBtn.onclick = () => {
+            const ci = UiModule.getCommentInputUI();
+            if (ci) {
+                ci.value = '';
+                ci.removeAttribute('quelora-audio-data');
+                ci.removeAttribute('quelora-audio-hash');
+                ci.removeAttribute('data-reply-id');
             }
-        ];
+            UiModule.closeModalUI();
+        };
+        footer.appendChild(closeBtn);
 
-        // Show preview modal
-        UiModule.setupModalUI(editContainer, buttons, '.quelora-comments');
     } catch (error) {
         handleError(error, 'CommentsModule.callbackRecord');
     }
 }
+
+
 
 /**
  * Handles comment submission
@@ -1921,6 +1925,8 @@ const CommentsModule = {
     fetchTranslate,
     shakeComment,
     callbackRecord,
+    storedComments,
+    storedRenderedComments
 };
 
 export default CommentsModule;

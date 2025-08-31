@@ -35,7 +35,6 @@
 import CoreModule from './core.js';
 import CommentsModule from './comments.js';
 import UiModule from './ui.js';
-import UtilsModule from './utils.js';
 import AnchorModule from './anchor.js';
 
 // Global variables to store worker instance, token, client ID, entity ID, and disabled state
@@ -52,7 +51,7 @@ let isDisabled;
 async function initializeAI(dependencies) {
     try {
         workerInstance = dependencies.worker;
-        token = dependencies.cid ? dependencies.token : await CoreModule.getTokenIfNeeded();
+        token = dependencies.token;
         cid = dependencies.cid;
     } catch (error) {
         console.error('Error initializing AIModule:', error);
@@ -66,7 +65,7 @@ async function initializeAI(dependencies) {
 async function addAIButton() {
     try {
         const iconReferenceElement = UiModule.getCommentInputUI();
-        if (iconReferenceElement.parentElement.querySelector('.ai-button')) return;
+        if (!iconReferenceElement || iconReferenceElement.parentElement.querySelector('.ai-button')) return;
 
         const AIButton = UiModule.createElementUI({
             tag: 'span',
@@ -74,36 +73,35 @@ async function addAIButton() {
             content: 'robot'
         });
 
+        AIButton.onclick = async function () {
+            if (isDisabled) return;
 
-        if (AIButton) {
-            AIButton.onclick = async function () {
-                if (isDisabled) return;
+            const threadsContainer = UiModule.getCommunityThreadsUI();
+            const entityId = threadsContainer?.getAttribute('data-threads-entity');
 
-                const threadsContainer = UiModule.getCommunityThreadsUI();
-                entityId = threadsContainer?.getAttribute('data-threads-entity');
+            // Crear contenido del modal
+            const bodyContent = UiModule.createElementUI({ tag: 'div' });
+            UiModule.addLoadingMessageUI(bodyContent, { type: 'message' });
 
-                const bodyContent = UiModule.createElementUI({
-                    tag: 'div'
-                });
-                
-                if (bodyContent) {
-                    UiModule.addLoadingMessageUI(bodyContent, { type: 'message' });
-                    const buttons = [
-                        { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => UiModule.closeModalUI(), icon: 'close' }
-                    ];
-                    UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
-                }
-                
-                // Ensure a valid token is available
-                token = await CoreModule.getTokenIfNeeded(token);
-                workerInstance.postMessage({ action: 'getAnalysis', payload: { token, entityId, cid } });
-                isDisabled = true;
-            };
+            // Inicializar modal (solo body)
+            UiModule.setupModalUI(bodyContent, '.quelora-comments');
 
-            iconReferenceElement.insertAdjacentElement('afterend', AIButton);
-        } else {
-            console.error('Failed to create AI button');
-        }
+            // Footer: agregar botón Cerrar
+            const footer = UiModule.modalCache.footer;
+            if (footer) {
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'quelora-btn close-button t';
+                closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+                closeBtn.onclick = () => UiModule.closeModalUI();
+                footer.appendChild(closeBtn);
+            }
+
+            // Obtener token y enviar mensaje al worker
+            const token = await CoreModule.getTokenIfNeeded();
+            workerInstance.postMessage({ action: 'getAnalysis', payload: { token, entityId, cid } });
+
+            isDisabled = true;
+        };
 
         iconReferenceElement.insertAdjacentElement('afterend', AIButton);
     } catch (error) {
@@ -111,89 +109,90 @@ async function addAIButton() {
     }
 }
 
+
 /**
  * Renders AI analysis within a modal
  * @param {Object} analysisData - Object containing analysis and highlighted comments
  */
 function renderAnalysisModal(analysisData) {
-    isDisabled = false;
-    UiModule.closeModalUI();
-    
-    const bodyContent = UiModule.createElementUI({
-        tag: 'div',
-        classes: 'ai-analysis-modal',
-        attributes: {
-            'data-threads-entity': entityId
-        }
-    });
+    try {
+        isDisabled = false;
+        UiModule.closeModalUI();
 
-    const title = UiModule.createElementUI({
-        tag: 'h2',
-        content: analysisData.analysis.title
-    });
-    bodyContent.appendChild(title);
-
-    const subtitle = UiModule.createElementUI({
-        tag: 'p',
-        classes: 'ai-analysis-subtitle',
-        content: analysisData.analysis.debateSummary
-    });
-    bodyContent.appendChild(subtitle);
-
-    const sentimentContainer = UiModule.createElementUI({
-        tag: 'div',
-        classes: 'ai-analysis-sentiment',
-        innerHTML: `
-            <div class="ai-containter">
-                <span class="t">{{opinion}}: ${analysisData.analysis.sentiment.positive} {{positive}},</span> 
-                ${analysisData.analysis.sentiment.neutral} <span class="t">{{neutral}},</span>
-                ${analysisData.analysis.sentiment.negative} <span class="t">{{negative}}</span>
-            </div>
-            <div class="ai-containter">
-                <div class="ai-sentiment-bar">
-                    <div class="positive" style="width:${analysisData.analysis.sentiment.positive};"></div>
-                    <div class="neutral" style="width:${analysisData.analysis.sentiment.neutral};"></div>
-                    <div class="negative" style="width:${analysisData.analysis.sentiment.negative};"></div>
-                </div>
-            </div>
-        `
-    });
-    bodyContent.appendChild(sentimentContainer);
-
-    // Render highlighted comments with anchor links
-    analysisData.analysis.highlightedComments.forEach(hComment => {
-        const container = UiModule.createElementUI({
+        // Contenedor principal del modal
+        const bodyContent = UiModule.createElementUI({
             tag: 'div',
-            classes: 'quelora-to-work'
-        });
-        
-        const commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
-        commentElement.querySelector('.comment-actions')?.remove();
-
-        // Generate link to the comment
-        const link = AnchorModule.generateLink({
-            type: 'comment',
-            ids: {
-                entity: entityId,
-                commentId: hComment._id
-            }
+            classes: 'ai-analysis-modal',
+            attributes: { 'data-threads-entity': entityId }
         });
 
-        // Click on comment: closes modal and navigates to anchor
-        commentElement.style.cursor = 'pointer';
-        commentElement.addEventListener('click', () => {
-            UiModule.closeModalUI();
-            location.hash = link;
+        // Título y subtítulo
+        const title = UiModule.createElementUI({ tag: 'h2', content: analysisData.analysis.title });
+        const subtitle = UiModule.createElementUI({
+            tag: 'p',
+            classes: 'ai-analysis-subtitle',
+            content: analysisData.analysis.debateSummary
+        });
+        bodyContent.appendChild(title);
+        bodyContent.appendChild(subtitle);
+
+        // Sentiment container
+        const sentimentContainer = UiModule.createElementUI({
+            tag: 'div',
+            classes: 'ai-analysis-sentiment',
+            innerHTML: `
+                <div class="ai-containter">
+                    <span class="t">{{opinion}}: ${analysisData.analysis.sentiment.positive} {{positive}},</span> 
+                    ${analysisData.analysis.sentiment.neutral} <span class="t">{{neutral}},</span>
+                    ${analysisData.analysis.sentiment.negative} <span class="t">{{negative}}</span>
+                </div>
+                <div class="ai-containter">
+                    <div class="ai-sentiment-bar">
+                        <div class="positive" style="width:${analysisData.analysis.sentiment.positive};"></div>
+                        <div class="neutral" style="width:${analysisData.analysis.sentiment.neutral};"></div>
+                        <div class="negative" style="width:${analysisData.analysis.sentiment.negative};"></div>
+                    </div>
+                </div>
+            `
+        });
+        bodyContent.appendChild(sentimentContainer);
+
+        // Highlighted comments
+        analysisData.analysis.highlightedComments.forEach(hComment => {
+            const container = UiModule.createElementUI({ tag: 'div', classes: 'quelora-to-work' });
+            const commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
+            commentElement.querySelector('.comment-actions')?.remove();
+
+            const link = AnchorModule.generateLink({
+                type: 'comment',
+                ids: { entity: entityId, commentId: hComment._id }
+            });
+
+            commentElement.style.cursor = 'pointer';
+            commentElement.addEventListener('click', () => {
+                UiModule.closeModalUI();
+                location.hash = link;
+            });
+
+            container.appendChild(commentElement);
+            bodyContent.appendChild(container);
         });
 
-        container.appendChild(commentElement);
-        bodyContent.appendChild(container);
-    });
+        // Inicializar modal (solo body)
+        UiModule.setupModalUI(bodyContent, '.quelora-comments');
 
-    const buttons = [
-        { className: 'quelora-btn close-button t', textContent: '{{close}}', onClick: () => UiModule.closeModalUI(), icon: 'close' }
-    ];
-    UiModule.setupModalUI(bodyContent, buttons, '.quelora-comments');
+        // Footer: agregar botón Close
+        const footer = UiModule.modalCache.footer;
+        if (footer) {
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'quelora-btn close-button t';
+            closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+            closeBtn.onclick = () => UiModule.closeModalUI();
+            footer.appendChild(closeBtn);
+        }
+    } catch (error) {
+        console.error('Error rendering AI analysis modal:', error);
+    }
 }
 
 // Export the AI module with its methods
