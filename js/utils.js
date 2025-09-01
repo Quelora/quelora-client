@@ -155,27 +155,27 @@ const debouncedFetchStats = debounce(() => {
  * Observes DOM for new entities matching the config selector and triggers stats fetching.
  * @returns {MutationObserver|null} Observer instance or null if error occurs.
  */
+let selector;
 function observeNewEntities() {
     try {
-        const observer = new MutationObserver(async (mutations) => {
-            let shouldFetchStats = false;
-            const config = await EntityModule.getConfig();
+        const updateConfig = () => {
+            const config = EntityModule.getConfig();
+            selector = config.selector;
+        };
+
+        updateConfig(); // inicializa al inicio
+
+        const observer = new MutationObserver((mutations) => {
+            if (!selector) updateConfig(); // fallback defensivo
 
             for (const mutation of mutations) {
-                if (mutation.addedNodes.length > 0) {
-                    for (const node of mutation.addedNodes) {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
-                            if (node.matches(config.selector) || node.querySelector(config.selector)) {
-                                shouldFetchStats = true;
-                                break;
-                            }
-                        }
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+                    if (node.matches(selector) || node.querySelector(selector)) {
+                        debouncedFetchStats();
+                        return;
                     }
-                    if (shouldFetchStats) break;
                 }
-            }
-            if (shouldFetchStats) {
-                debouncedFetchStats();
             }
         });
 
