@@ -34,6 +34,8 @@
 
 import StorageModule from './storage.js';
 
+const I18N_UPDATE_CHUNK_SIZE = 50;
+
 // ==================== PRIVATE VARIABLES ====================
 let _currentLang = '';
 let _basePath = '';
@@ -179,38 +181,45 @@ const translateByClass = (className, attribute = null) => {
 
 const _updateDOM = () => {
     try {
-        _elementsMap.forEach(({ key, attribute }, element) => {
-            if (!element.isConnected) {
-                _elementsMap.delete(element);
-                return;
-            }
+        const entries = Array.from(_elementsMap.entries());
+        let i = 0;
 
-            let translation = key 
-                ? (_translations[key] || `{{${key}}}`)
-                : _replaceKeys(element.textContent || element.innerHTML);
-
-            translation = translation.replace(/{{|}}/g, '');
-
-            if (attribute) {
-                if (element.getAttribute(attribute) !== translation) {
-                    element.setAttribute(attribute, translation);
+        const processChunk = () => {
+            const end = Math.min(i + I18N_UPDATE_CHUNK_SIZE, entries.length);
+            for (; i < end; i++) {
+                const [element, { key, attribute }] = entries[i];
+                if (!element.isConnected) {
+                    _elementsMap.delete(element);
+                    continue;
                 }
-            } else {
-                // usar textContent salvo que el original contenga HTML
-                const isPlainText = !/<[a-z][\s\S]*>/i.test(element.innerHTML);
-                if (isPlainText) {
+                let translation = key 
+                    ? (_translations[key] || `{{${key}}}`)
+                    : _replaceKeys(element.textContent || element.innerHTML);
+
+                translation = translation.replace(/{{|}}/g, '');
+
+                if (attribute) {
+                    if (element.getAttribute(attribute) !== translation) {
+                        element.setAttribute(attribute, translation);
+                    }
+                } else {
                     if (element.textContent !== translation) {
                         element.textContent = translation;
                     }
-                } else if (element.innerHTML !== translation) {
-                    element.innerHTML = translation;
                 }
             }
-        });
+            if (i < entries.length) {
+                requestAnimationFrame(processChunk);
+            }
+        };
+
+        requestAnimationFrame(processChunk);
     } catch (error) {
         handleError(error, 'I18n.updateDOM');
     }
 };
+
+
 
 const _initMutationObserver = () => {
     try {
