@@ -31,6 +31,39 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
+/*!
+ * QUELORA – Real-time interaction platform for websites
+ * 
+ * @author German Zelaya
+ * @version 1.0.0
+ * @since 2023
+ * @license Licensed under the GNU Affero General Public License v3.0
+ * 
+ * Copyright (C) 2025 German Zelaya
+ * 
+ * QUELORA is an open-source platform designed to add real-time comments,
+ * posts, and reactions to websites. Its lightweight widget (~170KB uncompressed)
+ * integrates easily into any page without the need for frameworks like React
+ * or jQuery. It includes support for AI-powered automated moderation,
+ * engagement analytics, and a multi-tenant dashboard to manage multiple sites
+ * from a single interface.
+ * 
+ * This script is part of the QUELORA project, available at:
+ * https://www.quelora.org/
+ * 
+ * This program is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
 
 import StorageModule from './storage.js';
 
@@ -42,20 +75,7 @@ let _basePath = '';
 let _translations = {};
 let _elementsMap = new Map();
 let _observer = null;
-let _isChangingLanguage = false; // Para debounce
-
-const _defaultSpeechVariants = {
-    'en': 'en-US',
-    'es': 'es-ES',
-    'fr': 'fr-FR',
-    'de': 'de-DE',
-    'pt': 'pt-PT',
-    'it': 'it-IT',
-    'ja': 'ja-JP',
-    'ru': 'ru-RU',
-    'zh': 'zh-CN',
-    'ar': 'ar-SA'
-};
+let _isChangingLanguage = false;
 
 // ==================== HELPERS ====================
 const handleError = (error, context) => {
@@ -64,7 +84,10 @@ const handleError = (error, context) => {
 };
 
 const _replaceKeys = (text) => {
-    if (typeof text !== 'string') return '';
+    if (typeof text !== 'string') {
+        console.warn('I18n: Invalid text provided to _replaceKeys:', text);
+        return '';
+    }
     return text.replace(/{{(\w+)}}/g, (_, key) => getTranslation(key));
 };
 
@@ -86,11 +109,13 @@ const clearCache = () => {
         _translations = {};
         StorageModule.removeLocalItem(`quelora_i18n_${_currentLang}`);
         // Limpiar elementos desconectados de _elementsMap
+        console.log('I18n: Clearing _elementsMap');
         for (const [element] of _elementsMap) {
             if (!element || !element.isConnected) {
                 _elementsMap.delete(element);
             }
         }
+        console.log(`I18n: _elementsMap size after cleanup: ${_elementsMap.size}`);
     } catch (error) {
         handleError(error, 'I18n.clearCache');
     }
@@ -99,10 +124,11 @@ const clearCache = () => {
 const loadTranslations = async (lang) => {
     const storageKey = `quelora_i18n_${lang}`;
     try {
+        console.log(`I18n: Loading translations for ${lang}`);
         const response = await fetch(`${_basePath}${lang}.json`);
         if (!response.ok) {
-            console.warn(`Falling back to default language 'en'`);
-            await loadTranslations('en'); // Cargar idioma por defecto
+            console.warn(`I18n: Falling back to default language 'en'`);
+            await loadTranslations('en');
             return;
         }
         _translations = await response.json();
@@ -117,12 +143,11 @@ const loadTranslations = async (lang) => {
 const changeLanguage = async (lang) => {
     try {
         if (!lang || lang === _currentLang || _isChangingLanguage) {
-            console.log(`No language change needed or in progress: ${lang}`);
+            console.log(`I18n: No language change needed or in progress: ${lang}`);
             return;
         }
         _isChangingLanguage = true;
-        console.log(`Changing language to: ${lang}`);
-        // Desconectar el observer para evitar conflictos
+        console.log(`I18n: Changing language to: ${lang}`);
         if (_observer) {
             _observer.disconnect();
         }
@@ -130,13 +155,16 @@ const changeLanguage = async (lang) => {
         _currentLang = lang;
         _setSpeechVariant(lang);
         await loadTranslations(lang);
-        console.log(`Language changed successfully to: ${lang}`);
-        // Reconectar el observer después del cambio
-        _initMutationObserver();
+        console.log(`I18n: Language changed successfully to: ${lang}`);
+        // Retrasar la reconexión del observer para estabilizar el DOM
+        setTimeout(() => {
+            _initMutationObserver();
+        }, 100);
     } catch (error) {
         handleError(error, 'I18n.changeLanguage');
-        // Reconectar el observer en caso de error
-        _initMutationObserver();
+        setTimeout(() => {
+            _initMutationObserver();
+        }, 100);
     } finally {
         _isChangingLanguage = false;
     }
@@ -189,6 +217,7 @@ const translateElement = (element, attribute = null, className = 't') => {
 
         const translation = key ? getTranslation(key).replace(/{{|}}/g, '') : _replaceKeys(element.innerHTML).replace(/{{|}}/g, '');
 
+        console.log(`I18n: Translating element with key "${key}" to "${translation}"`);
         attribute
             ? element.setAttribute(attribute, translation)
             : (element.innerHTML = translation);
@@ -199,6 +228,7 @@ const translateElement = (element, attribute = null, className = 't') => {
 
 const translateByClass = (className, attribute = null) => {
     try {
+        console.log(`I18n: Translating elements with class "${className}"`);
         document.querySelectorAll(`.${className}`).forEach(element => {
             translateElement(element, attribute, className);
         });
@@ -209,11 +239,12 @@ const translateByClass = (className, attribute = null) => {
 
 const _updateDOM = () => {
     try {
-        // Pausar el observer durante la actualización del DOM
+        console.log('I18n: Starting DOM update');
         if (_observer) {
             _observer.disconnect();
         }
         const entries = Array.from(_elementsMap.entries());
+        console.log(`I18n: Processing ${entries.length} elements in _elementsMap`);
         let i = 0;
 
         const processChunk = () => {
@@ -221,6 +252,7 @@ const _updateDOM = () => {
             for (; i < end; i++) {
                 const [element, { key, attribute }] = entries[i];
                 if (!element || !element.isConnected) {
+                    console.log(`I18n: Removing disconnected element from _elementsMap`);
                     _elementsMap.delete(element);
                     continue;
                 }
@@ -231,6 +263,7 @@ const _updateDOM = () => {
                 translation = translation.replace(/{{|}}/g, '');
 
                 try {
+                    console.log(`I18n: Updating element with key "${key}" to "${translation}"`);
                     if (attribute) {
                         if (element.getAttribute(attribute) !== translation) {
                             element.setAttribute(attribute, translation);
@@ -248,22 +281,24 @@ const _updateDOM = () => {
             if (i < entries.length) {
                 requestAnimationFrame(processChunk);
             } else {
-                // Reconectar el observer al finalizar
-                _initMutationObserver();
+                console.log('I18n: DOM update completed');
+                setTimeout(() => {
+                    _initMutationObserver();
+                }, 100);
             }
         };
 
         requestAnimationFrame(processChunk);
     } catch (error) {
         handleError(error, 'I18n.updateDOM');
-        // Asegurar que el observer se reconecte
-        _initMutationObserver();
+        setTimeout(() => {
+            _initMutationObserver();
+        }, 100);
     }
 };
 
 const _initMutationObserver = () => {
     try {
-        // Desconectar cualquier observer existente
         if (_observer) {
             _observer.disconnect();
         }
@@ -290,7 +325,7 @@ const _initMutationObserver = () => {
         };
 
         _observer = new MutationObserver((mutations) => {
-            if (_isChangingLanguage) return; // Evitar procesar durante cambio de idioma
+            if (_isChangingLanguage) return;
             mutations.forEach(mutation => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
@@ -313,6 +348,7 @@ const _initMutationObserver = () => {
             childList: true,
             subtree: true
         });
+        console.log('I18n: MutationObserver initialized');
     } catch (error) {
         handleError(error, 'I18n.initMutationObserver');
     }
