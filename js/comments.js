@@ -905,7 +905,7 @@ async function fetchTranslate(entityId, commentId) {
         };
         
         const threadsContainer = UiModule.getCommentHeaderUI(commentId, true);
-        
+
         const textContainer = threadsContainer.querySelector('.comment-text');
         
         // Store original text

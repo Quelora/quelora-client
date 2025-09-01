@@ -4,7 +4,7 @@
  * @author German Zelaya
  * @version 1.0.0
  * @since 2023
-* @license Licensed under the GNU Affero General Public License v3.0
+ * @license Licensed under the GNU Affero General Public License v3.0
  * 
  * Copyright (C) 2025 German Zelaya
  * 
@@ -92,7 +92,11 @@ const loadTranslations = async (lang) => {
     const storageKey = `quelora_i18n_${lang}`;
     try {
         const response = await fetch(`${_basePath}${lang}.json`);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            console.warn(`Falling back to default language 'en'`);
+            await loadTranslations('en'); // Cargar idioma por defecto
+            return;
+        }
         _translations = await response.json();
         StorageModule.setLocalItem(storageKey, JSON.stringify(_translations));
         _updateDOM();
@@ -105,10 +109,12 @@ const loadTranslations = async (lang) => {
 const changeLanguage = async (lang) => {
     try {
         if (lang === _currentLang) return;
+        console.log(`Changing language to: ${lang}`);
         clearCache();
         _currentLang = lang;
         _setSpeechVariant(lang);
         await loadTranslations(lang);
+        console.log(`Language changed successfully to: ${lang}`);
     } catch (error) {
         handleError(error, 'I18n.changeLanguage');
     }
@@ -137,8 +143,8 @@ const getSpeechVariant = () => {
 // ==================== UI COMPONENTS ====================
 const translateElement = (element, attribute = null, className = 't') => {
     try {
-        if (!element?.nodeType) {
-            console.error('I18n: Invalid element provided');
+        if (!element || element.nodeType !== Node.ELEMENT_NODE || !element.isConnected) {
+            console.warn('I18n: Invalid or disconnected element provided');
             return;
         }
 
@@ -188,7 +194,7 @@ const _updateDOM = () => {
             const end = Math.min(i + I18N_UPDATE_CHUNK_SIZE, entries.length);
             for (; i < end; i++) {
                 const [element, { key, attribute }] = entries[i];
-                if (!element.isConnected) {
+                if (!element || !element.isConnected) {
                     _elementsMap.delete(element);
                     continue;
                 }
@@ -219,8 +225,6 @@ const _updateDOM = () => {
     }
 };
 
-
-
 const _initMutationObserver = () => {
     try {
         let pendingNodes = [];
@@ -230,6 +234,9 @@ const _initMutationObserver = () => {
             scheduled = false;
 
             pendingNodes.forEach(({ node, className, attribute }) => {
+                if (node.nodeType !== Node.ELEMENT_NODE || !node.isConnected) {
+                    return;
+                }
                 if (node.classList.contains(className)) {
                     translateElement(node, attribute, className);
                 }
