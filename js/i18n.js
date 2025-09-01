@@ -63,6 +63,7 @@ const handleError = (error, context) => {
 };
 
 const _replaceKeys = (text) => {
+    if (typeof text !== 'string') return '';
     return text.replace(/{{(\w+)}}/g, (_, key) => getTranslation(key));
 };
 
@@ -83,6 +84,12 @@ const clearCache = () => {
     try {
         _translations = {};
         StorageModule.removeLocalItem(`quelora_i18n_${_currentLang}`);
+        // Limpiar elementos desconectados de _elementsMap
+        for (const [element] of _elementsMap) {
+            if (!element || !element.isConnected) {
+                _elementsMap.delete(element);
+            }
+        }
     } catch (error) {
         handleError(error, 'I18n.clearCache');
     }
@@ -108,15 +115,26 @@ const loadTranslations = async (lang) => {
 
 const changeLanguage = async (lang) => {
     try {
-        if (lang === _currentLang) return;
+        if (!lang || lang === _currentLang) {
+            console.log(`No language change needed for: ${lang}`);
+            return;
+        }
         console.log(`Changing language to: ${lang}`);
+        // Desconectar el observer para evitar conflictos durante el cambio
+        if (_observer) {
+            _observer.disconnect();
+        }
         clearCache();
         _currentLang = lang;
         _setSpeechVariant(lang);
         await loadTranslations(lang);
         console.log(`Language changed successfully to: ${lang}`);
+        // Reconectar el observer después del cambio
+        _initMutationObserver();
     } catch (error) {
         handleError(error, 'I18n.changeLanguage');
+        // Reconectar el observer en caso de error
+        _initMutationObserver();
     }
 };
 
@@ -200,7 +218,7 @@ const _updateDOM = () => {
                 }
                 let translation = key 
                     ? (_translations[key] || `{{${key}}}`)
-                    : _replaceKeys(element.textContent || element.innerHTML);
+                    : _replaceKeys(element.textContent || element.innerHTML || '');
 
                 translation = translation.replace(/{{|}}/g, '');
 
@@ -227,6 +245,11 @@ const _updateDOM = () => {
 
 const _initMutationObserver = () => {
     try {
+        // Desconectar cualquier observer existente para evitar duplicados
+        if (_observer) {
+            _observer.disconnect();
+        }
+
         let pendingNodes = [];
         let scheduled = false;
 
@@ -252,7 +275,7 @@ const _initMutationObserver = () => {
             mutations.forEach(mutation => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.nodeType === Node.ELEMENT_NODE && node.isConnected) {
                             _elementsMap.forEach(({ className, attribute }) => {
                                 pendingNodes.push({ node, className, attribute });
                             });
