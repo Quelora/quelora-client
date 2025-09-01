@@ -42,6 +42,7 @@ let _basePath = '';
 let _translations = {};
 let _elementsMap = new Map();
 let _observer = null;
+let _isChangingLanguage = false; // Para debounce
 
 const _defaultSpeechVariants = {
     'en': 'en-US',
@@ -115,12 +116,13 @@ const loadTranslations = async (lang) => {
 
 const changeLanguage = async (lang) => {
     try {
-        if (!lang || lang === _currentLang) {
-            console.log(`No language change needed for: ${lang}`);
+        if (!lang || lang === _currentLang || _isChangingLanguage) {
+            console.log(`No language change needed or in progress: ${lang}`);
             return;
         }
+        _isChangingLanguage = true;
         console.log(`Changing language to: ${lang}`);
-        // Desconectar el observer para evitar conflictos durante el cambio
+        // Desconectar el observer para evitar conflictos
         if (_observer) {
             _observer.disconnect();
         }
@@ -135,6 +137,8 @@ const changeLanguage = async (lang) => {
         handleError(error, 'I18n.changeLanguage');
         // Reconectar el observer en caso de error
         _initMutationObserver();
+    } finally {
+        _isChangingLanguage = false;
     }
 };
 
@@ -205,6 +209,10 @@ const translateByClass = (className, attribute = null) => {
 
 const _updateDOM = () => {
     try {
+        // Pausar el observer durante la actualización del DOM
+        if (_observer) {
+            _observer.disconnect();
+        }
         const entries = Array.from(_elementsMap.entries());
         let i = 0;
 
@@ -222,30 +230,40 @@ const _updateDOM = () => {
 
                 translation = translation.replace(/{{|}}/g, '');
 
-                if (attribute) {
-                    if (element.getAttribute(attribute) !== translation) {
-                        element.setAttribute(attribute, translation);
+                try {
+                    if (attribute) {
+                        if (element.getAttribute(attribute) !== translation) {
+                            element.setAttribute(attribute, translation);
+                        }
+                    } else {
+                        if (element.textContent !== translation) {
+                            element.textContent = translation;
+                        }
                     }
-                } else {
-                    if (element.textContent !== translation) {
-                        element.textContent = translation;
-                    }
+                } catch (err) {
+                    console.warn(`I18n: Failed to update element:`, err);
+                    _elementsMap.delete(element);
                 }
             }
             if (i < entries.length) {
                 requestAnimationFrame(processChunk);
+            } else {
+                // Reconectar el observer al finalizar
+                _initMutationObserver();
             }
         };
 
         requestAnimationFrame(processChunk);
     } catch (error) {
         handleError(error, 'I18n.updateDOM');
+        // Asegurar que el observer se reconecte
+        _initMutationObserver();
     }
 };
 
 const _initMutationObserver = () => {
     try {
-        // Desconectar cualquier observer existente para evitar duplicados
+        // Desconectar cualquier observer existente
         if (_observer) {
             _observer.disconnect();
         }
@@ -272,6 +290,7 @@ const _initMutationObserver = () => {
         };
 
         _observer = new MutationObserver((mutations) => {
+            if (_isChangingLanguage) return; // Evitar procesar durante cambio de idioma
             mutations.forEach(mutation => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
