@@ -35,10 +35,12 @@
 import UtilsModule from "./utils.js";
 
 // ==================== PRIVATE VARIABLES ====================
-/** @type {MutationObserver} Observer for monitoring DOM changes */
+
 let observer;
-/** @type {boolean} Tracks if observer is active */
 let isObserving = false;
+
+const processedMap = new WeakMap();
+const processedIcons = new WeakSet();
 
 // ==================== ICONS DEFINITION ====================
 /** @type {Object.<string, string>} Library of icon SVG strings */
@@ -87,131 +89,150 @@ const iconLibrary = {
     userbloked: `<svg enable-background="new 0 0 24 24"><path d="M15,8c0-1.42-0.5-2.73-1.33-3.76C14.09,4.1,14.53,4,15,4c2.21,0,4,1.79,4,4s-1.79,4-4,4c-0.06,0-0.12,0-0.18,0l-0.77-0.77 C14.65,10.29,15,9.18,15,8z M22.83,20H23v-3c0-2.18-3.58-3.47-6.34-3.87c1.1,0.75,1.95,1.71,2.23,2.94L22.83,20z M9,6 C8.94,6,8.89,6,8.84,6.01l-1.6-1.6C7.77,4.15,8.37,4,9,4c2.21,0,4,1.79,4,4c0,0.63-0.15,1.23-0.41,1.76l-1.6-1.6 C11,8.11,11,8.06,11,8C11,6.9,10.1,6,9,6z M9.17,12C9.11,12,9.06,12,9,12c-2.21,0-4-1.79-4-4c0-0.06,0-0.11,0-0.17L0.69,3.51 L2.1,2.1l19.8,19.8l-1.41,1.41L17,19.83V20H1v-3c0-2.66,5.33-4,8-4c0.37,0,0.8,0.03,1.25,0.08L9.17,12z M9,15 c-2.7,0-5.8,1.29-6,2.01V18h12v-0.17l-2.11-2.11C11.76,15.31,10.33,15,9,15z"/></svg>`,
 };
 
-// ==================== HELPERS ====================
-/**
- * Schedules a callback to run after a delay using UtilsModule.
- * @param {Function} callback - Function to execute
- */
-const scheduleBatch = (callback) => UtilsModule.startTimeout(callback, 100);
+// ==================== NORMALIZATION & ENHANCEMENT ====================
+// NORMALIZATION & ENHANCEMENT
+const normalizeIconName = (raw) => (raw ?? "").trim().toLowerCase();
 
-// ==================== HELPERS ====================
-/**
- * Adds standard SVG attributes to a raw SVG string.
- * @param {string} svgString - Raw SVG string
- * @returns {string} Enhanced SVG string with attributes
- */
-const enhanceSvg = (svgString) => {
-    if (!svgString) return svgString;
-    return svgString.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"');
+const enhanceSvg = (svgString) =>
+  svgString
+    ? svgString.replace(
+        "<svg",
+        '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="currentColor"'
+      )
+    : svgString;
+
+const enhanceLibrary = (lib) => {
+  const out = {};
+  for (const [k, v] of Object.entries(lib)) out[normalizeIconName(k)] = enhanceSvg(v);
+  return out;
 };
 
-/**
- * Replaces a single icon element with its corresponding SVG.
- * @param {HTMLElement} iconElement - Element containing icon name
- */
-const replaceSingleIcon = (iconElement) => {
-    if (iconElement.querySelector('svg') || iconElement.closest('.quelora-icons-outlined') !== iconElement) return;
+let enhancedIconLibrary = enhanceLibrary(iconLibrary);
 
-    const iconName = iconElement.textContent.trim();
-    const svg = iconLibrary[iconName];
-    if (!svg) return;
+// SCHEDULING
+const scheduleBatch = (cb) => UtilsModule.startTimeout(cb, 100);
+const rIC =
+  window.requestIdleCallback ||
+  ((cb, opts) => setTimeout(() => cb({ didTimeout: true, timeRemaining: () => 0 }), (opts && opts.timeout) || 50));
 
-    iconElement.innerHTML = enhanceSvg(svg);
-    iconElement.classList.add('quelora-svg-icon');
-    Object.assign(iconElement.querySelector('svg').style, {
-        display: 'inline-block',
-        verticalAlign: 'middle',
-    });
+// ICON REPLACEMENT
+const shouldProcessIcon = (el) => {
+  if (!el || el.nodeType !== Node.ELEMENT_NODE) return false;
+  if (!el.classList?.contains("quelora-icons-outlined")) return false;
+  const currentName = normalizeIconName(el.dataset?.icon ?? el.textContent);
+  if (!currentName) return false;
+  if (!enhancedIconLibrary[currentName]) return false;
+  const hasSvg = !!el.querySelector("svg");
+  const lastName = processedMap.get(el);
+  if (hasSvg && lastName === currentName) return false;
+  return true;
 };
 
-/**
- * Starts observing DOM for changes to replace icons dynamically.
- */
+const replaceSingleIcon = (el) => {
+  if (!shouldProcessIcon(el)) return;
+  const name = normalizeIconName(el.dataset?.icon ?? el.textContent);
+  const svg = enhancedIconLibrary[name];
+  if (!svg) {
+    processedMap.delete(el);
+    return;
+  }
+  el.innerHTML = svg;
+  el.classList.add("quelora-svg-icon");
+  const svgEl = el.querySelector("svg");
+  if (svgEl) Object.assign(svgEl.style, { display: "inline-block", verticalAlign: "middle" });
+  processedMap.set(el, name);
+};
+
+const processIconsBatch = (() => {
+  let pending = new Set();
+  let scheduled = false;
+  return (icons) => {
+    icons.forEach((i) => pending.add(i));
+    if (scheduled) return;
+    scheduled = true;
+    rIC(() => {
+      pending.forEach(replaceSingleIcon);
+      pending.clear();
+      scheduled = false;
+    }, { timeout: 200 });
+  };
+})();
+
+// COLLECTION HELPERS
+const collectIconsInSubtree = (node, bag) => {
+  if (!node || node.nodeType !== Node.ELEMENT_NODE) return;
+  if (shouldProcessIcon(node)) bag.add(node);
+  const found = node.querySelectorAll?.(".quelora-icons-outlined");
+  if (found?.length) found.forEach((el) => { if (shouldProcessIcon(el)) bag.add(el); });
+};
+
+// MUTATION OBSERVER
 const startObserving = () => {
-    if (isObserving) return;
+  if (isObserving) return;
 
-    const collectIcons = (node, icons) => {
-        if (node.nodeType !== Node.ELEMENT_NODE) return;
-        if (node.classList?.contains('quelora-icons-outlined') && 
-            !node.querySelector('svg') && 
-            node.closest('.quelora-icons-outlined') === node &&
-            iconLibrary[node.textContent.trim()]) {
-            icons.add(node);
+  observer = new MutationObserver((mutations) => {
+    const bag = new Set();
+    for (const m of mutations) {
+      if (m.type === "childList") {
+        if (m.target?.classList?.contains("quelora-icons-outlined")) {
+          if (shouldProcessIcon(m.target)) bag.add(m.target);
         }
-        node.querySelectorAll?.('.quelora-icons-outlined').forEach(icon => {
-            if (!icon.querySelector('svg') && 
-                icon.closest('.quelora-icons-outlined') === icon &&
-                iconLibrary[icon.textContent.trim()]) {
-                icons.add(icon);
-            }
-        });
-    };
+        m.addedNodes.forEach((n) => collectIconsInSubtree(n, bag));
+      } else if (m.type === "attributes" && (m.attributeName === "class" || m.attributeName === "data-icon")) {
+        if (m.target?.classList?.contains("quelora-icons-outlined") && shouldProcessIcon(m.target)) bag.add(m.target);
+      } else if (m.type === "characterData") {
+        const p = m.target?.parentNode;
+        if (p?.classList?.contains("quelora-icons-outlined") && shouldProcessIcon(p)) bag.add(p);
+      }
+    }
+    if (bag.size) processIconsBatch(bag);
+  });
 
-    observer = new MutationObserver(mutations => {
-        const icons = new Set();
-        mutations.forEach(mutation => {
-            if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(node => collectIcons(node, icons));
-            } else if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-                collectIcons(mutation.target, icons);
-            } else if (mutation.type === 'characterData') {
-                collectIcons(mutation.target.parentNode, icons);
-            }
-        });
-        if (icons.size) icons.forEach(replaceSingleIcon);
-    });
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: ["class", "data-icon"]
+  });
 
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['class'],
-        characterData: true,
-    });
-
-    isObserving = true;
+  isObserving = true;
 };
 
-/**
- * Initializes icon replacement for existing elements and starts observer.
- * @param {Object.<string, string>} [customIcons={}] - Additional icons to merge
- * @returns {Promise<void>} Resolves after initial replacement
- */
+// INITIALIZATION
 const initializeIcons = async (customIcons = {}) => {
-    Object.assign(iconLibrary, customIcons);
-    await new Promise((resolve) => {
-        scheduleBatch(() => {
-            document.querySelectorAll('.quelora-icons-outlined').forEach(replaceSingleIcon);
-            resolve();
-        });
+  Object.assign(enhancedIconLibrary, enhanceLibrary(customIcons));
+
+  const nodes = document.querySelectorAll(".quelora-icons-outlined");
+  let i = 0;
+  const chunk = 60;
+
+  const runChunk = () => {
+    const end = Math.min(i + chunk, nodes.length);
+    for (; i < end; i++) replaceSingleIcon(nodes[i]);
+    if (i < nodes.length) requestAnimationFrame(runChunk);
+  };
+
+  await new Promise((resolve) => {
+    scheduleBatch(() => {
+      runChunk();
+      resolve();
     });
-    startObserving();
+  });
+
+  startObserving();
 };
 
-/**
- * Retrieves the SVG string for a given icon name.
- * @param {string} iconName - Name of the icon
- * @returns {string|null} SVG string or null if not found
- */
-const getIconSvg = (iconName) => {
-    const svg = iconLibrary[iconName];
-    return svg ? enhanceSvg(svg) : null;
-};
+// PUBLIC API
+const getIconSvg = (iconName) => enhancedIconLibrary[normalizeIconName(iconName)] || null;
 
-/**
- * Module for managing icon replacement in the DOM.
- * @type {Object}
- */
 const IconsModule = {
-    initializeIcons,
-    getIconSvg,
-    /**
-     * Stops the MutationObserver and resets the observing state.
-     */
-    stopObserving: () => {
-        observer?.disconnect();
-        isObserving = false;
-    },
+  initializeIcons,
+  getIconSvg,
+  stopObserving: () => {
+    observer?.disconnect();
+    isObserving = false;
+  }
 };
 
 export default IconsModule;

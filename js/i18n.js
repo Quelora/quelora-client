@@ -34,6 +34,8 @@
 
 import StorageModule from './storage.js';
 
+const I18N_UPDATE_CHUNK_SIZE = 50;
+
 // ==================== PRIVATE VARIABLES ====================
 let _currentLang = '';
 let _basePath = '';
@@ -179,45 +181,83 @@ const translateByClass = (className, attribute = null) => {
 
 const _updateDOM = () => {
     try {
-        _elementsMap.forEach(({ key, attribute, className }, element) => {
-            if (element.isConnected) {
-                let translation = key ? (_translations[key] || `{{${key}}}`) : _replaceKeys(element.innerHTML);
+        const entries = Array.from(_elementsMap.entries());
+        let i = 0;
+
+        const processChunk = () => {
+            const end = Math.min(i + I18N_UPDATE_CHUNK_SIZE, entries.length);
+            for (; i < end; i++) {
+                const [element, { key, attribute }] = entries[i];
+                if (!element.isConnected) {
+                    _elementsMap.delete(element);
+                    continue;
+                }
+                let translation = key 
+                    ? (_translations[key] || `{{${key}}}`)
+                    : _replaceKeys(element.textContent || element.innerHTML);
+
                 translation = translation.replace(/{{|}}/g, '');
 
                 if (attribute) {
-                    element.setAttribute(attribute, translation);
+                    if (element.getAttribute(attribute) !== translation) {
+                        element.setAttribute(attribute, translation);
+                    }
                 } else {
-                    element.innerHTML = translation;
+                    if (element.textContent !== translation) {
+                        element.textContent = translation;
+                    }
                 }
-            } else {
-                _elementsMap.delete(element);
             }
-        });
+            if (i < entries.length) {
+                requestAnimationFrame(processChunk);
+            }
+        };
+
+        requestAnimationFrame(processChunk);
     } catch (error) {
         handleError(error, 'I18n.updateDOM');
     }
 };
 
-// ==================== EVENT HANDLERS ====================
+
+
 const _initMutationObserver = () => {
     try {
+        let pendingNodes = [];
+        let scheduled = false;
+
+        const processPending = () => {
+            scheduled = false;
+
+            pendingNodes.forEach(({ node, className, attribute }) => {
+                if (node.classList.contains(className)) {
+                    translateElement(node, attribute, className);
+                }
+                node.querySelectorAll(`.${className}`).forEach(child => {
+                    translateElement(child, attribute, className);
+                });
+            });
+
+            pendingNodes = [];
+        };
+
         _observer = new MutationObserver((mutations) => {
             mutations.forEach(mutation => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
                         if (node.nodeType === Node.ELEMENT_NODE) {
                             _elementsMap.forEach(({ className, attribute }) => {
-                                if (node.classList.contains(className)) {
-                                    translateElement(node, attribute, className);
-                                }
-                                node.querySelectorAll(`.${className}`).forEach(child => {
-                                    translateElement(child, attribute, className);
-                                });
+                                pendingNodes.push({ node, className, attribute });
                             });
                         }
                     });
                 }
             });
+
+            if (!scheduled && pendingNodes.length) {
+                scheduled = true;
+                requestAnimationFrame(processPending);
+            }
         });
 
         _observer.observe(document.body, {

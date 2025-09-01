@@ -1,14 +1,13 @@
 
-.quelora-svg-icon {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
+.quelora-svg-icon,
+.quelora-icons-outlined {
+    display: inline-flex; 
     vertical-align: middle;
-    fill: currentColor;
     line-height: 1;
     text-align: center;
     position: relative;
     overflow: hidden;
+
 }
 
 .community-threads .like-icon svg{

@@ -53,8 +53,8 @@ const MAX_RENDER_ATTEMPTS = 3;
 const MAX_RENDERED_COMMENTS = 100;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
-const LOAD_MORE_ROOT_MARGIN = '0px 0px 400px 0px'; //pixels
 
+const OBSERVER_ROOT_MARGIN = '800px';
 const DEHYDRATION_THRESHOLD = 2;
 
 // ==================== PRIVATE VARIABLES ====================
@@ -65,8 +65,7 @@ let activeCommentElement = null;
 let pressTimer = null;
 let useCaptcha = false;
 
-
-let visibilityObserver = null;
+let visibilityObservers = null;
 let activeAction = null;
 let touchStartX = 0;
 let touchStartY = 0;
@@ -82,13 +81,12 @@ function setupVisibilityObservers() {
     const drawerContent = threadsContainer?.closest('.drawer-content') || document.querySelector('.drawer-content');
     
     if (!threadsContainer || !drawerContent) {
-        //console.log('No threads container or drawer-content found');
         return;
     }
     
     cleanupVisibilityObservers();
     
-    const observer = new IntersectionObserver((entries) => {
+    const commentObserver = new IntersectionObserver((entries) => {
         const containerRect = drawerContent.getBoundingClientRect();
         const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
         let invisibleUpCount = 0;
@@ -98,17 +96,12 @@ function setupVisibilityObservers() {
             const comment = entry.target;
             const header = comment.querySelector('.comment-header[data-comment-id]');
             const commentId = header ? header.getAttribute('data-comment-id') : null;
-            if (!commentId) {
-                //console.log('No commentId found for comment element:', comment);
-                return;
-            }
+            if (!commentId) return;
             
             if (entry.isIntersecting) {
                 comment.setAttribute('data-comment-visible', 'true');
-                //console.log(`Comment ${commentId} is visible: ${entry.isIntersecting}`);
                 if (comment.hasAttribute('data-comment-dehydrated')) {
-                    //console.log(`Attempting to rehydrate comment ${commentId}`);
-                    rehydrateComment(comment);
+                    rehydrateComment(comment, commentObserver);
                 }
             } else {
                 comment.setAttribute('data-comment-visible', 'false');
@@ -121,44 +114,66 @@ function setupVisibilityObservers() {
             }
         });
         
-        //console.log(`Invisible comments: Up=${invisibleUpCount}, Down=${invisibleDownCount}`);
-        
-        if (invisibleUpCount > 2) {
-            //console.log(`Dehydrating upwards, ${invisibleUpCount} invisible comments`);
-            UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect), 100);
+        if (invisibleUpCount > DEHYDRATION_THRESHOLD) {
+            UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect, commentObserver), 100);
         }
-        if (invisibleDownCount > 2) {
-            //console.log(`Dehydrating downwards, ${invisibleDownCount} invisible comments`);
-            UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect), 100);
+        if (invisibleDownCount > DEHYDRATION_THRESHOLD) {
+            UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect, commentObserver), 100);
         }
     }, {
         root: drawerContent,
-        rootMargin: '500px',
+        rootMargin: OBSERVER_ROOT_MARGIN,
         threshold: 0
+    });
+
+    const loadMoreObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const loadMoreLink = entry.target;
+                loadMoreLink.click();
+                loadMoreObserver.unobserve(loadMoreLink);
+            }
+        });
+    }, {
+        root: drawerContent,
+        rootMargin: OBSERVER_ROOT_MARGIN,
+        threshold: 0.1 
     });
     
     const observeComments = () => {
         const comments = threadsContainer.querySelectorAll('.community-thread');
-        //console.log(`Observing ${comments.length} comments`);
         comments.forEach(comment => {
             if (!comment.dataset.observed) {
-                observer.observe(comment);
+                commentObserver.observe(comment);
                 comment.dataset.observed = 'true';
             }
         });
     };
-    
-    observeComments();
+
+    const observeLoadMoreLinks = () => {
+        const links = threadsContainer.querySelectorAll('.load-more-comments');
+        links.forEach(link => {
+            if (!link.dataset.loadMoreObserved) {
+                loadMoreObserver.observe(link);
+                link.dataset.loadMoreObserved = 'true';
+            }
+        });
+    };
     
     const mutationObserver = new MutationObserver(() => {
         observeComments();
+        observeLoadMoreLinks();
     });
     
     mutationObserver.observe(threadsContainer, { childList: true, subtree: true });
+
+    observeComments();
+    observeLoadMoreLinks();
     
-    visibilityObserver = {
+    visibilityObservers = {
         disconnect: () => {
-            observer.disconnect();
+            commentObserver.disconnect();
+            loadMoreObserver.disconnect();
             mutationObserver.disconnect();
             const commentHeaders = threadsContainer.querySelectorAll('.comment-header[data-comment-id]');
             commentHeaders.forEach(header => {
@@ -167,7 +182,7 @@ function setupVisibilityObservers() {
         }
     };
 
-    function dehydrateUpwards(comments, containerRect) {
+    function dehydrateUpwards(comments, containerRect, observer) {
         let count = 0;
         for (let i = comments.length - 1; i >= 0; i--) {
             const c = comments[i];
@@ -178,14 +193,13 @@ function setupVisibilityObservers() {
                 c.getBoundingClientRect().bottom < containerRect.top) {
                 count++;
                 if (count > DEHYDRATION_THRESHOLD) {
-                    //console.log(`Dehydrating comment ${commentId}`);
-                    dehydrateComment(c, commentId);
+                    dehydrateComment(c, commentId, observer);
                 }
             }
         }
     }
 
-    function dehydrateDownwards(comments, containerRect) {
+    function dehydrateDownwards(comments, containerRect, observer) {
         let count = 0;
         for (let i = 0; i < comments.length; i++) {
             const c = comments[i];
@@ -196,14 +210,13 @@ function setupVisibilityObservers() {
                 c.getBoundingClientRect().top > containerRect.bottom) {
                 count++;
                 if (count > DEHYDRATION_THRESHOLD) {
-                    //console.log(`Dehydrating comment ${commentId}`);
-                    dehydrateComment(c, commentId);
+                    dehydrateComment(c, commentId, observer);
                 }
             }
         }
     }
 
-    function dehydrateComment(c, commentId) {
+    function dehydrateComment(c, commentId, observer) {
         if (c.hasAttribute('data-comment-dehydrated')) return;
         const originalDisplay = c.style.display;
         c.style.display = 'block';
@@ -212,8 +225,7 @@ function setupVisibilityObservers() {
         const repliesContainer = c.querySelector('.comment-replies');
         let repliesHeight = 0;
         if (repliesContainer) {
-            const repliesRect = repliesContainer.getBoundingClientRect();
-            repliesHeight = repliesRect.height;
+            repliesHeight = repliesContainer.getBoundingClientRect().height;
         }
         const header = c.querySelector('.comment-header[data-comment-id]');
         c.replaceChildren(header);
@@ -222,20 +234,15 @@ function setupVisibilityObservers() {
         c.setAttribute('data-comment-dehydrated', commentId);
         c.dataset.observed = 'false';
         observer.observe(c);
-        //console.log(`Dehydrated comment ${commentId}, minHeight set to ${c.style.minHeight}`);
     }
 
-    async function rehydrateComment(c) {
+    async function rehydrateComment(c, observer) {
         if (!c.hasAttribute('data-comment-dehydrated')) return;
         const entity = UiModule.getCommunityThreadsUI()?.getAttribute('data-threads-entity');
         const commentId = c.getAttribute('data-comment-dehydrated');
-        //console.log(`Rehydrating comment ${commentId}, entity: ${entity}`);
         const commentData = storedComments.get(commentId);
-        if (!commentData) {
-            //console.log(`No stored comment data for ${commentId}`);
-            return;
-        }
-        //console.log(`Comment data for ${commentId}:`, commentData);
+        if (!commentData) return;
+        
         const commentElement = createCommentElement(commentData, entity);
         if (commentElement) {
             c.replaceChildren(...commentElement.childNodes);
@@ -243,17 +250,14 @@ function setupVisibilityObservers() {
             c.style.minHeight = '';
             c.dataset.observed = 'false';
             observer.observe(c);
-            //console.log(`Rehydrated comment ${commentId}`);
-        } else {
-            //console.log(`Failed to create comment element for ${commentId}`);
         }
     }
 }
 
 function cleanupVisibilityObservers() {
-    if (visibilityObserver) {
-        visibilityObserver.disconnect();
-        visibilityObserver = null;
+    if (visibilityObservers) {
+        visibilityObservers.disconnect();
+        visibilityObservers = null;
     }
 }
 
@@ -1375,22 +1379,18 @@ function renderComments(payload) {
             ? UiModule.getCommentRepliesUI(payload.commentId)
             : UiModule.getCommunityThreadsUI();
 
-        // Clear container if entity changed
         if (!payload.commentId && 
             threadsContainer.getAttribute('data-threads-entity') !== payload.entity) {
             threadsContainer.setAttribute('data-threads-entity', payload.entity);
             threadsContainer.replaceChildren();
         }
 
-        // Remove loading indicator
         UiModule.getCommunityThreadsUI()
             ?.querySelector('.quelora-loading-message')
             ?.remove();
 
-        // Render comments
         renderCommentList(payload.entity, payload.comments.list, threadsContainer);
 
-        // Add "Load More" if there are more comments
         if (payload.comments.hasMore) {
             const loadMoreLink = UiModule.createElementUI({
                 tag: 'a',
@@ -1423,19 +1423,6 @@ function renderComments(payload) {
             });
 
             threadsContainer.appendChild(loadMoreLink);
-
-            // Set up intersection observer for auto-loading
-            const observer = new IntersectionObserver((entries) => {
-                if (entries[0].isIntersecting) {
-                    loadMoreLink.click();
-                    observer.disconnect();
-                }
-            }, { 
-                threshold: 1.0,
-                rootMargin: LOAD_MORE_ROOT_MARGIN
-            });
-            
-            observer.observe(loadMoreLink);
         }
     } catch (error) {
         handleError(error, 'CommentsModule.renderComments');
