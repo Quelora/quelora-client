@@ -50,7 +50,7 @@ import CaptchaModule from './captcha.js';
 const SCROLL_THRESHOLD = 10; 
 const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
-const MAX_RENDERED_COMMENTS = 100;
+const MAX_RENDERED_COMMENTS = 300;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 
@@ -1850,6 +1850,7 @@ async function shakeComment(commentId) {
 async function attachCommentEventListeners(commentElement, comment, entity) {
     try {
         ProfileModule.memberProfiles.set(comment.author, comment?.profile);
+        
         // Like button handlers
         const viewLikeButton = commentElement.querySelector('.comment-like');
         const likeButton = commentElement.querySelector('.like-icon');
@@ -1903,13 +1904,9 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                 UtilsModule.setInputLimit(
                     UtilsModule.getConfig(entity)?.limits?.reply_text
                 );
-                
                 const replyId = event.target.closest('.reply-text').getAttribute('data-reply-id');
                 const commentInput = UiModule.getCommentInputUI();
-                
-                // Buscar el comment-header RELATIVO al elemento clickeado
                 const commentHeader = event.target.closest('.community-thread')?.querySelector('.comment-header');
-                
                 if (commentInput && commentHeader) {
                     commentInput.setAttribute('data-reply-id', replyId);
                     UiModule.addReplyHeaderUI(commentHeader, replyId);
