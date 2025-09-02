@@ -1,30 +1,3 @@
-/*!
- * QUELORA – Real-time interaction platform for websites
- *  * @author German Zelaya
- * @version 1.0.1
- * @since 2023
- Licensed under the GNU Affero General Public License v3.0
- *  * Copyright (C) 2025 German Zelaya
- *  * QUELORA is an open-source platform designed to add real-time comments,
- * posts, and reactions to websites. Its lightweight widget (~170KB uncompressed)
- * integrates easily into any page without the need for frameworks like React
- * or jQuery. It includes support for AI-powered automated moderation,
- * engagement analytics, and a multi-tenant dashboard to manage multiple sites
- * from a single interface.
- *  * This script is part of the QUELORA project, available at:
- * https://www.quelora.org/
- *  * This program is free software: you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *  * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
- * GNU General Public License for more details.
- *  * You should have received a copy of the GNU General Public License
- * along with this program. If not, see <https://www.gnu.org/licenses/>.
- */
-
 import UtilsModule from './utils.js';
 
 class Drawer {
@@ -43,7 +16,7 @@ class Drawer {
     }
 
     static isAnyDrawerVisible() {
-        return !!(Drawer.activeDrawer && Drawer.activeDrawer.element && Drawer.activeDrawer.element.classList.contains('active'));
+        return document.querySelector('.drawer.active') !== null;
     }
 
     static lockBodyScroll() {
@@ -59,8 +32,7 @@ class Drawer {
     }
 
     static updateBodyScrollLock() {
-        const ad = Drawer.activeDrawer;
-        if (ad && ad.element.classList.contains('drawer--full')) {
+        if (Drawer.isAnyDrawerVisible()) {
             Drawer.lockBodyScroll();
         } else {
             Drawer.unlockBodyScroll();
@@ -80,7 +52,7 @@ class Drawer {
             this.position = 'right';
             this.height = '100%';
         }
-        this.closeOnDrag = !!config.closeOnDrag && UtilsModule.isMobile;
+        this.closeOnDrag = config.closeOnDrag || false;
         this.afterRender = config.afterRender || null;
 
         this.element = null;
@@ -95,8 +67,8 @@ class Drawer {
         this.startTime = 0;
         this.eventHandlers = {};
 
-        this._boundOnDragging = null;
-        this._boundStopDragging = null;
+        this._boundOnDragging = this.onDragging.bind(this);
+        this._boundStopDragging = this.stopDragging.bind(this);
 
         this.initializeDrawer();
     }
@@ -110,7 +82,7 @@ class Drawer {
     setupEventListeners() {
         if (UtilsModule.isMobile) {
             this.header.addEventListener('mousedown', this.startDragging.bind(this));
-            this.header.addEventListener('touchstart', this.startDragging.bind(this), { passive: true });
+            this.header.addEventListener('touchstart', this.startDragging.bind(this), { passive: false });
         }
         this.element.addEventListener('transitionend', this.handleTransitionEnd.bind(this));
         this.element.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -139,29 +111,37 @@ class Drawer {
         container.id = this.id;
         container.className = `drawer ${this.position} ${this.customClass}`.trim();
         container.style.zIndex = this.zIndex;
+        
         if (UtilsModule.isMobile) {
             container.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease, height ${this.transitionSpeed} ease`;
         } else {
-            container.style.transition = `right ${this.transitionSpeed} ease, width ${this.transitionSpeed} ease`;
+            container.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease`;
         }
+        
         container.style.display = 'flex';
         container.style.visibility = 'hidden';
         container.style.pointerEvents = 'none';
+
         const closeBtn = !UtilsModule.isMobile ? `<button class="drawer-close-btn" aria-label="Cerrar">&times;</button>` : '';
         container.innerHTML = `<div class="drawer-header"><div class="t">${this.title}</div>${closeBtn}</div><div class="drawer-content">${this.content}</div>`;
+
         document.body.appendChild(container);
         this.element = container;
         this.header = container.querySelector('.drawer-header');
+        
         if (!UtilsModule.isMobile) {
             this.header.classList.add('drawer-header--desktop');
             const btn = container.querySelector('.drawer-close-btn');
             if (btn) btn.addEventListener('click', () => this.close());
-            this.element.style.right = '-500px';
-            this.element.style.width = '500px';
+            const dimension = this.parseSize(this.height, this.getDimension());
+            this.element.style[this.getPositionProperty()] = `-${dimension}px`;
+            this.element.style.height = '100%';
+            this.element.style.maxWidth = '500px';
         } else {
             const dimension = this.parseSize(this.height, this.getDimension());
             this.element.style[this.getPositionProperty()] = `-${dimension}px`;
         }
+        
         container.classList.add('no-shadow');
     }
 
@@ -184,7 +164,7 @@ class Drawer {
 
     parseSize(size, dimension) {
         if (typeof size === 'number') return size;
-        if (typeof size === 'string' && size.includes('%')) return dimension * (parseFloat(size) / 100);
+        if (size.includes('%')) return dimension * (parseFloat(size) / 100);
         return parseFloat(size) || dimension;
     }
 
@@ -192,9 +172,7 @@ class Drawer {
         if (!UtilsModule.isMobile) return;
         this.isDragging = true;
         this.startTime = Date.now();
-        const clientPos = this.position === 'bottom'
-            ? (e.touches ? e.touches[0].clientY : e.clientY)
-            : (e.touches ? e.touches[0].clientX : e.clientX);
+        const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX);
         this.startY = clientPos;
         const currentPos = parseFloat(this.element.style[this.getPositionProperty()]) || 0;
         this.startPosition = currentPos;
@@ -203,108 +181,66 @@ class Drawer {
         this.currentHeight = this.startHeight;
         this.element.style.transition = 'none';
         this.element.classList.add('dragging');
-        this._boundOnDragging = this.onDragging.bind(this);
-        this._boundStopDragging = this.stopDragging.bind(this);
         document.addEventListener('mousemove', this._boundOnDragging);
-        document.addEventListener('mouseup', this._boundStopDragging);
         document.addEventListener('touchmove', this._boundOnDragging, { passive: false });
+        document.addEventListener('mouseup', this._boundStopDragging);
         document.addEventListener('touchend', this._boundStopDragging);
     }
 
     onDragging(e) {
         if (!this.isDragging) return;
-        if (e.cancelable) e.preventDefault();
-        const clientPos = this.position === 'bottom'
-            ? (e.touches ? e.touches[0].clientY : e.clientY)
-            : (e.touches ? e.touches[0].clientX : e.clientX);
+        e.preventDefault();
+        const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX);
         const delta = clientPos - this.startY;
-        const isMovingUp = delta < 0;
-        if (this.position === 'bottom') {
-            if (isMovingUp && this.currentPosition === 0) {
-                let newHeight = this.startHeight + Math.abs(delta);
-                const maxHeight = this.getDimension();
-                newHeight = Math.min(newHeight, maxHeight);
-                this.element.style.height = `${newHeight}px`;
-                this.currentHeight = newHeight;
-                this.element.style.transform = '';
-            } else {
-                const translate = Math.max(delta, -this.parseSize(this.height, this.getDimension()));
-                this.element.style.transform = `translateY(${translate}px)`;
-            }
-        } else {
-            const translate = Math.max(delta, -this.parseSize(this.height, this.getDimension()));
-            const axis = this.position === 'right' ? 1 : -1;
-            this.element.style.transform = `translateX(${translate * axis}px)`;
-        }
+        const translate = this.position === 'bottom' ? Math.max(delta, -this.parseSize(this.height, this.getDimension())) : Math.max(delta, -this.parseSize(this.height, this.getDimension()));
+        this.element.style.transform = `translateY(${translate}px)`;
     }
 
-    stopDragging(e) {
+    stopDragging() {
         if (!this.isDragging) return;
         this.isDragging = false;
         const swipeTime = Date.now() - this.startTime;
-        const endPos = this.position === 'bottom'
-            ? (e.changedTouches ? e.changedTouches[0].clientY : e.clientY)
-            : (e.changedTouches ? e.changedTouches[0].clientX : e.clientX);
-        const delta = endPos - this.startY;
-        const distance = Math.abs(delta);
-        const swipeSpeed = distance / Math.max(swipeTime, 1);
         const dimension = this.getDimension();
         const halfDimension = dimension * 0.5;
-        this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease, height ${this.transitionSpeed} ease`;
-        this.element.style.transform = '';
-        const isMovingDown = delta > 0;
-        if (this.closeOnDrag && isMovingDown) {
-            this.close();
-        } else if (this.position === 'bottom') {
-            if (isMovingDown && swipeSpeed > 0.8) {
-                this.close();
-            } else if (isMovingDown) {
-                this.setHeight(halfDimension);
-            } else if (this.currentHeight > halfDimension) {
-                this.setHeight(dimension);
-            } else {
-                this.setHeight(halfDimension);
-            }
+        const currentTransform = window.getComputedStyle(this.element).getPropertyValue('transform');
+        const matrix = new DOMMatrix(currentTransform);
+        const distance = this.position === 'bottom' ? matrix.m42 : matrix.m41;
+        
+        if (UtilsModule.isMobile) {
+            this.element.style.transition = `transform ${this.transitionSpeed} ease, height ${this.transitionSpeed} ease`;
         } else {
-            if (isMovingDown && swipeSpeed > 0.8) {
+            this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease`;
+        }
+        
+        if (this.position === 'bottom') {
+            if (distance > halfDimension || swipeTime < 300 && distance > 50) {
                 this.close();
-            } else if (isMovingDown) {
-                this.setHeight(halfDimension);
-            } else if (this.currentHeight > halfDimension) {
+            } else if (distance < 0) {
                 this.setHeight(dimension);
             } else {
                 this.setHeight(halfDimension);
             }
         }
+        
         this.element.classList.remove('dragging');
+        this.element.style.transform = '';
         document.removeEventListener('mousemove', this._boundOnDragging);
-        document.removeEventListener('mouseup', this._boundStopDragging);
         document.removeEventListener('touchmove', this._boundOnDragging);
+        document.removeEventListener('mouseup', this._boundStopDragging);
         document.removeEventListener('touchend', this._boundStopDragging);
-        this._boundOnDragging = null;
-        this._boundStopDragging = null;
     }
 
     setHeight(height) {
-        if (this.position === 'bottom') {
-            this.element.style.height = `${height}px`;
-        } else {
-            this.element.style.width = `${height}px`;
+        if (UtilsModule.isMobile) {
+            if (this.position === 'bottom') {
+                this.element.style.height = `${height}px`;
+            } else {
+                this.element.style.width = `${height}px`;
+            }
+            this.element.style[this.getPositionProperty()] = '0';
+            this.currentPosition = 0;
+            this.currentHeight = height;
         }
-        this.element.style[this.getPositionProperty()] = '0';
-        this.currentPosition = 0;
-        this.currentHeight = height;
-        const dimension = this.getDimension();
-        const half = dimension * 0.5;
-        const TOL = 3;
-        const isHalf = Math.abs(height - half) <= TOL;
-        const isFull = Math.abs(height - dimension) <= TOL;
-        this.element.classList.toggle('drawer--half', isHalf);
-        this.element.classList.toggle('drawer--full', isFull);
-        if (!isHalf && !isFull) {
-            this.element.classList.remove('drawer--half', 'drawer--full');
-        }
-        Drawer.updateBodyScrollLock();
     }
 
     open() {
@@ -312,49 +248,59 @@ class Drawer {
             Drawer.drawerStack.push(Drawer.activeDrawer);
             Drawer.activeDrawer.hide();
         }
+
         Drawer.activeDrawer = this;
         Drawer.setupHistoryHandling();
         history.pushState({ drawerId: this.id }, '', window.location.href);
+
         this.element.style.visibility = 'visible';
         this.element.style.pointerEvents = 'auto';
+
         if (UtilsModule.isMobile) {
-            const sizePx = this.parseSize(this.height, this.getDimension());
-            this.setHeight(sizePx);
-        } else {
-            this.element.style.width = '500px';
-            this.element.style.right = '0';
+            if (this.position === 'bottom') {
+                this.element.style.height = this.height;
+            } else {
+                this.element.style.width = this.height;
+            }
         }
+
         this.element.classList.add('active', 'shadow');
         this.element.classList.remove('no-shadow');
+        this.element.style[this.getPositionProperty()] = '0';
+        this.currentPosition = 0;
+        this.element.style.transform = '';
+
+        Drawer.updateBodyScrollLock();
         this.emit('open');
     }
 
     hide() {
         this.element.classList.remove('active', 'shadow');
         this.element.classList.add('no-shadow');
-        if (UtilsModule.isMobile) {
-            const dimension = this.parseSize(this.height, this.getDimension());
-            this.element.style[this.getPositionProperty()] = `-${dimension}px`;
-            this.currentPosition = -dimension;
-        } else {
-            this.element.style.right = '-500px';
-            this.currentPosition = -this.getDimension();
-        }
+        const dimension = this.parseSize(this.height, this.getDimension());
+        this.element.style[this.getPositionProperty()] = `-${dimension}px`;
+        this.currentPosition = -dimension;
         this.emit('hide');
     }
 
     show() {
         this.element.style.visibility = 'visible';
         this.element.style.pointerEvents = 'auto';
+
         if (UtilsModule.isMobile) {
-            const sizePx = this.parseSize(this.height, this.getDimension());
-            this.setHeight(sizePx);
-        } else {
-            this.element.style.width = '100%';
-            this.element.style.right = '0';
+            if (this.position === 'bottom') {
+                this.element.style.height = this.height;
+            } else {
+                this.element.style.width = this.height;
+            }
         }
+
         this.element.classList.add('active', 'shadow');
         this.element.classList.remove('no-shadow');
+        this.element.style[this.getPositionProperty()] = '0';
+        this.currentPosition = 0;
+
+        Drawer.updateBodyScrollLock();
         this.emit('show');
     }
 
@@ -362,21 +308,24 @@ class Drawer {
         const wasActive = Drawer.activeDrawer === this;
         this.element.classList.remove('active', 'shadow');
         this.element.classList.add('no-shadow');
+        const dimension = this.parseSize(this.height, this.getDimension());
+        
         if (UtilsModule.isMobile) {
-            const dimension = this.parseSize(this.height, this.getDimension());
-            this.element.style[this.getPositionProperty()] = `-${dimension}px`;
-            this.currentPosition = -dimension;
+            this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease, transform ${this.transitionSpeed} ease`;
         } else {
-            this.element.style.right = '-100%';
-            this.currentPosition = -this.getDimension();
+            this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease`;
         }
+        
+        this.element.style[this.getPositionProperty()] = `-${dimension}px`;
+        
         if (wasActive) {
             Drawer.activeDrawer = null;
             if (Drawer.drawerStack.length > 0) {
                 const previousDrawer = Drawer.drawerStack.pop();
-                previousDrawer.open();
+                setTimeout(() => previousDrawer.show(), parseFloat(this.transitionSpeed) * 1000);
             }
         }
+        
         if (!fromHistory && history.state && history.state.drawerId === this.id) {
             history.back();
         }
