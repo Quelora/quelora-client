@@ -54,8 +54,8 @@ const MAX_RENDERED_COMMENTS = 300;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 
-const OBSERVER_ROOT_MARGIN = '800px';
-const DEHYDRATION_THRESHOLD = 2;
+const OBSERVER_ROOT_MARGIN = '1200px';
+const DEHYDRATION_THRESHOLD = 5;
 
 // ==================== PRIVATE VARIABLES ====================
 let workerInstance = null;
