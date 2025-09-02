@@ -100,7 +100,7 @@ body.drawer-scroll-locked {
     max-width: 500px;
     height: 100%;
     background-color: var(--quelora-secondary-color);
-    box-shadow: none; 
+    box-shadow: none;
     z-index: 9000;
     border-top-left-radius: 40px;
     border-top-right-radius: 40px;
@@ -113,11 +113,11 @@ body.drawer-scroll-locked {
     user-select: none;
     will-change: transform, height;
     overscroll-behavior: contain;
-    transition: height var(--transition-speed) ease, 
+    transition: height var(--transition-speed) ease,
             bottom var(--transition-speed) ease,
             right var(--transition-speed) ease,
             left var(--transition-speed) ease,
-            box-shadow var(--transition-speed) ease; 
+            box-shadow var(--transition-speed) ease;
 }
 
 .drawer.shadow {
@@ -129,13 +129,13 @@ body.drawer-scroll-locked {
 }
 
 .drawer.right { right: -100%; left: unset; }
+
 .drawer.left { left: -100%; right: unset; }
 
-/* Estado activo con sombra */
 .drawer.active {
     bottom: 0;
     height: var(--current-height, 100%);
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); 
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .drawer.right.active {
@@ -147,7 +147,7 @@ body.drawer-scroll-locked {
 .drawer.left.active {
     left: 0;
     height: 100%;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1); 
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
 }
 
 .drawer.dragging {
@@ -182,7 +182,7 @@ body.drawer-scroll-locked {
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain; 
+    overscroll-behavior: contain;
     flex: 1;
     height: 100%;
 }
@@ -216,7 +216,6 @@ body.drawer-scroll-locked {
   scrollbar-width: thin;
   scrollbar-color: var(--quelora-medium-gray-color) var(--quelora-light-background-color);
 }
-
 
 .quelora-inline-edit-input {
     border: 1px solid var(--quelora-border-color);
@@ -298,7 +297,7 @@ body.drawer-scroll-locked {
 
 .quelora-btn:active {
     transform: scale(var(--quelora-follow-button-active-scale));
-    background-color: var(--quelora-follow-button-active-bg); 
+    background-color: var(--quelora-follow-button-active-bg);
     border-color: var(--quelora-follow-button-active-bg-profile);
     color: white;
     box-shadow: var(--quelora-follow-button-active-shadow);
@@ -310,4 +309,79 @@ body.drawer-scroll-locked {
     top: 50%;
     transform: translateY(-50%);
     margin: 0;
+}
+
+/* Desktop-specific header/layout adjustments */
+.drawer.right {
+    right: -100%;
+    left: unset;
+    max-width: none;
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.drawer-header.drawer-header--desktop {
+    cursor: default;
+    padding-left: var(--spacing-xl);
+    padding-right: var(--spacing-xl);
+    padding-bottom: 0px!important;
+    padding-top: 0px!important;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    text-align: left;
+}
+
+.drawer-header.drawer-header--desktop::before {
+    display: none;
+}
+
+.drawer-header.drawer-header--desktop .t {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--quelora-text-color);
+    margin: auto;
+    padding: 0;
+}
+
+.drawer-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    color: var(--quelora-text-color);
+}
+
+.drawer-close-btn:hover {
+    background-color: rgba(0,0,0,0.04);
+}
+
+.drawer.right.active {
+    right: 0;
+    height: 100%;
+    box-shadow: -6px 0 24px rgba(0,0,0,0.12);
+}
+
+.drawer.right .drawer-content {
+    padding: var(--spacing-md) var(--spacing-lg);
+}
+
+/* Optional wide-breakpoint polish */
+@media (min-width: 900px) {
+    .drawer {
+        max-width: 500px;
+        border-radius: 0;
+    }
+    .drawer.right {
+        border-top-left-radius: 12px;
+        border-bottom-left-radius: 12px;
+    }
+    .drawer-header {
+        cursor: default;
+    }
 }

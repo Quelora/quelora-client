@@ -88,7 +88,7 @@
 
 .quelora-comments .community-threads {
     overflow-y: auto;
-    padding: var(--spacing-xl);
+    padding: var(--spacing-xs);
     margin-bottom: 110px;
 }
 
