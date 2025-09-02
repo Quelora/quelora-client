@@ -38,6 +38,71 @@ import UiModule from './ui.js';
 // Cache for storing post statistics
 const postStatsCache = new Map();
 
+const observerRegistry = new Map();
+
+function registerObserver(observer, element, type, callback) {
+    try {
+        if (!observer || !element || !element.isConnected) {
+            console.warn('UtilsModule: Invalid observer or disconnected element', { observer, element });
+            return false;
+        }
+
+        const key = `${type}_${Math.random().toString(36).slice(2)}`;
+        observerRegistry.set(key, {
+            observer,
+            element,
+            type,
+            callback
+        });
+
+        return key;
+    } catch (error) {
+        console.error('UtilsModule: Error in registerObserver:', error);
+        return false;
+    }
+}
+
+function unregisterObserver(key) {
+    try {
+        if (observerRegistry.has(key)) {
+            const { observer, element } = observerRegistry.get(key);
+            observer.unobserve?.(element); 
+            observer.disconnect?.(); 
+            observerRegistry.delete(key);
+        }
+    } catch (error) {
+        console.error('UtilsModule: Error in unregisterObserver:', error);
+    }
+}
+
+function pauseObservers(type) {
+    try {
+        for (const [key, { observer, element, type: obsType }] of observerRegistry) {
+            if (!type || type === obsType) {
+                observer.unobserve?.(element);
+            }
+        }
+    } catch (error) {
+        console.error('UtilsModule: Error in pauseObservers:', error);
+    }
+}
+
+function resumeObservers(type) {
+    try {
+        for (const [key, { observer, element, type: obsType, callback }] of observerRegistry) {
+            if (!type || type === obsType) {
+                if (obsType === 'mutation') {
+                    observer.observe(element, { childList: true, subtree: true });
+                } else if (obsType === 'intersection') {
+                    observer.observe(element);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('UtilsModule: Error in resumeObservers:', error);
+    }
+}
+
 /**
  * Formats a date string into a localized short date (e.g., "Jan 1, 2023").
  * @param {string} dateString - Date in string format.
@@ -156,6 +221,7 @@ const debouncedFetchStats = debounce(() => {
  * @returns {MutationObserver|null} Observer instance or null if error occurs.
  */
 let selector;
+
 function observeNewEntities() {
     try {
         const updateConfig = () => {
@@ -184,12 +250,19 @@ function observeNewEntities() {
             subtree: true
         });
 
-        return observer;
+        // Registrar el observador y retornar la key
+        return registerObserver(
+            observer,
+            document.body,
+            'mutation',
+            null
+        );
     } catch (error) {
         console.error('Error in observeNewEntities:', error);
         return null;
     }
 }
+
 
 /**
  * Stores stats configuration in the cache.
@@ -561,7 +634,11 @@ const UtilsModule = {
     getCurrentScriptPath,
     debounce,
     isMobile,
-    makeEditableDivInput
+    makeEditableDivInput,
+    registerObserver,
+    unregisterObserver,
+    pauseObservers,
+    resumeObservers
 };
 
 export default UtilsModule;

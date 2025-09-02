@@ -108,6 +108,16 @@ const enhanceLibrary = (lib) => {
 };
 
 let enhancedIconLibrary = enhanceLibrary(iconLibrary);
+let iconsObserverKey = null;
+
+const stopObserving = () => {
+  if (iconsObserverKey) {
+    UtilsModule.unregisterObserver(iconsObserverKey);
+    iconsObserverKey = null;
+  }
+  isObserving = false;
+  observer = null;
+};
 
 // SCHEDULING
 const scheduleBatch = (cb) => UtilsModule.startTimeout(cb, 100);
@@ -196,7 +206,17 @@ const startObserving = () => {
     attributeFilter: ["class", "data-icon"]
   });
 
+  // Registrar el observador en el sistema centralizado
+  iconsObserverKey = UtilsModule.registerObserver(
+    observer,
+    document.body,
+    'mutation',
+    null
+  );
+
   isObserving = true;
+  
+  return iconsObserverKey; // Retornar la key para posible uso futuro
 };
 
 // INITIALIZATION
@@ -229,10 +249,7 @@ const getIconSvg = (iconName) => enhancedIconLibrary[normalizeIconName(iconName)
 const IconsModule = {
   initializeIcons,
   getIconSvg,
-  stopObserving: () => {
-    observer?.disconnect();
-    isObserving = false;
-  }
+  stopObserving
 };
 
 export default IconsModule;

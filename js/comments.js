@@ -126,6 +126,47 @@ function setupVisibilityObservers() {
         threshold: 0
     });
 
+    const commentObserverKey = UtilsModule.registerObserver(
+        commentObserver,
+        threadsContainer,
+        'intersection',
+        (entries) => {
+            const containerRect = drawerContent.getBoundingClientRect();
+            const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
+            let invisibleUpCount = 0;
+            let invisibleDownCount = 0;
+            
+            entries.forEach(entry => {
+                const comment = entry.target;
+                const header = comment.querySelector('.comment-header[data-comment-id]');
+                const commentId = header ? header.getAttribute('data-comment-id') : null;
+                if (!commentId) return;
+                
+                if (entry.isIntersecting) {
+                    comment.setAttribute('data-comment-visible', 'true');
+                    if (comment.hasAttribute('data-comment-dehydrated')) {
+                        rehydrateComment(comment, commentObserver);
+                    }
+                } else {
+                    comment.setAttribute('data-comment-visible', 'false');
+                    const commentRect = comment.getBoundingClientRect();
+                    if (commentRect.bottom < containerRect.top) {
+                        invisibleUpCount++;
+                    } else if (commentRect.top > containerRect.bottom) {
+                        invisibleDownCount++;
+                    }
+                }
+            });
+            
+            if (invisibleUpCount > DEHYDRATION_THRESHOLD) {
+                UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect, commentObserver), 100);
+            }
+            if (invisibleDownCount > DEHYDRATION_THRESHOLD) {
+                UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect, commentObserver), 100);
+            }
+        }
+    );
+
     const loadMoreObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -139,6 +180,21 @@ function setupVisibilityObservers() {
         rootMargin: OBSERVER_ROOT_MARGIN,
         threshold: 0.1 
     });
+    
+    const loadMoreObserverKey = UtilsModule.registerObserver(
+        loadMoreObserver,
+        threadsContainer,
+        'intersection',
+        (entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const loadMoreLink = entry.target;
+                    loadMoreLink.click();
+                    loadMoreObserver.unobserve(loadMoreLink);
+                }
+            });
+        }
+    );
     
     const observeComments = () => {
         const comments = threadsContainer.querySelectorAll('.community-thread');
@@ -165,6 +221,16 @@ function setupVisibilityObservers() {
         observeLoadMoreLinks();
     });
     
+    const mutationObserverKey = UtilsModule.registerObserver(
+        mutationObserver,
+        threadsContainer,
+        'mutation',
+        () => {
+            observeComments();
+            observeLoadMoreLinks();
+        }
+    );
+    
     mutationObserver.observe(threadsContainer, { childList: true, subtree: true });
 
     observeComments();
@@ -172,9 +238,9 @@ function setupVisibilityObservers() {
     
     visibilityObservers = {
         disconnect: () => {
-            commentObserver.disconnect();
-            loadMoreObserver.disconnect();
-            mutationObserver.disconnect();
+            UtilsModule.unregisterObserver(commentObserverKey);
+            UtilsModule.unregisterObserver(loadMoreObserverKey);
+            UtilsModule.unregisterObserver(mutationObserverKey);
             const commentHeaders = threadsContainer.querySelectorAll('.comment-header[data-comment-id]');
             commentHeaders.forEach(header => {
                 header.removeAttribute('data-comment-visible');

@@ -228,7 +228,7 @@ const generalSettingsDrawerUI = new Drawer({
     customClass: 'quelora-community-settings',
     title: '{{settings}}',
     zIndex: 9005,
-    height: '50%',
+    height: '60%',
     content: `
         <div class="settings-menu">
             <div class="quelora-login-option"><span class="quelora-icons-outlined">login</span><span class="quelora-login-label t">{{login}}</span></div>
