@@ -13,26 +13,25 @@ const I18N_UPDATE_CHUNK_SIZE = 50;
  * Using a single object for state management improves organization.
  */
 const state = {
-  currentLang: '',
-  basePath: '',
-  translations: {},
-  elementsMap: new Map(),
-  observer: null,
-  isChangingLanguage: false,
-  pendingLanguageChange: null,
-  abortController: null,
-  speechVariants: {
-    'en': 'en-US',
-    'es': 'es-ES',
-    'fr': 'fr-FR',
-    'de': 'de-DE',
-    'pt': 'pt-PT',
-    'it': 'it-IT',
-    'ja': 'ja-JP',
-    'ru': 'ru-RU',
-    'zh': 'zh-CN',
-    'ar': 'ar-SA'
-  }
+    currentLang: '',
+    basePath: '',
+    translations: {},
+    observer: null,
+    isChangingLanguage: false,
+    pendingLanguageChange: null,
+    abortController: null,
+    speechVariants: {
+        'en': 'en-US',
+        'es': 'es-ES',
+        'fr': 'fr-FR',
+        'de': 'de-DE',
+        'pt': 'pt-PT',
+        'it': 'it-IT',
+        'ja': 'ja-JP',
+        'ru': 'ru-RU',
+        'zh': 'zh-CN',
+        'ar': 'ar-SA'
+    }
 };
 
 /**
@@ -42,8 +41,8 @@ const state = {
  * @returns {null}
  */
 const handleError = (error, context) => {
-  console.error(`I18n: Error in ${context}:`, error);
-  return null;
+    console.error(`I18n: Error in ${context}:`, error);
+    return null;
 };
 
 /**
@@ -52,7 +51,7 @@ const handleError = (error, context) => {
  * @returns {string} The string with all keys replaced by their translations.
  */
 const _replaceKeys = (text) => {
-  return text.replace(/{{(\w+)}}/g, (_, key) => getTranslation(key));
+    return text.replace(/{{(\w+)}}/g, (_, key) => getTranslation(key));
 };
 
 /**
@@ -62,30 +61,30 @@ const _replaceKeys = (text) => {
  * @param {string} [basePath=''] - The base path for translation JSON files.
  */
 const initializeI18N = async (lang = 'en', basePath = '') => {
-  try {
-    state.currentLang = lang;
-    state.basePath = basePath;
-    state.isChangingLanguage = false;
-    document.body.dataset.changingLanguage = 'false';
+    try {
+        state.currentLang = lang;
+        state.basePath = basePath;
+        state.isChangingLanguage = false;
+        document.body.dataset.changingLanguage = 'false';
 
-    await loadTranslations(lang);
-    _setSpeechVariant(lang);
-    _initMutationObserver();
-  } catch (error) {
-    handleError(error, 'initializeI18N');
-  }
+        await loadTranslations(lang);
+        _setSpeechVariant(lang);
+        _initMutationObserver();
+    } catch (error) {
+        handleError(error, 'initializeI18N');
+    }
 };
 
 /**
  * Clears the translation cache for the current language from local storage.
  */
 const clearCache = () => {
-  try {
-    state.translations = {};
-    StorageModule.removeLocalItem(`quelora_i18n_${state.currentLang}`);
-  } catch (error) {
-    handleError(error, 'clearCache');
-  }
+    try {
+        state.translations = {};
+        StorageModule.removeLocalItem(`quelora_i18n_${state.currentLang}`);
+    } catch (error) {
+        handleError(error, 'clearCache');
+    }
 };
 
 /**
@@ -95,37 +94,37 @@ const clearCache = () => {
  * @returns {Promise<boolean>} Resolves to true if translations were loaded, false otherwise.
  */
 const loadTranslations = async (lang) => {
-  const storageKey = `quelora_i18n_${lang}`;
-  try {
-    const cached = StorageModule.getLocalItem(storageKey);
-    if (cached) {
-      state.translations = JSON.parse(cached);
-      return true;
-    }
+    const storageKey = `quelora_i18n_${lang}`;
+    try {
+        const cached = StorageModule.getLocalItem(storageKey);
+        if (cached) {
+            state.translations = JSON.parse(cached);
+            return true;
+        }
 
-    if (state.abortController) state.abortController.abort();
-    state.abortController = new AbortController();
+        if (state.abortController) state.abortController.abort();
+        state.abortController = new AbortController();
 
-    const response = await fetch(`${state.basePath}${lang}.json`, { signal: state.abortController.signal });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    
-    const newTranslations = await response.json();
-    state.translations = newTranslations;
-    StorageModule.setLocalItem(storageKey, JSON.stringify(newTranslations));
-    return true;
-  } catch (error) {
-    if (error.name === 'AbortError') return false;
-    handleError(error, `loadTranslations "${lang}"`);
-    
-    const cached = StorageModule.getLocalItem(storageKey);
-    if (cached) {
-      state.translations = JSON.parse(cached);
-      return true;
+        const response = await fetch(`${state.basePath}${lang}.json`, { signal: state.abortController.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        const newTranslations = await response.json();
+        state.translations = newTranslations;
+        StorageModule.setLocalItem(storageKey, JSON.stringify(newTranslations));
+        return true;
+    } catch (error) {
+        if (error.name === 'AbortError') return false;
+        handleError(error, `loadTranslations "${lang}"`);
+
+        const cached = StorageModule.getLocalItem(storageKey);
+        if (cached) {
+            state.translations = JSON.parse(cached);
+            return true;
+        }
+
+        state.translations = {};
+        return false;
     }
-    
-    state.translations = {};
-    return false;
-  }
 };
 
 /**
@@ -135,56 +134,56 @@ const loadTranslations = async (lang) => {
  * @returns {Promise<boolean>} True if the language was changed successfully, false otherwise.
  */
 const changeLanguage = async (lang, updateDOM = true) => {
-  if (state.isChangingLanguage) {
-    state.pendingLanguageChange = { lang, updateDOM };
-    return false;
-  }
-  if (!lang || lang === state.currentLang) return false;
-  
-  state.isChangingLanguage = true;
-  const previousLang = state.currentLang;
-  state.currentLang = lang;
-  document.body.dataset.changingLanguage = 'true';
-  document.dispatchEvent(new CustomEvent('i18n:languageChangeStart'));
-  UtilsModule.pauseObservers('mutation');
+    if (state.isChangingLanguage) {
+        state.pendingLanguageChange = { lang, updateDOM };
+        return false;
+    }
+    if (!lang || lang === state.currentLang) return false;
 
-  try {
-    const success = await loadTranslations(lang);
-    if (success) {
-      _setSpeechVariant(lang);
-      if (updateDOM) await _updateDOM();
-      document.body.dataset.changingLanguage = 'false';
-      UtilsModule.resumeObservers('mutation');
-      document.dispatchEvent(new CustomEvent('i18n:languageChangeEnd'));
-      return true;
-    } else {
-      state.currentLang = previousLang;
-      document.body.dataset.changingLanguage = 'false';
-      UtilsModule.resumeObservers('mutation');
-      return false;
+    state.isChangingLanguage = true;
+    const previousLang = state.currentLang;
+    state.currentLang = lang;
+    document.body.dataset.changingLanguage = 'true';
+    document.dispatchEvent(new CustomEvent('i18n:languageChangeStart'));
+    UtilsModule.pauseObservers('mutation');
+
+    try {
+        const success = await loadTranslations(lang);
+        if (success) {
+            _setSpeechVariant(lang);
+            if (updateDOM) await _updateDOM();
+            document.body.dataset.changingLanguage = 'false';
+            UtilsModule.resumeObservers('mutation');
+            document.dispatchEvent(new CustomEvent('i18n:languageChangeEnd'));
+            return true;
+        } else {
+            state.currentLang = previousLang;
+            document.body.dataset.changingLanguage = 'false';
+            UtilsModule.resumeObservers('mutation');
+            return false;
+        }
+    } catch (error) {
+        handleError(error, 'changeLanguage');
+        document.body.dataset.changingLanguage = 'false';
+        UtilsModule.resumeObservers('mutation');
+        return false;
+    } finally {
+        state.isChangingLanguage = false;
+        if (state.pendingLanguageChange) {
+            const pending = state.pendingLanguageChange;
+            state.pendingLanguageChange = null;
+            setTimeout(() => changeLanguage(pending.lang, pending.updateDOM), 50);
+        }
     }
-  } catch (error) {
-    handleError(error, 'changeLanguage');
-    document.body.dataset.changingLanguage = 'false';
-    UtilsModule.resumeObservers('mutation');
-    return false;
-  } finally {
-    state.isChangingLanguage = false;
-    if (state.pendingLanguageChange) {
-      const pending = state.pendingLanguageChange;
-      state.pendingLanguageChange = null;
-      setTimeout(() => changeLanguage(pending.lang, pending.updateDOM), 50);
-    }
-  }
 };
 
 /**
  * Retrieves the translation for a given key.
  * @param {string} key - The translation key.
- * @returns {string} The translated string or the key itself wrapped in `{{ }}` if not found.
+ * @returns {string} The translated string or the key itself wrapped in {{ }} if not found.
  */
 const getTranslation = (key) => {
-  return state.translations[key] || `{{${key}}}`;
+    return state.translations[key] || `{{${key}}}`;
 };
 
 /**
@@ -192,12 +191,12 @@ const getTranslation = (key) => {
  * @param {string} lang - The language code.
  */
 const _setSpeechVariant = (lang) => {
-  try {
-    const variant = state.speechVariants[lang] || 'en-US';
-    StorageModule.setLocalItem('quelora_i18n_transcription', variant);
-  } catch (error) {
-    handleError(error, 'setSpeechVariant');
-  }
+    try {
+        const variant = state.speechVariants[lang] || 'en-US';
+        StorageModule.setLocalItem('quelora_i18n_transcription', variant);
+    } catch (error) {
+        handleError(error, 'setSpeechVariant');
+    }
 };
 
 /**
@@ -205,49 +204,90 @@ const _setSpeechVariant = (lang) => {
  * @returns {string} The speech variant code.
  */
 const getSpeechVariant = () => {
-  try {
-    return StorageModule.getLocalItem('quelora_i18n_transcription') || 'en-US';
-  } catch (error) {
-    handleError(error, 'getSpeechVariant');
-    return 'en-US';
-  }
+    try {
+        return StorageModule.getLocalItem('quelora_i18n_transcription') || 'en-US';
+    } catch (error) {
+        handleError(error, 'getSpeechVariant');
+        return 'en-US';
+    }
 };
 
 /**
- * Translates a single HTML element. It caches the element and its original content.
+ * Translates a single HTML element. It marks the element with translation metadata.
  * @param {HTMLElement} element - The element to translate.
  * @param {string | null} attribute - The attribute to translate (e.g., 'placeholder').
  * @param {string} className - The CSS class used for translation.
  */
 const translateElement = (element, attribute = null, className = 't') => {
-  if (!element?.isConnected) return;
+    if (!element?.isConnected || element.dataset.i18nProcessing === 'true') return;
 
-  try {
-    let key = attribute
-      ? element.getAttribute(attribute)?.replace(/^{{|}}$/g, '')
-      : (element.innerHTML.trim().match(/^{{(.*?)}}$/)?.[1]?.trim() || null);
+    try {
+        element.dataset.i18nProcessing = 'true';
 
-    if (!state.elementsMap.has(element)) {
-      state.elementsMap.set(element, {
-        key,
-        attribute,
-        className,
-        originalContent: attribute ? element.getAttribute(attribute) : element.innerHTML
-      });
+        let key = attribute
+            ? element.getAttribute(attribute)?.replace(/^{{|}}$/g, '')
+            : (element.textContent.trim().match(/^{{(.*?)}}$/)?.[1]?.trim() || null);
+
+        // If no explicit key found, check for existing translation data
+        if (!key && element.dataset.i18nKey) {
+            key = element.dataset.i18nKey;
+        }
+
+        // Store original content if not already stored
+        if (!element.dataset.i18nOriginal) {
+            element.dataset.i18nOriginal = attribute 
+                ? element.getAttribute(attribute) || '' 
+                : element.textContent;
+        }
+
+        // Store translation metadata
+        element.dataset.i18nKey = key || '';
+        element.dataset.i18nAttribute = attribute || '';
+        element.dataset.i18nClass = className;
+        element.dataset.i18nLang = state.currentLang;
+
+        const translation = key
+            ? getTranslation(key).replace(/{{|}}/g, '')
+            : _replaceKeys(element.dataset.i18nOriginal).replace(/{{|}}/g, '');
+
+        if (attribute) {
+            element.setAttribute(attribute, translation);
+        } else {
+            // Preserve child elements when updating text content
+            const childNodes = Array.from(element.childNodes);
+            const textNodes = childNodes.filter(node => node.nodeType === Node.TEXT_NODE && node.textContent.trim());
+            
+            if (textNodes.length > 0) {
+                // Replace only text nodes, preserve elements
+                textNodes.forEach(node => {
+                    if (node.textContent.includes('{{') || key) {
+                        node.textContent = translation;
+                    }
+                });
+            } else {
+                // No text nodes found, check if we need to add translation
+                if (element.dataset.i18nOriginal.includes('{{') || key) {
+                    // Create a text node for the translation while preserving existing children
+                    const translatedText = document.createTextNode(translation);
+                    
+                    // Remove any previous translation text nodes we might have added
+                    const existingTranslationNodes = Array.from(element.childNodes)
+                        .filter(node => node.nodeType === Node.TEXT_NODE && node.dataset?.i18nText === 'true');
+                    
+                    existingTranslationNodes.forEach(node => node.remove());
+                    
+                    // Add the new translation as the first child
+                    translatedText.dataset.i18nText = 'true';
+                    element.insertBefore(translatedText, element.firstChild);
+                }
+            }
+        }
+
+        element.dataset.i18nProcessing = 'false';
+    } catch (error) {
+        element.dataset.i18nProcessing = 'false';
+        handleError(error, 'translateElement');
     }
-
-    const translation = key
-      ? getTranslation(key).replace(/{{|}}/g, '')
-      : _replaceKeys(element.innerHTML).replace(/{{|}}/g, '');
-
-    if (attribute) {
-      element.setAttribute(attribute, translation);
-    } else {
-      element.innerHTML = translation;
-    }
-  } catch (error) {
-    handleError(error, 'translateElement');
-  }
 };
 
 /**
@@ -256,103 +296,132 @@ const translateElement = (element, attribute = null, className = 't') => {
  * @param {string | null} attribute - The attribute to translate.
  */
 const translateByClass = (className, attribute = null) => {
-  try {
-    const elements = document.querySelectorAll(`.${className}`);
-    elements.forEach(element => {
-      if (element.isConnected) {
-        translateElement(element, attribute, className);
-      }
+    try {
+        const elements = document.querySelectorAll(`.${className}`);
+        elements.forEach(element => {
+            if (element.isConnected) {
+                translateElement(element, attribute, className);
+            }
+        });
+    } catch (error) {
+        handleError(error, 'translateByClass');
+    }
+};
+
+/**
+ * Finds all translatable elements in the DOM based on their data attributes
+ * @returns {HTMLElement[]} Array of elements that need translation
+ */
+const _findTranslatableElements = () => {
+    const elements = [];
+    
+    // Find elements with i18n data attributes
+    const elementsWithData = document.querySelectorAll('[data-i18n-key]');
+    elementsWithData.forEach(el => {
+        if (el.isConnected) elements.push(el);
     });
-  } catch (error) {
-    handleError(error, 'translateByClass');
-  }
+    
+    // Find elements with translation classes but no data attributes
+    const classSelectors = ['.t', '.comment-input', '.search-input'];
+    classSelectors.forEach(selector => {
+        document.querySelectorAll(selector).forEach(el => {
+            if (el.isConnected && !el.dataset.i18nKey) {
+                elements.push(el);
+            }
+        });
+    });
+    
+    return elements;
 };
 
 /**
  * Asynchronously updates the DOM by translating all tracked elements.
- * This function uses `requestAnimationFrame` to perform updates in chunks,
+ * This function uses requestAnimationFrame to perform updates in chunks,
  * preventing the main thread from being blocked.
  * @returns {Promise<void>}
  */
 const _updateDOM = () => {
-  return new Promise(resolve => {
-    try {
-      const entries = Array.from(state.elementsMap.entries());
-      let i = 0;
+    return new Promise(resolve => {
+        try {
+            const elements = _findTranslatableElements();
+            let i = 0;
 
-      const processChunk = () => {
-        const end = Math.min(i + I18N_UPDATE_CHUNK_SIZE, entries.length);
-        for (; i < end; i++) {
-          const [element, data] = entries[i];
-          if (!element.isConnected) {
-            state.elementsMap.delete(element);
-            continue;
-          }
-          try {
-            let translation = data.key
-              ? (state.translations[data.key] || `{{${data.key}}}`)
-              : _replaceKeys(element.textContent || element.innerHTML);
+            const processChunk = () => {
+                const end = Math.min(i + I18N_UPDATE_CHUNK_SIZE, elements.length);
+                for (; i < end; i++) {
+                    const element = elements[i];
+                    if (!element.isConnected) continue;
+                    
+                    try {
+                        const attribute = element.dataset.i18nAttribute || null;
+                        const className = element.dataset.i18nClass || 't';
+                        translateElement(element, attribute, className);
+                    } catch (e) {
+                        console.warn('Failed to translate element:', e);
+                    }
+                }
+                
+                if (i < elements.length) {
+                    requestAnimationFrame(processChunk);
+                } else {
+                    resolve();
+                }
+            };
 
-            translation = translation.replace(/{{|}}/g, '');
-
-            if (data.attribute) {
-              element.setAttribute(data.attribute, translation);
-            } else {
-              element.textContent = translation;
-            }
-          } catch (e) {
-            state.elementsMap.delete(element);
-          }
+            requestAnimationFrame(processChunk);
+        } catch (error) {
+            handleError(error, '_updateDOM');
+            resolve();
         }
-        if (i < entries.length) {
-          requestAnimationFrame(processChunk);
-        } else {
-          resolve();
-        }
-      };
-
-      requestAnimationFrame(processChunk);
-    } catch (error) {
-      handleError(error, '_updateDOM');
-      resolve();
-    }
-  });
+    });
 };
 
 /**
  * Initializes a MutationObserver to automatically translate newly added DOM elements.
  */
 const _initMutationObserver = () => {
-  try {
-    if (state.observer) state.observer.disconnect();
-    
-    state.observer = new MutationObserver((mutations) => {
-      if (document.body.dataset.changingLanguage === 'true') return;
-      
-      mutations.forEach(mutation => {
-        if (mutation.type === 'childList') {
-          mutation.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE && node.isConnected) {
-              state.elementsMap.forEach(({ className, attribute }) => {
-                if (node.classList.contains(className)) {
-                  translateElement(node, attribute, className);
+    try {
+        if (state.observer) state.observer.disconnect();
+
+        state.observer = new MutationObserver((mutations) => {
+            if (document.body.dataset.changingLanguage === 'true') return;
+
+            mutations.forEach(mutation => {
+                if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === Node.ELEMENT_NODE && node.isConnected) {
+                            // Check for translatable elements in the added node
+                            const translatableElements = node.querySelectorAll?.('.t, .comment-input, .search-input') || [];
+                            
+                            // Also check if the node itself is translatable
+                            if (node.matches?.('.t, .comment-input, .search-input')) {
+                                translatableElements.push(node);
+                            }
+                            
+                            translatableElements.forEach(element => {
+                                if (element.isConnected) {
+                                    const classList = element.classList;
+                                    let attribute = null;
+                                    
+                                    if (classList.contains('comment-input') || classList.contains('search-input')) {
+                                        attribute = 'placeholder';
+                                    }
+                                    
+                                    translateElement(element, attribute, Array.from(classList).find(c => 
+                                        c === 't' || c === 'comment-input' || c === 'search-input'
+                                    ));
+                                }
+                            });
+                        }
+                    });
                 }
-                node.querySelectorAll(`.${className}`).forEach(child => {
-                  if (child.isConnected) {
-                    translateElement(child, attribute, className);
-                  }
-                });
-              });
-            }
-          });
-        }
-      });
-    });
-    
-    state.observer.observe(document.body, { childList: true, subtree: true });
-  } catch (error) {
-    handleError(error, '_initMutationObserver');
-  }
+            });
+        });
+
+        state.observer.observe(document.body, { childList: true, subtree: true });
+    } catch (error) {
+        handleError(error, '_initMutationObserver');
+    }
 };
 
 /**
@@ -360,12 +429,12 @@ const _initMutationObserver = () => {
  * This object provides a clear interface for interacting with the module.
  */
 const I18n = {
-  initializeI18N,
-  changeLanguage,
-  translateByClass,
-  getTranslation,
-  clearCache,
-  getSpeechVariant
+    initializeI18N,
+    changeLanguage,
+    translateByClass,
+    getTranslation,
+    clearCache,
+    getSpeechVariant
 };
 
 export default I18n;
