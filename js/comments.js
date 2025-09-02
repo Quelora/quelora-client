@@ -50,12 +50,14 @@ import CaptchaModule from './captcha.js';
 const SCROLL_THRESHOLD = 10; 
 const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
-const MAX_RENDERED_COMMENTS = 200;
+const MAX_RENDERED_COMMENTS = 100;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
+const LOAD_MORE_ROOT_MARGIN = '0px 0px 400px 0px'; //pixels
 
-const OBSERVER_ROOT_MARGIN = '800px';
-const DEHYDRATION_THRESHOLD = 2;
+const VISIBILITY_THRESHOLD = 1000; // pixels
+const VISIBILITY_THROTTLE = 300;   // ms
+const VISIBLE_THRESHOLD = 20;      // nodes
 
 // ==================== PRIVATE VARIABLES ====================
 let workerInstance = null;
@@ -65,7 +67,8 @@ let activeCommentElement = null;
 let pressTimer = null;
 let useCaptcha = false;
 
-let visibilityObservers = null;
+
+let visibilityObserver = null;
 let activeAction = null;
 let touchStartX = 0;
 let touchStartY = 0;
@@ -73,39 +76,61 @@ let touchStartY = 0;
 let storedComments = new Map();
 let storedRenderedComments  = new Map();
 
+// ==================== UTILITY FUNCTIONS ====================
+function throttle(func, limit) {
+    let lastFunc;
+    let lastRan;
+    return function(...args) {
+        if (!lastRan) {
+            func.apply(null, args);
+            lastRan = Date.now();
+        } else {
+            clearTimeout(lastFunc);
+            lastFunc = setTimeout(() => {
+                if ((Date.now() - lastRan) >= limit) {
+                    func.apply(null, args);
+                    lastRan = Date.now();
+                }
+            }, limit - (Date.now() - lastRan));
+        }
+    };
+}
 
 // ==================== EVENT HANDLER UTILITIES ====================
-
 function setupVisibilityObservers() {
-    const threadsContainer = UiModule.getCommunityThreadsUI();
-    const drawerContent = threadsContainer?.closest('.drawer-content') || document.querySelector('.drawer-content');
+    const parentThreadsContainer = UiModule.getCommunityThreadsUI()?.parentElement;
     
-    if (!threadsContainer || !drawerContent) {
+    if (!parentThreadsContainer) {
+        console.log('No threads container found');
         return;
     }
     
     cleanupVisibilityObservers();
     
-    const commentObserver = new IntersectionObserver((entries) => {
-        const containerRect = drawerContent.getBoundingClientRect();
-        const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
+    function handleCommentVisibility() {
+        const containerRect = parentThreadsContainer.getBoundingClientRect();
+        const comments = Array.from(parentThreadsContainer.querySelectorAll('.community-thread'));
+        if (comments.length === 0) return;
+
         let invisibleUpCount = 0;
         let invisibleDownCount = 0;
-        
-        entries.forEach(entry => {
-            const comment = entry.target;
+
+        comments.forEach(comment => {
+            const commentRect = comment.getBoundingClientRect();
             const header = comment.querySelector('.comment-header[data-comment-id]');
             const commentId = header ? header.getAttribute('data-comment-id') : null;
-            if (!commentId) return;
-            
-            if (entry.isIntersecting) {
+            const isVisible = (
+                commentRect.bottom >= (containerRect.top - VISIBILITY_THRESHOLD) &&
+                commentRect.top <= (containerRect.bottom + VISIBILITY_THRESHOLD)
+            );
+
+            if (isVisible) {
                 comment.setAttribute('data-comment-visible', 'true');
                 if (comment.hasAttribute('data-comment-dehydrated')) {
-                    rehydrateComment(comment, commentObserver);
+                    rehydrateComment(comment);
                 }
             } else {
                 comment.setAttribute('data-comment-visible', 'false');
-                const commentRect = comment.getBoundingClientRect();
                 if (commentRect.bottom < containerRect.top) {
                     invisibleUpCount++;
                 } else if (commentRect.top > containerRect.bottom) {
@@ -113,217 +138,102 @@ function setupVisibilityObservers() {
                 }
             }
         });
-        
-        if (invisibleUpCount > DEHYDRATION_THRESHOLD) {
-            UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect, commentObserver), 100);
-        }
-        if (invisibleDownCount > DEHYDRATION_THRESHOLD) {
-            UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect, commentObserver), 100);
-        }
-    }, {
-        root: drawerContent,
-        rootMargin: OBSERVER_ROOT_MARGIN,
-        threshold: 0
-    });
 
-    const commentObserverKey = UtilsModule.registerObserver(
-        commentObserver,
-        threadsContainer,
-        'intersection',
-        (entries) => {
-            const containerRect = drawerContent.getBoundingClientRect();
-            const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
-            let invisibleUpCount = 0;
-            let invisibleDownCount = 0;
-            
-            entries.forEach(entry => {
-                const comment = entry.target;
-                const header = comment.querySelector('.comment-header[data-comment-id]');
+        function dehydrateUpwards() {
+            let count = 0;
+            for (let i = comments.length - 1; i >= 0; i--) {
+                const c = comments[i];
+                const header = c.querySelector('.comment-header[data-comment-id]');
                 const commentId = header ? header.getAttribute('data-comment-id') : null;
-                if (!commentId) return;
-                
-                if (entry.isIntersecting) {
-                    comment.setAttribute('data-comment-visible', 'true');
-                    if (comment.hasAttribute('data-comment-dehydrated')) {
-                        rehydrateComment(comment, commentObserver);
-                    }
-                } else {
-                    comment.setAttribute('data-comment-visible', 'false');
-                    const commentRect = comment.getBoundingClientRect();
-                    if (commentRect.bottom < containerRect.top) {
-                        invisibleUpCount++;
-                    } else if (commentRect.top > containerRect.bottom) {
-                        invisibleDownCount++;
+                if (!commentId) continue;
+                if (c.getAttribute('data-comment-visible') === 'false' &&
+                    c.getBoundingClientRect().bottom < containerRect.top) {
+                    count++;
+                    if (count > VISIBLE_THRESHOLD) {
+                        dehydrateComment(c, commentId);
                     }
                 }
-            });
+            }
+        }
+
+        function dehydrateDownwards() {
+            let count = 0;
+            for (let i = 0; i < comments.length; i++) {
+                const c = comments[i];
+                const header = c.querySelector('.comment-header[data-comment-id]');
+                const commentId = header ? header.getAttribute('data-comment-id') : null;
+                if (!commentId) continue;
+                if (c.getAttribute('data-comment-visible') === 'false' &&
+                    c.getBoundingClientRect().top > containerRect.bottom) {
+                    count++;
+                    if (count > VISIBLE_THRESHOLD) {
+                        dehydrateComment(c, commentId);
+                    }
+                }
+            }
+        }
+
+        if (invisibleUpCount > VISIBLE_THRESHOLD) {
+            dehydrateUpwards();
+        }
+        if (invisibleDownCount > VISIBLE_THRESHOLD) {
+            dehydrateDownwards();
+        }
+
+        function dehydrateComment(c, commentId) {
+            if (c.hasAttribute('data-comment-dehydrated')) return;
+
+            const originalDisplay = c.style.display;
+            c.style.display = 'block';
+
+            const rect = c.getBoundingClientRect();
+            let totalHeight = rect.height;
+
+            const repliesContainer = c.querySelector('.comment-replies');
+            let repliesHeight = 0;
+            if (repliesContainer) {
+                const repliesRect = repliesContainer.getBoundingClientRect();
+                repliesHeight = repliesRect.height;
+            }
             
-            if (invisibleUpCount > DEHYDRATION_THRESHOLD) {
-                UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect, commentObserver), 100);
-            }
-            if (invisibleDownCount > DEHYDRATION_THRESHOLD) {
-                UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect, commentObserver), 100);
-            }
+            c.style.display = originalDisplay;
+            c.style.minHeight = Math.max(totalHeight - repliesHeight, 0) + "px";
+        
+            c.replaceChildren();
+            c.setAttribute('data-comment-dehydrated', commentId);
         }
-    );
 
-    const loadMoreObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const loadMoreLink = entry.target;
-                loadMoreLink.click();
-                loadMoreObserver.unobserve(loadMoreLink);
-            }
-        });
-    }, {
-        root: drawerContent,
-        rootMargin: OBSERVER_ROOT_MARGIN,
-        threshold: 0.1 
-    });
-    
-    const loadMoreObserverKey = UtilsModule.registerObserver(
-        loadMoreObserver,
-        threadsContainer,
-        'intersection',
-        (entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    const loadMoreLink = entry.target;
-                    loadMoreLink.click();
-                    loadMoreObserver.unobserve(loadMoreLink);
-                }
-            });
+        async function rehydrateComment(c) {
+            if (!c.hasAttribute('data-comment-dehydrated')) return;
+            const entity = UiModule.getCommunityThreadsUI().getAttribute('data-threads-entity');
+            const commentId = c.getAttribute('data-comment-dehydrated');
+            const commentElement = createCommentElement(storedComments.get(commentId), entity);
+            c.replaceChildren(...commentElement.childNodes);
+            c.removeAttribute('data-comment-dehydrated');
         }
-    );
-    
-    const observeComments = () => {
-        const comments = threadsContainer.querySelectorAll('.community-thread');
-        comments.forEach(comment => {
-            if (!comment.dataset.observed) {
-                commentObserver.observe(comment);
-                comment.dataset.observed = 'true';
-            }
-        });
-    };
+    }
 
-    const observeLoadMoreLinks = () => {
-        const links = threadsContainer.querySelectorAll('.load-more-comments');
-        links.forEach(link => {
-            if (!link.dataset.loadMoreObserved) {
-                loadMoreObserver.observe(link);
-                link.dataset.loadMoreObserved = 'true';
-            }
-        });
-    };
-    
-    const mutationObserver = new MutationObserver(() => {
-        observeComments();
-        observeLoadMoreLinks();
-    });
-    
-    const mutationObserverKey = UtilsModule.registerObserver(
-        mutationObserver,
-        threadsContainer,
-        'mutation',
-        () => {
-            observeComments();
-            observeLoadMoreLinks();
-        }
-    );
-    
-    mutationObserver.observe(threadsContainer, { childList: true, subtree: true });
+    const throttledCheck = throttle(handleCommentVisibility, VISIBILITY_THROTTLE);
 
-    observeComments();
-    observeLoadMoreLinks();
+    parentThreadsContainer.addEventListener('scroll', throttledCheck, { passive: true });
+
+    handleCommentVisibility();
     
-    visibilityObservers = {
+    visibilityObserver = {
         disconnect: () => {
-            UtilsModule.unregisterObserver(commentObserverKey);
-            UtilsModule.unregisterObserver(loadMoreObserverKey);
-            UtilsModule.unregisterObserver(mutationObserverKey);
-            const commentHeaders = threadsContainer.querySelectorAll('.comment-header[data-comment-id]');
+            parentThreadsContainer.removeEventListener('scroll', throttledCheck);
+            const commentHeaders = parentThreadsContainer.querySelectorAll('.comment-header[data-comment-id]');
             commentHeaders.forEach(header => {
                 header.removeAttribute('data-comment-visible');
             });
         }
     };
-
-    function dehydrateUpwards(comments, containerRect, observer) {
-        let count = 0;
-        for (let i = comments.length - 1; i >= 0; i--) {
-            const c = comments[i];
-            const header = c.querySelector('.comment-header[data-comment-id]');
-            const commentId = header ? header.getAttribute('data-comment-id') : null;
-            if (!commentId) continue;
-            if (c.getAttribute('data-comment-visible') === 'false' &&
-                c.getBoundingClientRect().bottom < containerRect.top) {
-                count++;
-                if (count > DEHYDRATION_THRESHOLD) {
-                    dehydrateComment(c, commentId, observer);
-                }
-            }
-        }
-    }
-
-    function dehydrateDownwards(comments, containerRect, observer) {
-        let count = 0;
-        for (let i = 0; i < comments.length; i++) {
-            const c = comments[i];
-            const header = c.querySelector('.comment-header[data-comment-id]');
-            const commentId = header ? header.getAttribute('data-comment-id') : null;
-            if (!commentId) continue;
-            if (c.getAttribute('data-comment-visible') === 'false' &&
-                c.getBoundingClientRect().top > containerRect.bottom) {
-                count++;
-                if (count > DEHYDRATION_THRESHOLD) {
-                    dehydrateComment(c, commentId, observer);
-                }
-            }
-        }
-    }
-
-    function dehydrateComment(c, commentId, observer) {
-        if (c.hasAttribute('data-comment-dehydrated')) return;
-        const originalDisplay = c.style.display;
-        c.style.display = 'block';
-        const rect = c.getBoundingClientRect();
-        let totalHeight = rect.height;
-        const repliesContainer = c.querySelector('.comment-replies');
-        let repliesHeight = 0;
-        if (repliesContainer) {
-            repliesHeight = repliesContainer.getBoundingClientRect().height;
-        }
-        const header = c.querySelector('.comment-header[data-comment-id]');
-        c.replaceChildren(header);
-        c.style.display = originalDisplay;
-        c.style.minHeight = Math.max(totalHeight - repliesHeight, 0) + "px";
-        c.setAttribute('data-comment-dehydrated', commentId);
-        c.dataset.observed = 'false';
-        observer.observe(c);
-    }
-
-    async function rehydrateComment(c, observer) {
-        if (!c.hasAttribute('data-comment-dehydrated')) return;
-        const entity = UiModule.getCommunityThreadsUI()?.getAttribute('data-threads-entity');
-        const commentId = c.getAttribute('data-comment-dehydrated');
-        const commentData = storedComments.get(commentId);
-        if (!commentData) return;
-        
-        const commentElement = createCommentElement(commentData, entity);
-        if (commentElement) {
-            c.replaceChildren(...commentElement.childNodes);
-            c.removeAttribute('data-comment-dehydrated');
-            c.style.minHeight = '';
-            c.dataset.observed = 'false';
-            observer.observe(c);
-        }
-    }
 }
 
 function cleanupVisibilityObservers() {
-    if (visibilityObservers) {
-        visibilityObservers.disconnect();
-        visibilityObservers = null;
+    if (visibilityObserver) {
+        visibilityObserver.disconnect();
+        visibilityObserver = null;
     }
 }
 
@@ -971,7 +881,7 @@ async function fetchTranslate(entityId, commentId) {
         };
         
         const threadsContainer = UiModule.getCommentHeaderUI(commentId, true);
-
+        
         const textContainer = threadsContainer.querySelector('.comment-text');
         
         // Store original text
@@ -1029,9 +939,6 @@ async function fetchAudio(commentId) {
  */
 function createCommentElement(comment, entity, isReply) {
     try {
-        // Basic validation
-        if (!comment || !comment._id) return;
-
         // Check if HTML is already stored in storedRenderedComments
         const storedRendered = storedRenderedComments.get(comment._id);
         if (storedRendered) {
@@ -1445,18 +1352,22 @@ function renderComments(payload) {
             ? UiModule.getCommentRepliesUI(payload.commentId)
             : UiModule.getCommunityThreadsUI();
 
+        // Clear container if entity changed
         if (!payload.commentId && 
             threadsContainer.getAttribute('data-threads-entity') !== payload.entity) {
             threadsContainer.setAttribute('data-threads-entity', payload.entity);
             threadsContainer.replaceChildren();
         }
 
+        // Remove loading indicator
         UiModule.getCommunityThreadsUI()
             ?.querySelector('.quelora-loading-message')
             ?.remove();
 
+        // Render comments
         renderCommentList(payload.entity, payload.comments.list, threadsContainer);
 
+        // Add "Load More" if there are more comments
         if (payload.comments.hasMore) {
             const loadMoreLink = UiModule.createElementUI({
                 tag: 'a',
@@ -1489,6 +1400,19 @@ function renderComments(payload) {
             });
 
             threadsContainer.appendChild(loadMoreLink);
+
+            // Set up intersection observer for auto-loading
+            const observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) {
+                    loadMoreLink.click();
+                    observer.disconnect();
+                }
+            }, { 
+                threshold: 1.0,
+                rootMargin: LOAD_MORE_ROOT_MARGIN
+            });
+            
+            observer.observe(loadMoreLink);
         }
     } catch (error) {
         handleError(error, 'CommentsModule.renderComments');
@@ -1751,6 +1675,8 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
         handleError(error, 'CommentsModule.callbackRecord');
     }
 }
+
+
 
 /**
  * Handles comment submission
