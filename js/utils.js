@@ -35,6 +35,7 @@
 import PostsModule from './posts.js';
 import EntityModule from './entity.js';
 import UiModule from './ui.js';
+
 // Cache for storing post statistics
 const postStatsCache = new Map();
 
