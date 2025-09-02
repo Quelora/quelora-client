@@ -50,7 +50,7 @@ import CaptchaModule from './captcha.js';
 const SCROLL_THRESHOLD = 10; 
 const LONG_PRESS_DURATION = 300; // ms
 const MAX_RENDER_ATTEMPTS = 3;
-const MAX_RENDERED_COMMENTS = 100;
+const MAX_RENDERED_COMMENTS = 200;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 
@@ -1751,8 +1751,6 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
         handleError(error, 'CommentsModule.callbackRecord');
     }
 }
-
-
 
 /**
  * Handles comment submission

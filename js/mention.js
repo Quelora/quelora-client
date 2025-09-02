@@ -176,7 +176,7 @@ class MentionModule {
             const anchor = UiModule.createElementUI({
                 tag: 'a',
                 attributes: {
-                    href: 'javascript:void(0)',
+                    href: `#mention:${username}`,
                     'data-callback': `mention:${username}`
                 },
                 content: `@${username}`

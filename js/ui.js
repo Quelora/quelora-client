@@ -66,7 +66,7 @@ const createLanguageSelect = (id = '') => `
     <div class="language-select-container">
         <div class="language-select-wrapper">
             <span class="quelora-icons-outlined">language</span>
-            <select class="language-select${id ? ` ${id}` : ''}">
+            <select name="language-select" class="language-select" ${id ? ` ${id}` : ''}>
                 <option value="auto" class="t">{{autoDetectLanguage}}</option>
                 <option value="es" class="t">{{spanish}}</option>
                 <option value="en" class="t">{{english}}</option>
@@ -108,7 +108,7 @@ const createThemeSelector = () => `
 const createSearchContainer = (placeholder) => `
     <div class="search-container">
         <span class="quelora-icons-outlined search-icon">search</span>
-        <input type="text" placeholder="${placeholder}" class="search-input">
+        <input type="text" placeholder="${placeholder}" class="search-input" name="search-input">
     </div>
 `;
 
@@ -117,6 +117,7 @@ const settingsDrawerUI = new Drawer({
     id: 'quelora-community-settings',
     customClass: 'quelora-community-settings',
     title: '{{settings}}',
+    height: '95%',
     zIndex: 9002,
     content: `
         <div class="settings-menu">
@@ -282,7 +283,7 @@ const commentsDrawerUI = new Drawer({
         </div>
     </div>
     <div class="comment-disable-container t">{{comments_disabled}}</div>`,
-    height: '100%',
+    height: '95%',
     transitionSpeed: '0.3s',
     zIndex: 9000,
     position: 'bottom',
@@ -456,35 +457,35 @@ const profileDrawerUI = new Drawer({
                     <div class="profile-tab-content comments">
                         <div class="search-container">
                             <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search-comments}}" class="search-input">
+                            <input type="text" placeholder="{{search-comments}}" class="search-input" name="search-comments">
                         </div>
                         <ul></ul>
                     </div>
                     <div class="profile-tab-content likes">
                         <div class="search-container">
                             <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search-likes}}" class="search-input">
+                            <input type="text" placeholder="{{search-likes}}" class="search-input" name="search-likes">
                         </div>
                         <ul></ul>
                     </div>
                     <div class="profile-tab-content shares">
                         <div class="search-container">
                             <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search-shares}}" class="search-input">
+                            <input type="text" placeholder="{{search-shares}}" class="search-input" name="search-shares">
                         </div>
                         <ul></ul>
                     </div>
                     <div class="profile-tab-content follower">
                         <div class="search-container">
                             <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search-follower}}" class="search-input">
+                            <input type="text" placeholder="{{search-follower}}" class="search-input" name="search-follower">
                         </div>
                         <ul></ul>
                     </div>
                     <div class="profile-tab-content followed">
                         <div class="search-container">
                             <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search-followed}}" class="search-input">
+                            <input type="text" placeholder="{{search-followed}}" class="search-input" name="search-followed">
                         </div>
                         <ul></ul>
                     </div>
@@ -494,13 +495,13 @@ const profileDrawerUI = new Drawer({
                     <div class="profile-tab-content bookmarks">
                         <div class="search-container">
                             <span class="quelora-icons-outlined search-icon">search</span>
-                            <input type="text" placeholder="{{search-bookmarks}}" class="search-input">
+                            <input type="text" placeholder="{{search-bookmarks}}" class="search-input" name="search-bookmarks">
                         </div>
                         <ul></ul>
                     </div>
                 </div>
             </div>`,
-    height: '100%',
+    height: '95%',
     transitionSpeed: '0.3s',
     zIndex: 9003,
     position: 'bottom',
@@ -513,7 +514,7 @@ const notificationDrawerUI = new Drawer({
     title: '{{notifications}}',
     content: `<div class="profile-stats">
                 <div class="quelora-notification-list" id="community-quelora-notification-list"></div>`,
-    height: '100%',
+    height: '95%',
     transitionSpeed: '0.3s',
     zIndex: 9004,
     position: 'bottom'
@@ -524,7 +525,7 @@ const followRequestDrawerUI = new Drawer({
     customClass: 'quelora-follow-request',
     title: '{{followRequest}}',
     content: `<div class="quelora-follow-request-list"></div>`,
-    height: '100%',
+    height: '95%',
     transitionSpeed: '0.3s',
     zIndex: 9006,
     position: 'bottom'
@@ -539,7 +540,7 @@ const searchFollowRequestDrawerUI = new Drawer({
                 <input type="text" placeholder="{{search}}" class="search-input" id="accounts-search">
               </div>
               <div class="quelora-account-request-list"><ul><div class="quelora-empty-container t">{{noResultsForQuery}}</div></ul></div>`,
-    height: '100%',
+    height: '95%',
     transitionSpeed: '0.3s',
     zIndex: 9007,
     position: 'bottom'
