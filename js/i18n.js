@@ -390,14 +390,21 @@ const _initMutationObserver = () => {
                 if (mutation.type === 'childList') {
                     mutation.addedNodes.forEach(node => {
                         if (node.nodeType === Node.ELEMENT_NODE && node.isConnected) {
+                            // Create an array to collect all translatable elements
+                            let translatableElements = [];
+                            
                             // Check for translatable elements in the added node
-                            const translatableElements = node.querySelectorAll?.('.t, .comment-input, .search-input') || [];
+                            const elementsFromQuery = node.querySelectorAll?.('.t, .comment-input, .search-input') || [];
+                            if (elementsFromQuery.length > 0) {
+                                translatableElements = Array.from(elementsFromQuery);
+                            }
                             
                             // Also check if the node itself is translatable
                             if (node.matches?.('.t, .comment-input, .search-input')) {
                                 translatableElements.push(node);
                             }
                             
+                            // Process all translatable elements
                             translatableElements.forEach(element => {
                                 if (element.isConnected) {
                                     const classList = element.classList;
@@ -407,9 +414,13 @@ const _initMutationObserver = () => {
                                         attribute = 'placeholder';
                                     }
                                     
-                                    translateElement(element, attribute, Array.from(classList).find(c => 
+                                    const className = Array.from(classList).find(c => 
                                         c === 't' || c === 'comment-input' || c === 'search-input'
-                                    ));
+                                    );
+                                    
+                                    if (className) {
+                                        translateElement(element, attribute, className);
+                                    }
                                 }
                             });
                         }
