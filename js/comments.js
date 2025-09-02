@@ -1849,17 +1849,16 @@ async function shakeComment(commentId) {
  */
 async function attachCommentEventListeners(commentElement, comment, entity) {
     try {
-        // Cache profile data
         ProfileModule.memberProfiles.set(comment.author, comment?.profile);
-
         // Like button handlers
         const viewLikeButton = commentElement.querySelector('.comment-like');
         const likeButton = commentElement.querySelector('.like-icon');
         if (likeButton && viewLikeButton) {
             viewLikeButton.addEventListener('click', (event) => {
                 event.preventDefault();
-                const liked = likeButton.textContent === "favorite_border";
-                setCommentLike(entity, comment._id, liked);
+                const liked = event.target.closest('.like-icon').textContent === "favorite_border";
+                const commentId = event.target.closest('.community-thread').getAttribute('data-comment-id');
+                setCommentLike(entity, commentId, liked);
             });
         }
 
@@ -1868,8 +1867,9 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
         if (viewRepliesButton) {
             viewRepliesButton.addEventListener('click', (event) => {
                 event.preventDefault();
-                fetchReplies(entity, comment._id);
-                viewRepliesButton.remove();
+                const commentId = event.target.closest('.view-replies').getAttribute('data-comment-id');
+                fetchReplies(entity, commentId);
+                event.target.closest('.view-replies').remove();
             });
         }
 
@@ -1878,7 +1878,8 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
         if (viewProfileButton) {
             viewProfileButton.addEventListener('click', (event) => {
                 event.preventDefault();
-                ProfileModule.getProfile(comment.author);
+                const authorId = event.target.closest('.community-thread').getAttribute('data-author-id');
+                ProfileModule.getProfile(authorId);
             });
         }
 
@@ -1903,9 +1904,11 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                     UtilsModule.getConfig(entity)?.limits?.reply_text
                 );
                 
-                const replyId = replyLink.getAttribute('data-reply-id');
+                const replyId = event.target.closest('.reply-text').getAttribute('data-reply-id');
                 const commentInput = UiModule.getCommentInputUI();
-                const commentHeader = commentElement.querySelector('.comment-header');
+                
+                // Buscar el comment-header RELATIVO al elemento clickeado
+                const commentHeader = event.target.closest('.community-thread')?.querySelector('.comment-header');
                 
                 if (commentInput && commentHeader) {
                     commentInput.setAttribute('data-reply-id', replyId);
@@ -1920,15 +1923,17 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
         if (translateLink) {
             translateLink.addEventListener('click', (event) => {
                 event.preventDefault();
+                const commentElement = event.target.closest('.community-thread');
                 const currentText = commentElement.querySelector('.comment-text').textContent;
                 const originalText = commentElement.querySelector('.comment-header')
                     .getAttribute('data-text-original');
                 
                 if (currentText === originalText) {
-                    fetchTranslate(entity, comment._id);
+                    const commentId = event.target.closest('.translate-text').getAttribute('data-comment-id');
+                    fetchTranslate(entity, commentId);
                 } else {
                     commentElement.querySelector('.comment-text').textContent = originalText;
-                    translateLink.textContent = I18n.getTranslation('translate');
+                    event.target.closest('.translate-text').textContent = I18n.getTranslation('translate');
                 }
             });
         }
@@ -1939,19 +1944,20 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                 return lastCommentId;
             }
             if (element.classList.contains('community-thread')) {
-                const header = element.querySelector('.comment-header');
-                if (header) {
-                    lastCommentId = header.getAttribute('data-comment-id') || lastCommentId;
+                const commentId = element.getAttribute('data-comment-id');
+                if (commentId) {
+                    lastCommentId = commentId;
                 }
             }
             return findOriginalComment(element.parentElement, lastCommentId);
         }
+
         // Share button
         const shareButton = commentElement.querySelector('.share-text');
         if (shareButton) {
             shareButton.addEventListener('click', (event) => {
                 event.preventDefault();
-                const commentId = event.target.getAttribute('data-comment-id');
+                const commentId = event.target.closest('.share-text').getAttribute('data-comment-id');
                 const originalComment = findOriginalComment(event.target.closest('.community-thread'));
                 const currentEntity = event.target.closest('.community-threads')?.getAttribute('data-threads-entity');
                 handleShare(
