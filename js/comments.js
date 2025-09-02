@@ -1047,7 +1047,10 @@ async function fetchAudio(commentId) {
 function createCommentElement(comment, entity, isReply) {
     try {
         // Basic validation
-        if (!comment || !comment._id) return;
+        if (!comment || !comment._id){
+            console.log("Error - Comment not exist:", comment)
+            return;
+        } 
 
         // Check if HTML is already stored in storedRenderedComments
         const storedRendered = storedRenderedComments.get(comment._id);
