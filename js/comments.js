@@ -341,6 +341,8 @@ function cleanupVisibilityObservers() {
     if (visibilityObservers) {
         visibilityObservers.disconnect();
         visibilityObservers = null;
+        storedRenderedComments = null;
+        storedComments = null;
     }
 }
 
