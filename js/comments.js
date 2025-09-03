@@ -1743,8 +1743,8 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
 
         // Botón Enviar
         const sendBtn = document.createElement('button');
-        sendBtn.className = 'quelora-btn send-button t';
-        sendBtn.innerHTML = `<span class="quelora-icons-outlined">send</span> {{send}}`;
+        sendBtn.className = 'quelora-btn send-button';
+        sendBtn.innerHTML = `<span class="quelora-icons-outlined">send</span><span class="t">{{send}}</span>`;
         sendBtn.onclick = () => {
             submitComment();
             UiModule.closeModalUI();
@@ -1753,8 +1753,8 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
 
         // Botón Close
         const closeBtn = document.createElement('button');
-        closeBtn.className = 'quelora-btn close-button t';
-        closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+        closeBtn.className = 'quelora-btn close-button';
+        closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span><span class="t">{{close}}</span>`;
         closeBtn.onclick = () => {
             const ci = UiModule.getCommentInputUI();
             if (ci) {
@@ -1771,8 +1771,6 @@ async function callbackRecord(transcript, audioBase64, audioHash) {
         handleError(error, 'CommentsModule.callbackRecord');
     }
 }
-
-
 
 /**
  * Handles comment submission

@@ -169,20 +169,19 @@ const Quelora = (() => {
      */
     const i18nRun = (I18n, StorageModule) => {
         try {
-            I18n.translateByClass('t');
-            I18n.translateByClass('comment-input', 'placeholder');
-            I18n.translateByClass('search-input', 'placeholder');
-
             const savedLanguage = StorageModule.getLocalItem('quelora_language');
             const browserLanguage = (navigator.language || navigator.userLanguage).substring(0, 2);
-
             let langToUse = savedLanguage || browserLanguage || DEFAULT_LANGUAGE;
-            const supportedLanguages = ['es', 'en'];
 
-            if (!supportedLanguages.includes(langToUse)) {
-                langToUse = DEFAULT_LANGUAGE;
-            }
-            I18n.changeLanguage(langToUse);
+            I18n.initializeI18N(
+                langToUse, 
+                currentScriptPath + 'locales/',
+                [
+                    { className: 't' },
+                    { className: 'comment-input', attribute: 'placeholder' },
+                    { className: 'search-input', attribute: 'placeholder' }
+                ]
+            );
         } catch (error) {
             handleError(error, 'Quelora.i18nRun');
         }
@@ -342,8 +341,6 @@ const Quelora = (() => {
             const anchorHandlers = getAnchorHandlers({ PostsModule, ProfileModule, UiModule });
             window.addEventListener('popstate', () => checkAndHandleAnchor(anchorHandlers));
 
-            // Initialize main modules
-            I18n.initializeI18N('en', currentScriptPath + 'locales/');
             token = await CoreModule.getTokenIfNeeded(token, true);
             await IconsModule.initializeIcons();
 
