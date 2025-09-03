@@ -90,8 +90,8 @@ async function addAIButton() {
             const footer = UiModule.modalCache.footer;
             if (footer) {
                 const closeBtn = document.createElement('button');
-                closeBtn.className = 'quelora-btn close-button t';
-                closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+                closeBtn.className = 'quelora-btn close-button';
+                closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span><span class="t">{{close}}</span>`;
                 closeBtn.onclick = () => UiModule.closeModalUI();
                 footer.appendChild(closeBtn);
             }
