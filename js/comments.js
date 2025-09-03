@@ -341,8 +341,6 @@ function cleanupVisibilityObservers() {
     if (visibilityObservers) {
         visibilityObservers.disconnect();
         visibilityObservers = null;
-        storedRenderedComments = null;
-        storedComments = null;
     }
 }
 
@@ -595,6 +593,7 @@ async function fetchComments(entityId, lastCommentId = null, includeLast = false
         // Reset scroll position if loading first page
         if (!lastCommentId && commentsSection) {
             storedComments.clear();
+            storedRenderedComments.clear();
             cleanupVisibilityObservers();
             setupVisibilityObservers();
         }
