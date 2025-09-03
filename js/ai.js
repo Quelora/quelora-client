@@ -160,24 +160,43 @@ function renderAnalysisModal(analysisData) {
         // Highlighted comments
         analysisData.analysis.highlightedComments.forEach(hComment => {
             const container = UiModule.createElementUI({ tag: 'div', classes: 'quelora-to-work' });
-            const commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
-            commentElement.querySelector('.comment-actions')?.remove();
 
-            const link = AnchorModule.generateLink({
-                type: 'comment',
-                ids: { entity: entityId, commentId: hComment._id }
-            });
+            let commentElement;
 
-            commentElement.style.cursor = 'pointer';
-            commentElement.addEventListener('click', () => {
-                UiModule.closeModalUI();
-                location.hash = link;
-            });
+            // Si hComment.comment es un objeto, usamos createCommentElement
+            if (typeof hComment.comment === 'object' && hComment.comment !== null) {
+                commentElement = CommentsModule.createCommentElement(hComment.comment, entityId);
+                // Solo si devolvió un nodo válido
+                if (commentElement instanceof HTMLElement) {
+                    commentElement.querySelector('.comment-actions')?.remove();
+                }
+            } else {
+                // Si es string u otro tipo, mostramos fallback
+                commentElement = UiModule.createElementUI({
+                    tag: 'div',
+                    classes: 'comment-fallback',
+                    content: hComment.comment || ''
+                });
+            }
 
-            container.appendChild(commentElement);
+            // Enlazar comentario si tenemos un elemento válido
+            if (commentElement) {
+                const link = AnchorModule.generateLink({
+                    type: 'comment',
+                    ids: { entity: entityId, commentId: hComment._id }
+                });
+
+                commentElement.style.cursor = 'pointer';
+                commentElement.addEventListener('click', () => {
+                    UiModule.closeModalUI();
+                    location.hash = link;
+                });
+
+                container.appendChild(commentElement);
+            }
+
             bodyContent.appendChild(container);
         });
-
         // Inicializar modal (solo body)
         UiModule.setupModalUI(bodyContent, '.quelora-comments');
 
@@ -185,8 +204,8 @@ function renderAnalysisModal(analysisData) {
         const footer = UiModule.modalCache.footer;
         if (footer) {
             const closeBtn = document.createElement('button');
-            closeBtn.className = 'quelora-btn close-button t';
-            closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+            closeBtn.className = 'quelora-btn close-button';
+            closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span><span class="t">{{close}}</span>`;
             closeBtn.onclick = () => UiModule.closeModalUI();
             footer.appendChild(closeBtn);
         }

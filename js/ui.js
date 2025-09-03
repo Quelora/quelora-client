@@ -688,10 +688,10 @@ function showEditCommentUI(commentElement) {
     // ----- BOTONES EN FOOTER -----
     const footerTpl = document.createElement('template');
     footerTpl.innerHTML = `
-      ${canEdit ? `<button class="quelora-btn save-button t"><span class="quelora-icons-outlined">send</span> {{send}}</button>` : ''}
-      <button class="quelora-btn close-button t"><span class="quelora-icons-outlined">close</span> {{close}}</button>
-      ${!isOwner ? `<button class="quelora-btn report-button t"><span class="quelora-icons-outlined">flag</span> {{report}}</button>` : ''}
-      ${(editing.allow_delete && canDelete) ? `<button class="quelora-btn delete-button t"><span class="quelora-icons-outlined">delete</span> {{delete}}</button>` : ''}
+      ${canEdit ? `<button class="quelora-btn save-button"><span class="quelora-icons-outlined">send</span><span class="t">{{send}}</span></button>` : ''}
+      <button class="quelora-btn close-button t"><span class="quelora-icons-outlined">close</span><span class="t">{{close}}</span></button>
+      ${!isOwner ? `<button class="quelora-btn report-button t"><span class="quelora-icons-outlined">flag</span><span class="t">{{report}}</span></button>` : ''}
+      ${(editing.allow_delete && canDelete) ? `<button class="quelora-btn delete-button t"><span class="quelora-icons-outlined">delete</span><span class="t">{{delete}}</span></button>` : ''}
     `;
     modalCache.footer.appendChild(footerTpl.content);
 
@@ -1022,8 +1022,14 @@ function renderReportedUI(message) {
         paragraph.textContent = '{{thankYouMessage}}';
 
         const button = document.createElement('button');
-        button.className = 'quelora-btn close-button t';
-        button.appendChild(document.createTextNode(`{{ready}}`));
+        button.className = 'quelora-btn close-button';
+
+        // ahora el texto va en un span.t dentro del botón
+        const spanText = document.createElement('span');
+        spanText.className = 't';
+        spanText.textContent = '{{ready}}';
+
+        button.appendChild(spanText);
         button.addEventListener('click', closeModalUI);
 
         reportContent.appendChild(icon);
@@ -1039,6 +1045,7 @@ function renderReportedUI(message) {
         console.error('Error rendering reported message:', error);
     }
 }
+
 
 function handleAudioResponseUI(commentId, audioBase64) {
     const audioContainer = document.querySelector(`.quelora-audio-container[data-comment-id="${commentId}"]`);
@@ -1229,8 +1236,8 @@ function showReportCommentUI(commentElement) {
 
     // --- Agregar botón Close en el footer (solo aquí) ---
     const closeBtn = document.createElement('button');
-    closeBtn.className = 'quelora-btn close-button t';
-    closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span> {{close}}`;
+    closeBtn.className = 'quelora-btn close-button';
+    closeBtn.innerHTML = `<span class="quelora-icons-outlined">close</span><span class="t">{{close}}</span>`;
     closeBtn.onclick = () => UiModule.closeModalUI();
     footer.appendChild(closeBtn);
 
