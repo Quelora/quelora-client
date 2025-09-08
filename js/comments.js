@@ -55,7 +55,9 @@ const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
 
 const OBSERVER_ROOT_MARGIN = '1200px';
-const DEHYDRATION_THRESHOLD = 5;
+
+const BUFFER_SIZE = 50;
+const BATCH_SIZE = 50;
 
 // ==================== PRIVATE VARIABLES ====================
 let workerInstance = null;
@@ -72,7 +74,8 @@ let touchStartY = 0;
 
 let storedComments = new Map();
 let storedRenderedComments  = new Map();
-
+let isScrolling = false;
+let scrollTimeout = null;
 
 // ==================== EVENT HANDLER UTILITIES ====================
 
@@ -87,15 +90,11 @@ function setupVisibilityObservers() {
     cleanupVisibilityObservers();
     
     const commentObserver = new IntersectionObserver((entries) => {
-        const containerRect = drawerContent.getBoundingClientRect();
         const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
-        let invisibleUpCount = 0;
-        let invisibleDownCount = 0;
         
         entries.forEach(entry => {
             const comment = entry.target;
             
-            // Obtener el ID directamente del elemento observado
             const commentId = comment.getAttribute('data-comment-id') || 
                              comment.getAttribute('data-comment-dehydrated');
             
@@ -108,20 +107,12 @@ function setupVisibilityObservers() {
                 }
             } else {
                 comment.setAttribute('data-comment-visible', 'false');
-                const commentRect = comment.getBoundingClientRect();
-                if (commentRect.bottom < containerRect.top) {
-                    invisibleUpCount++;
-                } else if (commentRect.top > containerRect.bottom) {
-                    invisibleDownCount++;
-                }
             }
         });
         
-        if (invisibleUpCount > DEHYDRATION_THRESHOLD) {
-            UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect, commentObserver), 100);
-        }
-        if (invisibleDownCount > DEHYDRATION_THRESHOLD) {
-            UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect, commentObserver), 100);
+        // Only manage hydration when scroll is stopped
+        if (!isScrolling) {
+            UtilsModule.startTimeout(() => manageHydration(comments, commentObserver), 200);
         }
     }, {
         root: drawerContent,
@@ -129,16 +120,12 @@ function setupVisibilityObservers() {
         threshold: 0
     });
 
-    // Registrar el observer CORRECTAMENTE
     const commentObserverKey = UtilsModule.registerObserver(
         commentObserver,
         threadsContainer,
         'intersection',
         (entries) => {
-            const containerRect = drawerContent.getBoundingClientRect();
             const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
-            let invisibleUpCount = 0;
-            let invisibleDownCount = 0;
             
             entries.forEach(entry => {
                 const comment = entry.target;
@@ -154,20 +141,12 @@ function setupVisibilityObservers() {
                     }
                 } else {
                     comment.setAttribute('data-comment-visible', 'false');
-                    const commentRect = comment.getBoundingClientRect();
-                    if (commentRect.bottom < containerRect.top) {
-                        invisibleUpCount++;
-                    } else if (commentRect.top > containerRect.bottom) {
-                        invisibleDownCount++;
-                    }
                 }
             });
             
-            if (invisibleUpCount > DEHYDRATION_THRESHOLD) {
-                UtilsModule.startTimeout(() => dehydrateUpwards(comments, containerRect, commentObserver), 100);
-            }
-            if (invisibleDownCount > DEHYDRATION_THRESHOLD) {
-                UtilsModule.startTimeout(() => dehydrateDownwards(comments, containerRect, commentObserver), 100);
+            // Only manage hydration when scroll is stopped
+            if (!isScrolling) {
+                UtilsModule.startTimeout(() => manageHydration(comments, commentObserver), 200);
             }
         }
     );
@@ -208,7 +187,6 @@ function setupVisibilityObservers() {
                 commentObserver.observe(comment);
                 comment.dataset.observed = 'true';
                 
-                // Asegurar que el contenedor tenga data-comment-id
                 if (!comment.hasAttribute('data-comment-id')) {
                     const header = comment.querySelector('.comment-header[data-comment-id]');
                     if (header) {
@@ -233,6 +211,13 @@ function setupVisibilityObservers() {
     const mutationObserver = new MutationObserver(() => {
         observeComments();
         observeLoadMoreLinks();
+        // Trigger hydration after mutations, but only if scroll is stopped
+        if (!isScrolling) {
+            UtilsModule.startTimeout(() => {
+                const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
+                manageHydration(comments, commentObserver);
+            }, 200);
+        }
     });
     
     const mutationObserverKey = UtilsModule.registerObserver(
@@ -242,10 +227,28 @@ function setupVisibilityObservers() {
         () => {
             observeComments();
             observeLoadMoreLinks();
+            if (!isScrolling) {
+                UtilsModule.startTimeout(() => {
+                    const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
+                    manageHydration(comments, commentObserver);
+                }, 200);
+            }
         }
     );
     
     mutationObserver.observe(threadsContainer, { childList: true, subtree: true });
+
+    // Detect scroll inertia
+    drawerContent.addEventListener('scroll', () => {
+        isScrolling = true;
+        if (scrollTimeout) clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+            isScrolling = false;
+            // Trigger hydration when scroll stops
+            const comments = Array.from(threadsContainer.querySelectorAll('.community-thread'));
+            UtilsModule.startTimeout(() => manageHydration(comments, commentObserver), 200);
+        }, 150); // 150ms to detect scroll stop
+    }, { passive: true });
 
     observeComments();
     observeLoadMoreLinks();
@@ -261,86 +264,133 @@ function setupVisibilityObservers() {
             });
         }
     };
-
-    function dehydrateUpwards(comments, containerRect, observer) {
-        let count = 0;
-        for (let i = comments.length - 1; i >= 0; i--) {
-            const c = comments[i];
-            const commentId = c.getAttribute('data-comment-id');
-            if (!commentId) continue;
-            
-            if (c.getAttribute('data-comment-visible') === 'false' &&
-                c.getBoundingClientRect().bottom < containerRect.top) {
-                count++;
-                if (count > DEHYDRATION_THRESHOLD) {
-                    dehydrateComment(c, commentId, observer);
-                }
-            }
-        }
-    }
-
-    function dehydrateDownwards(comments, containerRect, observer) {
-        let count = 0;
-        for (let i = 0; i < comments.length; i++) {
-            const c = comments[i];
-            const commentId = c.getAttribute('data-comment-id');
-            if (!commentId) continue;
-            
-            if (c.getAttribute('data-comment-visible') === 'false' &&
-                c.getBoundingClientRect().top > containerRect.bottom) {
-                count++;
-                if (count > DEHYDRATION_THRESHOLD) {
-                    dehydrateComment(c, commentId, observer);
-                }
-            }
-        }
-    }
-
-    function dehydrateComment(c, commentId, observer) {
-        if (c.hasAttribute('data-comment-dehydrated')) return;
-        
-        // Asegurar que el contenedor tenga el data-comment-id
-        c.setAttribute('data-comment-id', commentId);
-        
-        const originalDisplay = c.style.display;
-        c.style.display = 'block';
-        const rect = c.getBoundingClientRect();
-        let totalHeight = rect.height;
-        const repliesContainer = c.querySelector('.comment-replies');
-        let repliesHeight = 0;
-        if (repliesContainer) {
-            repliesHeight = repliesContainer.getBoundingClientRect().height;
-        }
-        c.replaceChildren();
-        c.style.display = originalDisplay;
-        c.style.minHeight = Math.max(totalHeight - repliesHeight, 0) + "px";
-        c.setAttribute('data-comment-dehydrated', commentId);
-        c.dataset.observed = 'false';
-        observer.observe(c);
-    }
-
-    async function rehydrateComment(c, observer) {
-        if (!c.hasAttribute('data-comment-dehydrated')) return;
-        const entity = UiModule.getCommunityThreadsUI()?.getAttribute('data-threads-entity');
-        const commentId = c.getAttribute('data-comment-dehydrated');
-        const commentData = storedComments.get(commentId);
-        if (!commentData) return;
-        
-        const commentElement = createCommentElement(commentData, entity);
-        if (commentElement) {
-            c.replaceChildren(...commentElement.childNodes);
-            c.removeAttribute('data-comment-dehydrated');
-            c.style.minHeight = '';
-            c.dataset.observed = 'false';
-            observer.observe(c);
-        }
-    }
 }
 
 function cleanupVisibilityObservers() {
     if (visibilityObservers) {
         visibilityObservers.disconnect();
         visibilityObservers = null;
+    }
+}
+
+function manageHydration(comments, observer) {
+    if (comments.length === 0) return;
+
+    // Find visible indices
+    const visibleIndices = comments.reduce((acc, thread, index) => {
+        if (thread.getAttribute('data-comment-visible') === 'true') acc.push(index);
+        return acc;
+    }, []);
+
+    if (visibleIndices.length === 0) return;
+
+    const minVisIndex = Math.min(...visibleIndices);
+    const maxVisIndex = Math.max(...visibleIndices);
+    const startIndex = Math.max(0, minVisIndex - BUFFER_SIZE);
+    const endIndex = Math.min(comments.length - 1, maxVisIndex + BUFFER_SIZE);
+
+    // If few comments, hydrate all
+    if (comments.length < BUFFER_SIZE * 3) {
+        const toRehydrate = comments
+            .map((thread, index) => ({ thread, index }))
+            .filter(({ thread }) => thread.hasAttribute('data-comment-dehydrated'));
+        processBatches(toRehydrate, ({ thread }) => rehydrateComment(thread, observer));
+        return;
+    }
+
+    // Collect comments to hydrate/dehydrate
+    const toRehydrate = [];
+    const toDehydrate = [];
+
+    comments.forEach((thread, index) => {
+        const commentId = thread.getAttribute('data-comment-id') || thread.getAttribute('data-comment-dehydrated');
+        if (!commentId) return;
+
+        if (startIndex <= index && index <= endIndex) {
+            if (thread.hasAttribute('data-comment-dehydrated')) {
+                toRehydrate.push({ thread, index });
+            }
+        } else {
+            if (!thread.hasAttribute('data-comment-dehydrated')) {
+                toDehydrate.push({ thread, commentId });
+            }
+        }
+    });
+
+    // Process in batches using requestIdleCallback
+    processBatches(toDehydrate, ({ thread, commentId }) => {
+        requestIdleCallback(() => dehydrateComment(thread, commentId, observer));
+    });
+    processBatches(toRehydrate, ({ thread }) => {
+        requestIdleCallback(() => rehydrateComment(thread, observer));
+    });
+}
+
+function processBatches(items, action) {
+    let index = 0;
+    function processNext() {
+        if (index >= items.length) return;
+        const end = Math.min(index + BATCH_SIZE, items.length);
+        const batch = items.slice(index, end);
+        requestIdleCallback(() => {
+            batch.forEach(item => action(item));
+            index = end;
+            if (index < items.length) {
+                UtilsModule.startTimeout(processNext, 100);
+            }
+        });
+    }
+    processNext();
+}
+
+function dehydrateComment(c, commentId, observer) {
+    if (c.hasAttribute('data-comment-dehydrated')) return;
+    
+    // Asegurar data-comment-id
+    c.setAttribute('data-comment-id', commentId);
+    
+    // Remover replies temporalmente para medir
+    const repliesContainer = c.querySelector('.comment-replies');
+    if (repliesContainer) repliesContainer.remove();
+    
+    const originalDisplay = c.style.display;
+    c.style.display = 'block';
+    const rect = c.getBoundingClientRect();
+    const contentHeight = rect.height;
+    c.style.display = originalDisplay;
+    
+    c.replaceChildren(); 
+    c.style.minHeight = `${contentHeight}px`; 
+    
+    // Restaurar replies
+    if (repliesContainer) c.appendChild(repliesContainer);
+    
+    c.setAttribute('data-comment-dehydrated', commentId);
+    c.dataset.observed = 'false';
+    observer.observe(c);
+}
+
+async function rehydrateComment(c, observer) {
+    if (!c.hasAttribute('data-comment-dehydrated')) return;
+    const entity = UiModule.getCommunityThreadsUI()?.getAttribute('data-threads-entity');
+    const commentId = c.getAttribute('data-comment-dehydrated');
+    const commentData = storedComments.get(commentId);
+    if (!commentData) return;
+
+    const existingRepliesContainer = c.querySelector('.comment-replies');
+    const existingRepliesChildren = existingRepliesContainer ? Array.from(existingRepliesContainer.children) : [];
+    
+    const commentElement = createCommentElement(commentData, entity);
+    if (commentElement) {
+        c.replaceChildren(...commentElement.childNodes);
+        const newRepliesContainer = c.querySelector('.comment-replies');
+        if (newRepliesContainer && existingRepliesChildren.length) {
+            newRepliesContainer.append(...existingRepliesChildren);
+        }
+        c.removeAttribute('data-comment-dehydrated');
+        c.style.minHeight = '';
+        c.dataset.observed = 'false';
+        observer.observe(c);
     }
 }
 
