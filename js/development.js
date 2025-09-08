@@ -1,64 +1,65 @@
-(function() {
-    'use strict';
+// Importamos los módulos reales
+import EntityModule from './entity.js';
+import UtilsModule from './utils.js';
 
+(function () {
+    'use strict';
+    let updateIntervalId;
     // -----------------------
     // Styles
     // -----------------------
     const style = document.createElement('style');
     style.textContent = `
         #quelora-dev-bar {
-            position: fixed; /* stays visible while scrolling */
+            position: fixed;
             left: 20px;
             top: 20px;
-            background: rgba(0, 0, 0, 0.78);
+            background: rgba(0, 0, 0, 0.7); /* Transparencia ajustada */
             color: white;
             border-radius: 10px;
             padding: 10px 14px;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, sans-serif;
             font-size: 12px;
             z-index: 999999;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5); /* Sombra ajustada */
             border: 1px solid rgba(255,255,255,0.08);
             cursor: move;
             user-select: none;
-            backdrop-filter: blur(4px);
-            max-width: 320px;
+            backdrop-filter: blur(8px); /* Blur ajustado para mejor efecto */
+            min-width: 320px;
+            max-width: 360px;
             overflow: hidden;
             touch-action: none;
-            transform: none;
-            /* animate visual changes but NOT position (left/top) */
-            transition: width 0.18s ease, height 0.18s ease, border-radius 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+            transition: width 0.18s ease, height 0.18s ease, border-radius 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease, min-width 0.18s ease;
         }
 
-        /* Collapsed: compact circular button */
         #quelora-dev-bar.collapsed {
-            width: 48px !important;
+            width: auto !important;
             height: 48px !important;
-            padding: 0 !important;
-            border-radius: 50% !important;
+            padding: 0 14px !important;
+            border-radius: 24px !important;
             display: flex;
             align-items: center;
             justify-content: center;
-            max-width: none;
+            min-width: 150px;
+            max-width: 250px;
+            cursor: move;
+            gap: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.4); /* Sombra para estado colapsado */
         }
 
-        #quelora-dev-bar h3 {
-            margin: 0 0 8px 0;
-            font-size: 13px;
-            font-weight: 600;
+        .dev-header {
             display: flex;
-            align-items: center;
             justify-content: flex-end;
-            color: #6dd5fa;
+            position: absolute;
+            top: -6px;
+            right: 6px;
+            z-index: 10;
         }
 
-        #quelora-dev-bar.collapsed h3 {
-            margin: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        #quelora-dev-bar.collapsed .dev-header,
+        #quelora-dev-bar.collapsed .dev-content {
+            display: none;
         }
 
         .dev-expand {
@@ -75,14 +76,7 @@
             border-radius: 6px;
             line-height: 1;
             padding: 0;
-        }
-
-        #quelora-dev-bar.collapsed .dev-expand {
-            font-size: 20px;
-            width: 36px;
-            height: 36px;
-            color: white;
-            background: transparent;
+            transition: background-color 0.2s ease, color 0.2s ease;
         }
 
         .dev-expand:hover {
@@ -90,13 +84,97 @@
             color: white;
         }
 
+        .dev-collapsed-content {
+            display: none;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        #quelora-dev-bar.collapsed .dev-collapsed-content {
+            display: flex;
+        }
+
+        .collapsed-metrics {
+            display: flex;
+            gap: 12px;
+        }
+
+        .collapsed-metric {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .collapsed-label {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .collapsed-value {
+            font-weight: 600;
+            font-size: 12px;
+            color: #6dd5fa;
+            white-space: nowrap;
+        }
+        
+        #dev-expand-btn {
+            display: none;
+            background: #4a90e2; /* Color de fondo del círculo */
+            color: white;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            font-size: 20px;
+            line-height: 1;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        
+        #dev-expand-btn:hover {
+            transform: scale(1.1);
+            background: #5a9ce7;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        #quelora-dev-bar.collapsed #dev-expand-btn {
+            display: flex;
+        }
+        
+        #quelora-dev-bar.collapsed #dev-collapse-btn {
+            display: none;
+        }
+
+        .metrics-fieldset {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+        }
+
+        .metrics-fieldset legend {
+            font-size: 10px;
+            color: #aaa;
+            padding: 0 6px;
+            margin-left: 4px;
+            font-weight: bold;
+        }
+
         .metrics-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 8px 12px;
             transition: opacity 0.18s ease, max-height 0.18s ease;
             max-height: 220px;
             opacity: 1;
+        }
+        .metrics-grid.cols-4 {
+            grid-template-columns: repeat(4, 1fr);
+        }
+        .metrics-grid.cols-5 {
+            grid-template-columns: repeat(5, 1fr);
         }
 
         #quelora-dev-bar.collapsed .metrics-grid {
@@ -112,18 +190,102 @@
             font-size: 10px;
             color: #aaa;
             margin-bottom: 2px;
+            white-space: nowrap;
         }
 
         .metric-value {
             font-weight: 600;
             font-size: 12px;
-            color: white;
-        }
-
-        .metric-value.updating {
             color: #6dd5fa;
+            white-space: nowrap;
         }
 
+        .metric-value.heap-value {
+            color: #ffcc00;
+        }
+        
+        .dev-chart-container {
+            position: relative;
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .dev-chart-controls {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .dev-chart-controls label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            font-size: 10px;
+            color: #ccc;
+        }
+        
+        .dev-chart-controls input[type="checkbox"] {
+            margin-right: 4px;
+            cursor: pointer;
+        }
+        
+        .dev-chart-controls .mem-label input:checked {
+            accent-color: #6dd5fa;
+        }
+        
+        .dev-chart-controls .res-label input:checked {
+            accent-color: #ffcc00;
+        }
+
+        #quelora-dev-bar.collapsed .dev-chart-container {
+            display: none;
+        }
+
+        .dev-logs {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .dev-logs-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .dev-logs-list {
+            max-height: 100px;
+            overflow-y: auto;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.2);
+            padding: 6px;
+            scrollbar-width: thin;
+        }
+        
+        .dev-logs-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .dev-logs-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #aaffaa;
+            word-break: break-all;
+        }
+        
+        #quelora-dev-bar.collapsed .dev-logs {
+            display: none;
+        }
+        
         .quelora-dev-indicator {
             position: fixed;
             top: 10px;
@@ -134,6 +296,80 @@
             padding: 2px 6px;
             border-radius: 3px;
             z-index: 1000000;
+            font-weight: bold;
+        }
+        
+        .dev-chart-grid-line {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .dev-chart-grid-line.horizontal {
+            width: 100%;
+            height: 1px;
+        }
+        
+        .dev-chart-grid-line.vertical {
+            height: 100%;
+            width: 1px;
+        }
+
+        .dev-chart-label {
+            position: absolute;
+            font-size: 9px;
+            color: #ccc;
+            transform: translateY(-50%);
+        }
+        .dev-chart-label.right {
+            right: 0;
+            transform: translateY(-50%) translateX(50%);
+        }
+        .dev-chart-label.bottom {
+            bottom: -5px;
+            transform: translateX(-50%);
+        }
+        .dev-chart-label.bottom.first {
+            left: 0;
+            transform: none;
+        }
+        .dev-chart-label.bottom.last {
+            right: 0;
+            left: auto;
+            transform: none;
+        }
+        
+        .dev-chart-label.right-y {
+            right: -25px;
+            color: #ffcc00;
+            font-weight: bold;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(45, 45, 45, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 10px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+            z-index: 1000;
+            transform: translate(-50%, -10px);
+        }
+        .tooltip.active {
+            opacity: 1;
+        }
+        .tooltip-value {
+            display: block;
+        }
+        .tooltip-mem {
+            color: #6dd5fa;
+            font-weight: bold;
+        }
+        .tooltip-res {
+            color: #ffcc00;
             font-weight: bold;
         }
     `;
@@ -150,184 +386,421 @@
     const devBar = document.createElement('div');
     devBar.id = 'quelora-dev-bar';
     devBar.innerHTML = `
-        <h3><button class="dev-expand" title="Expand/Collapse">−</button></h3>
-        <div class="metrics-grid">
-            <div class="metric">
-                <span class="metric-label">Visible comments</span>
-                <span class="metric-value" id="dev-visible-count">0</span>
+        <div class="dev-header">
+            <button id="dev-collapse-btn" class="dev-expand" title="Collapse">−︎</button>
+        </div>
+        <div class="dev-collapsed-content">
+            <div class="collapsed-metrics">
+                <div class="collapsed-metric">
+                    <span class="collapsed-label" id="collapsed-visible-icon">💬</span>
+                    <span class="collapsed-value" id="collapsed-visible-count">0</span>
+                </div>
+                <div class="collapsed-metric">
+                    <span class="collapsed-label" id="collapsed-hidden-icon">👻</span>
+                    <span class="collapsed-value" id="collapsed-hidden-count">0</span>
+                </div>
+                <div class="collapsed-metric">
+                    <span class="collapsed-label" id="collapsed-dehydrated-icon">💧</span>
+                    <span class="collapsed-value" id="collapsed-dehydrated-count">0</span>
+                </div>
             </div>
-            <div class="metric">
-                <span class="metric-label">Hidden comments</span>
-                <span class="metric-value" id="dev-hidden-count">0</span>
+            <button id="dev-expand-btn" class="dev-expand" title="Expand">+</button>
+        </div>
+        <div class="dev-content">
+            <fieldset class="metrics-fieldset">
+                <legend>Comments</legend>
+                <div class="metrics-grid cols-4">
+                    <div class="metric">
+                        <span class="metric-label">Visible</span>
+                        <span class="metric-value" id="dev-visible-count">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Hidden</span>
+                        <span class="metric-value" id="dev-hidden-count">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Dehydrated</span>
+                        <span class="metric-value" id="dev-dehydrated-count">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">In Memory</span>
+                        <span class="metric-value" id="dev-memory-count">0</span>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="metrics-fieldset">
+                <legend>Posts</legend>
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <span class="metric-label">Posts Count</span>
+                        <span class="metric-value" id="dev-posts-count">0</span>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <fieldset class="metrics-fieldset">
+                <legend>System</legend>
+                <div class="metrics-grid cols-5">
+                    <div class="metric">
+                        <span class="metric-label">API Calls</span>
+                        <span class="metric-value" id="dev-worker-calls">0</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Used Heap</span>
+                        <span class="metric-value heap-value" id="dev-used-heap">0 MB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Max Heap</span>
+                        <span class="metric-value heap-value" id="dev-max-heap">0 MB</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Avg. Latency</span>
+                        <span class="metric-value" id="dev-worker-avg-latency">0ms</span>
+                    </div>
+                    <div class="metric">
+                        <span class="metric-label">Avg. Res. Size</span>
+                        <span class="metric-value" id="dev-worker-avg-size">0 KB</span>
+                    </div>
+                </div>
+            </fieldset>
+            
+            <div class="dev-chart-container">
+                <div class="dev-chart-controls">
+                    <label class="mem-label"><input type="checkbox" id="mem-toggle" checked>Memory</label>
+                    <label class="res-label"><input type="checkbox" id="res-toggle" checked>Response Size</label>
+                </div>
+                <canvas id="dev-memory-chart" width="300" height="60"></canvas>
+                <span class="dev-chart-label" id="chart-max-label" style="top: -10px; left: 0;">0 MB</span>
+                <span class="dev-chart-label" id="chart-min-label" style="bottom: 0; left: 0;">0 MB</span>
+                <span class="dev-chart-label right-y" id="chart-max-res-label" style="top: -10px; right: 0;">0 KB</span>
+                <div id="dev-tooltip" class="tooltip"></div>
             </div>
-            <div class="metric">
-                <span class="metric-label">Dehydrated comments</span>
-                <span class="metric-value" id="dev-dehydrated-count">0</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">Comments in memory</span>
-                <span class="metric-value" id="dev-memory-count">0</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">DOM nodes</span>
-                <span class="metric-value" id="dev-dom-nodes">0</span>
-            </div>
-            <div class="metric">
-                <span class="metric-label">Direct children</span>
-                <span class="metric-value" id="dev-direct-children">0</span>
+            <div class="dev-logs">
+                <span class="dev-logs-title">Worker Logs:</span>
+                <div class="dev-logs-list" id="dev-logs-list"></div>
             </div>
         </div>
     `;
     document.body.prepend(devBar);
 
     // -----------------------
-    // Persistence keys
+    // State & Persistence
     // -----------------------
     const POS_KEY = 'quelora-dev-bar-position';
     const COLLAPSED_KEY = 'quelora-dev-bar-collapsed';
 
+    let workerStats = {
+        calls: 0,
+        latencies: [],
+        responseSizes: [],
+        postsCreated: 0
+    };
+    let memoryChart;
+    let memoryHistory = [];
+    let responseSizeHistory = [];
+    let maxHeapSize = 0;
+    let maxResponseSize = 0;
+    const MAX_CHART_POINTS = 50;
+
+    const collapseBtn = document.getElementById('dev-collapse-btn');
+    const expandBtn = document.getElementById('dev-expand-btn');
+    const chartCanvas = document.getElementById('dev-memory-chart');
+    const tooltip = document.getElementById('dev-tooltip');
+    const memToggle = document.getElementById('mem-toggle');
+    const resToggle = document.getElementById('res-toggle');
+
     // -----------------------
-    // Helpers: position & constraints
+    // Helpers: Position & Collapse
     // -----------------------
     function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
     function setInitialPosition() {
-        let left = Math.max(10, window.innerWidth - devBar.offsetWidth - 20);
-        let top = Math.max(10, window.innerHeight - devBar.offsetHeight - 20);
-
         const saved = localStorage.getItem(POS_KEY);
         if (saved) {
             try {
                 const { x, y } = JSON.parse(saved);
                 if (typeof x === 'number' && typeof y === 'number') {
-                    left = x;
-                    top = y;
+                    devBar.style.left = x + 'px';
+                    devBar.style.top = y + 'px';
                 }
-            } catch (err) {
-                console.warn('quelora: invalid saved position');
-            }
+            } catch (err) { }
         }
-
-        const maxX = Math.max(0, window.innerWidth - devBar.offsetWidth);
-        const maxY = Math.max(0, window.innerHeight - devBar.offsetHeight);
-
-        left = clamp(left, 0, maxX);
-        top = clamp(top, 0, maxY);
-
-        devBar.style.left = left + 'px';
-        devBar.style.top = top + 'px';
+        updatePositionConstraints(false);
     }
 
     function updatePositionConstraints(save = true) {
         const maxX = Math.max(0, window.innerWidth - devBar.offsetWidth);
         const maxY = Math.max(0, window.innerHeight - devBar.offsetHeight);
-
-        let currentX = parseFloat(devBar.style.left);
-        let currentY = parseFloat(devBar.style.top);
-        if (Number.isNaN(currentX)) currentX = devBar.offsetLeft;
-        if (Number.isNaN(currentY)) currentY = devBar.offsetTop;
-
+        let currentX = parseFloat(devBar.style.left) || devBar.offsetLeft;
+        let currentY = parseFloat(devBar.style.top) || devBar.offsetTop;
         currentX = clamp(currentX, 0, maxX);
         currentY = clamp(currentY, 0, maxY);
-
         devBar.style.left = currentX + 'px';
         devBar.style.top = currentY + 'px';
-
         if (save) localStorage.setItem(POS_KEY, JSON.stringify({ x: currentX, y: currentY }));
     }
 
-    // Init position (short timeout to allow layout)
-    setTimeout(setInitialPosition, 40);
-
-    // -----------------------
-    // Collapse state from storage
-    // -----------------------
-    const expandBtn = devBar.querySelector('.dev-expand');
     function initCollapsedFromStorage() {
         const saved = localStorage.getItem(COLLAPSED_KEY);
-        if (saved === 'true') {
+        const isCollapsed = saved === 'true';
+        if (isCollapsed) {
             devBar.classList.add('collapsed');
-            expandBtn.textContent = '+';
         } else {
             devBar.classList.remove('collapsed');
-            expandBtn.textContent = '−';
         }
-        // ensure inside viewport
         updatePositionConstraints(true);
     }
-    setTimeout(initCollapsedFromStorage, 80);
 
     // -----------------------
-    // Metrics helpers
+    // Metrics helpers & updates
     // -----------------------
     function updateMetric(id, value) {
         const el = document.getElementById(id);
         if (!el) return;
-        const cur = el.textContent;
-        if (String(cur) !== String(value)) {
-            el.classList.add('updating');
-            el.textContent = value;
-            setTimeout(() => el.classList.remove('updating'), 300);
-        } else {
-            el.textContent = value;
+        el.textContent = value;
+    }
+
+    function addLog(message) {
+        const logList = document.getElementById('dev-logs-list');
+        const entry = document.createElement('div');
+        entry.className = `log-entry`;
+        entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+        logList.prepend(entry);
+        if (logList.children.length > 20) {
+            logList.removeChild(logList.lastChild);
         }
     }
 
-    function countCommentNodes(container) {
-        if (!container) return 0;
-        return container.querySelectorAll('*').length;
-    }
+    function initChart() {
+        const ctx = chartCanvas.getContext('2d');
+        const dpr = 1; //window.devicePixelRatio || 1;
+        chartCanvas.width = 330 * dpr;
+        chartCanvas.height = 60 * dpr;
+        ctx.scale(dpr, dpr);
 
-    function countDirectThreadChildren(container) {
-        if (!container) return 0;
-        // prefer :scope if available, otherwise manual children counting
-        try {
-            const n = container.querySelectorAll(':scope > .community-thread').length;
-            if (n >= 0) return n;
-        } catch (err) { /* ignore */ }
-        let count = 0;
-        for (let i = 0; i < container.children.length; i++) {
-            const c = container.children[i];
-            if (c.classList && c.classList.contains('community-thread')) count++;
-        }
-        return count;
+        const memoryGradient = ctx.createLinearGradient(0, 0, 0, 60);
+        memoryGradient.addColorStop(0, '#6dd5fa');
+        memoryGradient.addColorStop(1, 'rgba(41, 128, 185, 0)');
+
+        const responseGradient = ctx.createLinearGradient(0, 0, 0, 60);
+        responseGradient.addColorStop(0, '#ffcc00');
+        responseGradient.addColorStop(1, 'rgba(243, 156, 18, 0)');
+
+        memoryChart = {
+            ctx: ctx,
+            data: {
+                memory: [],
+                responseSizes: []
+            },
+            draw: function() {
+                const { ctx, data } = this;
+                const width = chartCanvas.width / dpr;
+                const height = chartCanvas.height / dpr;
+                const paddedHeight = height - 10;
+                const startX = width - (data.memory.length * (width / MAX_CHART_POINTS));
+                
+                ctx.clearRect(0, 0, width, height);
+                
+                const maxMemVal = Math.max(
+                    maxHeapSize,
+                    data.memory.length > 0 ? Math.max(...data.memory) : 0,
+                    1
+                );
+                
+                const maxResVal = Math.max(
+                    maxResponseSize,
+                    data.responseSizes.length > 0 ? Math.max(...data.responseSizes) : 0,
+                    1
+                );
+                
+                const scaleFactor = paddedHeight / maxMemVal;
+                const scaleResFactor = paddedHeight / maxResVal;
+                
+                // Draw grid lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 0.5;
+                ctx.beginPath();
+                for (let i = 1; i < 4; i++) {
+                    const y = height * i / 4;
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                }
+                ctx.stroke();
+
+                // Draw memory area and line
+                if (memToggle.checked) {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, height);
+                    data.memory.forEach((val, i) => {
+                        const x = startX + i * (width / MAX_CHART_POINTS);
+                        const y = height - (val * scaleFactor);
+                        ctx.lineTo(x, y);
+                    });
+                    ctx.lineTo(width, height);
+                    ctx.closePath();
+                    ctx.fillStyle = memoryGradient;
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, height - (data.memory[0] * scaleFactor));
+                    data.memory.forEach((val, i) => {
+                        const x = startX + i * (width / MAX_CHART_POINTS);
+                        const y = height - (val * scaleFactor);
+                        ctx.lineTo(x, y);
+                    });
+                    ctx.shadowColor = 'rgba(109, 213, 250, 0.5)';
+                    ctx.shadowBlur = 10;
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = '#6dd5fa';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0; // Reset shadow
+                }
+
+
+                // Draw response size area and line
+                if (resToggle.checked) {
+                    ctx.beginPath();
+                    ctx.moveTo(startX, height);
+                    data.responseSizes.forEach((val, i) => {
+                        const x = startX + i * (width / MAX_CHART_POINTS);
+                        const y = height - (val * scaleResFactor);
+                        ctx.lineTo(x, y);
+                    });
+                    ctx.lineTo(width, height);
+                    ctx.closePath();
+                    ctx.fillStyle = responseGradient;
+                    ctx.fill();
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, height - (data.responseSizes[0] * scaleResFactor));
+                    data.responseSizes.forEach((val, i) => {
+                        const x = startX + i * (width / MAX_CHART_POINTS);
+                        const y = height - (val * scaleResFactor);
+                        ctx.lineTo(x, y);
+                    });
+                    ctx.shadowColor = 'rgba(255, 204, 0, 0.5)';
+                    ctx.shadowBlur = 10;
+                    ctx.lineWidth = 1.5;
+                    ctx.strokeStyle = '#ffcc00';
+                    ctx.stroke();
+                    ctx.shadowBlur = 0; // Reset shadow
+                }
+
+                // Update labels
+                document.getElementById('chart-max-label').textContent = `${maxMemVal.toFixed(1)} MB`;
+                document.getElementById('chart-min-label').textContent = `0 MB`;
+                document.getElementById('chart-max-res-label').textContent = `${maxResVal.toFixed(1)} KB`;
+            }
+        };
+
+        // Tooltip logic
+        chartCanvas.addEventListener('mousemove', (e) => {
+            const rect = chartCanvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const width = chartCanvas.width / dpr;
+            const index = Math.floor((x / width) * memoryHistory.length);
+
+            if (index >= 0 && index < memoryHistory.length) {
+                const memVal = memoryHistory[index];
+                const resVal = responseSizeHistory[index];
+
+                if (memVal !== undefined && resVal !== undefined) {
+                    tooltip.innerHTML = `<span class="tooltip-value tooltip-mem">Mem: ${memVal.toFixed(2)} MB</span><span class="tooltip-value tooltip-res">Res: ${resVal.toFixed(2)} KB</span>`;
+                    tooltip.style.left = `${x}px`;
+                    tooltip.style.top = `${y}px`;
+                    tooltip.classList.add('active');
+                } else {
+                    tooltip.classList.remove('active');
+                }
+            }
+        });
+
+        chartCanvas.addEventListener('mouseleave', () => {
+            tooltip.classList.remove('active');
+        });
+        
+        memToggle.addEventListener('change', updateMetrics);
+        resToggle.addEventListener('change', updateMetrics);
     }
 
     function updateMetrics() {
-        const threadsContainer = document.querySelector('.community-threads');
-        if (!threadsContainer) return;
+        const threadsContainer = document.querySelector('.community-threads');
+        if (threadsContainer) {
+            const visibleComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="true"]').length;
+            const hiddenComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="false"]:not([data-comment-dehydrated])').length;
+            const dehydratedComments = threadsContainer.querySelectorAll('.community-thread[data-comment-dehydrated]').length;
+            const memoryCount = visibleComments + hiddenComments;
+            
+            // Calculate post count based on EntityModule config
+            let postsCount = 0;
+            const entityConfig = EntityModule.getConfig();
+            if (entityConfig && entityConfig.selector) {
+                const allPosts = document.querySelectorAll(entityConfig.selector);
+                const observedPosts = Array.from(allPosts).filter(post => post.querySelector('.community-interaction-bar'));
+                postsCount = observedPosts.length;
+            }
 
-        const visibleComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="true"]');
-        updateMetric('dev-visible-count', visibleComments.length);
+            // Actualiza los contadores en la barra expandida
+            updateMetric('dev-visible-count', visibleComments);
+            updateMetric('dev-hidden-count', hiddenComments);
+            updateMetric('dev-dehydrated-count', dehydratedComments);
+            updateMetric('dev-memory-count', memoryCount);
+            updateMetric('dev-posts-count', postsCount);
 
-        // Hidden but NOT dehydrated
-        const hiddenComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="false"]:not([data-comment-dehydrated])');
-        updateMetric('dev-hidden-count', hiddenComments.length);
+            // Actualiza los contadores en la barra colapsada
+            updateMetric('collapsed-visible-count', visibleComments);
+            updateMetric('collapsed-hidden-count', hiddenComments);
+            updateMetric('collapsed-dehydrated-count', dehydratedComments);
+        }
 
-        const dehydratedComments = threadsContainer.querySelectorAll('.community-thread[data-comment-dehydrated]');
-        updateMetric('dev-dehydrated-count', dehydratedComments.length);
+        if (window.performance && window.performance.memory) {
+            const memory = window.performance.memory;
+            const usedMB = (memory.usedJSHeapSize / 1048576).toFixed(2);
+            
+            maxHeapSize = Math.max(maxHeapSize, parseFloat(usedMB));
 
-        const memoryCount = visibleComments.length + hiddenComments.length;
-        updateMetric('dev-memory-count', memoryCount);
+            updateMetric('dev-used-heap', `${usedMB} MB`);
+            updateMetric('dev-max-heap', `${maxHeapSize.toFixed(2)} MB`);
+            
+            memoryHistory.push(parseFloat(usedMB));
+            if (memoryHistory.length > MAX_CHART_POINTS) {
+                memoryHistory.shift();
+            }
+        }
+        
+        const avgLatency = workerStats.latencies.length ? (workerStats.latencies.reduce((a, b) => a + b) / workerStats.latencies.length).toFixed(2) : '0';
+        const avgSize = workerStats.responseSizes.length ? (workerStats.responseSizes.reduce((a, b) => a + b) / workerStats.responseSizes.length).toFixed(2) : '0';
 
-        const domNodes = countCommentNodes(threadsContainer);
-        updateMetric('dev-dom-nodes', domNodes);
+        maxResponseSize = Math.max(maxResponseSize, parseFloat(avgSize));
+        responseSizeHistory.push(parseFloat(avgSize));
+        if (responseSizeHistory.length > 50) {
+            responseSizeHistory.shift();
+        }
 
-        const directChildren = countDirectThreadChildren(threadsContainer);
-        updateMetric('dev-direct-children', directChildren);
-    }
+        updateMetric('dev-worker-calls', workerStats.calls);
+        document.getElementById('dev-worker-avg-latency').textContent = `${avgLatency}ms`;
+        document.getElementById('dev-worker-avg-size').textContent = `${avgSize} KB`;
 
+        if (memoryChart) {
+            memoryChart.data.memory = memoryHistory;
+            memoryChart.data.responseSizes = responseSizeHistory;
+            memoryChart.draw();
+        }
+    }
+    
     // -----------------------
-    // Observers & periodic updates
+    // Observers & Events
     // -----------------------
-    function setupObservers() {
+    function setupListeners() {
         const threadsContainer = document.querySelector('.community-threads');
         if (!threadsContainer) {
-            // retry later
-            setTimeout(setupObservers, 800);
+            setTimeout(setupListeners, 800);
             return;
         }
-
+        
         const observer = new MutationObserver(updateMetrics);
         observer.observe(threadsContainer, {
             childList: true,
@@ -335,21 +808,51 @@
             attributes: true,
             attributeFilter: ['data-comment-visible', 'data-comment-dehydrated']
         });
+        
+        // Listen for worker messages to update API stats
+        const originalPostMessage = window.Worker.prototype.postMessage;
+        window.Worker.prototype.postMessage = function(message, transfer) {
+            const startTime = performance.now();
+            this.addEventListener('message', function onMessage(event) {
+                if (event.data && event.data.originalPayload && event.data.originalPayload.id === message.payload.id) {
+                    const latency = performance.now() - startTime;
+                    workerStats.calls++;
+                    workerStats.latencies.push(latency);
+                    if (workerStats.latencies.length > 50) {
+                        workerStats.latencies.shift();
+                    }
+
+                    const responseData = event.data;
+                    const jsonString = JSON.stringify(responseData);
+                    const sizeInBytes = new TextEncoder().encode(jsonString).length;
+                    const sizeInKB = (sizeInBytes / 1024);
+                    workerStats.responseSizes.push(sizeInKB);
+                    if (workerStats.responseSizes.length > 50) {
+                        workerStats.responseSizes.shift();
+                    }
+                    
+                    addLog(`Action: ${message.action} took ${latency.toFixed(2)}ms, Size: ${sizeInKB.toFixed(2)} KB`);
+
+                    if (message.action === 'createPost') {
+                        workerStats.postsCreated++;
+                    }
+
+                    updateMetrics();
+                    this.removeEventListener('message', onMessage);
+                }
+            });
+            originalPostMessage.call(this, message, transfer);
+        };
 
         updateMetrics();
-        setInterval(updateMetrics, 1500);
+        initChart();
+        updateIntervalId = setInterval(updateMetrics, 1500);
     }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupObservers);
-    } else {
-        setupObservers();
-    }
-
+    
     // -----------------------
-    // Drag / pointer logic (PointerEvents + fallback)
+    // Drag & Drop
     // -----------------------
-    const DRAG_THRESHOLD = 6; // px to consider a drag (prevents click->drag)
+    const DRAG_THRESHOLD = 6;
     let pointerId = null;
     let startClientX = 0;
     let startClientY = 0;
@@ -358,43 +861,37 @@
     let currentlyDragging = false;
     let suppressClick = false;
 
-    // click suppression: intercept clicks so when user dragged we don't trigger button action
     devBar.addEventListener('click', (ev) => {
         if (suppressClick) {
             ev.stopPropagation();
             ev.preventDefault();
             suppressClick = false;
         }
-    }, true); // capture
+    }, true);
 
-    expandBtn.addEventListener('click', (e) => {
-        // if this click was suppressed by drag, ignore toggle
-        if (suppressClick) {
-            e.stopPropagation();
-            e.preventDefault();
-            suppressClick = false;
-            return;
-        }
-        e.stopPropagation();
-        devBar.classList.toggle('collapsed');
-        const collapsedNow = devBar.classList.contains('collapsed');
-        expandBtn.textContent = collapsedNow ? '+' : '−';
-        localStorage.setItem(COLLAPSED_KEY, collapsedNow ? 'true' : 'false');
-        // ensure position is still valid after layout change
-        setTimeout(() => updatePositionConstraints(true), 40);
-    });
+    if (collapseBtn) {
+        collapseBtn.addEventListener('click', (e) => {
+            devBar.classList.add('collapsed');
+            localStorage.setItem(COLLAPSED_KEY, 'true');
+            setTimeout(() => updatePositionConstraints(true), 40);
+        });
+    }
+
+    if (expandBtn) {
+        expandBtn.addEventListener('click', (e) => {
+            devBar.classList.remove('collapsed');
+            localStorage.setItem(COLLAPSED_KEY, 'false');
+            setTimeout(() => updatePositionConstraints(true), 40);
+        });
+    }
 
     function startTracking(clientX, clientY) {
-        // compute baseLeft/baseTop from style.left/top (fixed position => viewport coords)
-        const styleLeft = parseFloat(devBar.style.left);
-        const styleTop = parseFloat(devBar.style.top);
-        const baseLeft = Number.isNaN(styleLeft) ? devBar.offsetLeft : styleLeft;
-        const baseTop = Number.isNaN(styleTop) ? devBar.offsetTop : styleTop;
-
+        const styleLeft = parseFloat(devBar.style.left) || devBar.offsetLeft;
+        const styleTop = parseFloat(devBar.style.top) || devBar.offsetTop;
         startClientX = clientX;
         startClientY = clientY;
-        dragOffsetX = clientX - baseLeft;
-        dragOffsetY = clientY - baseTop;
+        dragOffsetX = clientX - styleLeft;
+        dragOffsetY = clientY - styleTop;
         currentlyDragging = false;
         suppressClick = false;
     }
@@ -402,27 +899,21 @@
     function pointerMoveHandler(clientX, clientY) {
         const dx = Math.abs(clientX - startClientX);
         const dy = Math.abs(clientY - startClientY);
-
         if (!currentlyDragging) {
             if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
                 currentlyDragging = true;
                 devBar.style.cursor = 'grabbing';
                 suppressClick = true;
             } else {
-                return; // still within threshold
+                return;
             }
         }
-
-        // move
         let newX = clientX - dragOffsetX;
         let newY = clientY - dragOffsetY;
-
         const maxX = Math.max(0, window.innerWidth - devBar.offsetWidth);
         const maxY = Math.max(0, window.innerHeight - devBar.offsetHeight);
-
         newX = clamp(newX, 0, maxX);
         newY = clamp(newY, 0, maxY);
-
         devBar.style.left = newX + 'px';
         devBar.style.top = newY + 'px';
     }
@@ -436,43 +927,32 @@
         }
         currentlyDragging = false;
         pointerId = null;
-        // keep suppressClick true for one tick so click event gets blocked (already installed)
-        setTimeout(() => { suppressClick = false; }, 0);
     }
 
-    // PointerEvents path
     if (window.PointerEvent) {
         devBar.addEventListener('pointerdown', (e) => {
-            // only primary pointer (mouse left / touch / pen)
             if (e.pointerType === 'mouse' && e.button !== 0) return;
             pointerId = e.pointerId;
             startTracking(e.clientX, e.clientY);
-            // capture pointer to keep receiving events even if pointer leaves
             try { devBar.setPointerCapture(pointerId); } catch (err) {}
-            const move = (ev) => {
-                if (ev.pointerId !== pointerId) return;
-                pointerMoveHandler(ev.clientX, ev.clientY);
-            };
+            const move = (ev) => { if (ev.pointerId === pointerId) pointerMoveHandler(ev.clientX, ev.clientY); };
             const up = (ev) => {
-                if (ev.pointerId !== pointerId) return;
-                endTracking();
-                // cleanup
-                document.removeEventListener('pointermove', move, { passive: false });
-                document.removeEventListener('pointerup', up);
-                try { devBar.releasePointerCapture(pointerId); } catch (err) {}
+                if (ev.pointerId === pointerId) {
+                    endTracking();
+                    document.removeEventListener('pointermove', move, { passive: false });
+                    document.removeEventListener('pointerup', up);
+                    try { devBar.releasePointerCapture(pointerId); } catch (err) {}
+                }
             };
-            // attach listeners on document so we don't miss events
             document.addEventListener('pointermove', move, { passive: false });
             document.addEventListener('pointerup', up);
         });
     } else {
-        // Fallback: mouse + touch
-        // Mouse
         devBar.addEventListener('mousedown', (e) => {
             if (e.button !== 0) return;
             startTracking(e.clientX, e.clientY);
             const move = (ev) => pointerMoveHandler(ev.clientX, ev.clientY);
-            const up = (ev) => {
+            const up = () => {
                 endTracking();
                 document.removeEventListener('mousemove', move);
                 document.removeEventListener('mouseup', up);
@@ -481,7 +961,6 @@
             document.addEventListener('mouseup', up);
         });
 
-        // Touch
         devBar.addEventListener('touchstart', (e) => {
             const t = e.touches[0];
             if (!t) return;
@@ -491,7 +970,7 @@
                 if (!tt) return;
                 pointerMoveHandler(tt.clientX, tt.clientY);
             };
-            const up = (ev) => {
+            const up = () => {
                 endTracking();
                 document.removeEventListener('touchmove', move);
                 document.removeEventListener('touchend', up);
@@ -501,37 +980,18 @@
         }, { passive: true });
     }
 
-    // Ensure bar stays in viewport on resize
     window.addEventListener('resize', () => updatePositionConstraints(true));
 
-    // -----------------------
-    // Expand/collapse: also allow toggling by keyboard on focused button
-    // -----------------------
-    expandBtn.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            expandBtn.click();
-        }
-    });
-
-    // -----------------------
-    // Public small API (optional)
-    // -----------------------
-    devBar._quelora = {
-        updateMetrics,
-        setPosition: (x, y) => {
-            devBar.style.left = x + 'px';
-            devBar.style.top = y + 'px';
-            updatePositionConstraints(true);
-        },
-        collapse: (flag) => {
-            if (flag) devBar.classList.add('collapsed');
-            else devBar.classList.remove('collapsed');
-            localStorage.setItem(COLLAPSED_KEY, devBar.classList.contains('collapsed') ? 'true' : 'false');
-            updatePositionConstraints(true);
-        }
-    };
-
-    // initial metrics update
-    setTimeout(updateMetrics, 120);
+    function init() {
+        setInitialPosition();
+        initCollapsedFromStorage();
+        setupListeners();
+    }
+    
+    // Check if the DOM is ready to prevent errors
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

@@ -104,6 +104,10 @@ function resumeObservers(type) {
     }
 }
 
+function getRegisteredObservers() {
+    return Array.from(observerRegistry.keys());
+}
+
 /**
  * Formats a date string into a localized short date (e.g., "Jan 1, 2023").
  * @param {string} dateString - Date in string format.
@@ -639,7 +643,8 @@ const UtilsModule = {
     registerObserver,
     unregisterObserver,
     pauseObservers,
-    resumeObservers
+    resumeObservers,
+    getRegisteredObservers
 };
 
 export default UtilsModule;
