@@ -53,9 +53,7 @@ const MAX_RENDER_ATTEMPTS = 3;
 const MAX_RENDERED_COMMENTS = 300;
 const RENDER_ATTEMPT_INTERVAL = 300; // ms
 const DEFAULT_COMMENT_LIMIT = 15;
-
 const OBSERVER_ROOT_MARGIN = '1200px';
-
 const BUFFER_SIZE = 50;
 const BATCH_SIZE = 50;
 
@@ -79,6 +77,9 @@ let scrollTimeout = null;
 
 // ==================== EVENT HANDLER UTILITIES ====================
 
+/**
+ * Sets up IntersectionObservers for comment visibility and load-more links, managing hydration/dehydration when scroll stops.
+ */
 function setupVisibilityObservers() {
     const threadsContainer = UiModule.getCommunityThreadsUI();
     const drawerContent = threadsContainer?.closest('.drawer-content') || document.querySelector('.drawer-content');
@@ -266,6 +267,9 @@ function setupVisibilityObservers() {
     };
 }
 
+/**
+ * Cleans up visibility observers, disconnecting all registered observers.
+ */
 function cleanupVisibilityObservers() {
     if (visibilityObservers) {
         visibilityObservers.disconnect();
@@ -273,6 +277,11 @@ function cleanupVisibilityObservers() {
     }
 }
 
+/**
+ * Manages hydration/dehydration of comments based on visibility, using a buffer to optimize performance.
+ * @param {Array<HTMLElement>} comments - Array of comment DOM elements
+ * @param {IntersectionObserver} observer - IntersectionObserver instance for comments
+ */
 function manageHydration(comments, observer) {
     if (comments.length === 0) return;
 
@@ -326,6 +335,11 @@ function manageHydration(comments, observer) {
     });
 }
 
+/**
+ * Processes an array of items in batches using requestIdleCallback for non-blocking execution.
+ * @param {Array} items - Array of items to process (e.g., comments to hydrate/dehydrate)
+ * @param {Function} action - Function to execute on each item
+ */
 function processBatches(items, action) {
     let index = 0;
     function processNext() {
@@ -343,6 +357,12 @@ function processBatches(items, action) {
     processNext();
 }
 
+/**
+ * Dehydrates a comment by removing its content and preserving its height, maintaining replies.
+ * @param {HTMLElement} c - Comment DOM element to dehydrate
+ * @param {string} commentId - ID of the comment
+ * @param {IntersectionObserver} observer - IntersectionObserver instance for comments
+ */
 function dehydrateComment(c, commentId, observer) {
     if (c.hasAttribute('data-comment-dehydrated')) return;
     
@@ -370,6 +390,11 @@ function dehydrateComment(c, commentId, observer) {
     observer.observe(c);
 }
 
+/**
+ * Rehydrates a comment by restoring its content from storedComments, preserving existing replies.
+ * @param {HTMLElement} c - Comment DOM element to rehydrate
+ * @param {IntersectionObserver} observer - IntersectionObserver instance for comments
+ */
 async function rehydrateComment(c, observer) {
     if (!c.hasAttribute('data-comment-dehydrated')) return;
     const entity = UiModule.getCommunityThreadsUI()?.getAttribute('data-threads-entity');
