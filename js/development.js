@@ -147,11 +147,31 @@ import UtilsModule from './utils.js';
             display: none;
         }
 
+        .metrics-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .metrics-fieldset.flex-20 {
+            flex: 0 0 20%;
+        }
+        .metrics-fieldset.flex-70 {
+            flex: 0 0 70%;
+        }
+
         .metrics-fieldset {
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 6px;
             padding: 8px 10px;
             margin-bottom: 8px;
+            flex: 1;
+        }
+        
+        .metrics-fieldset.active-fieldset {
+            box-shadow: 0 0 15px rgba(109, 213, 250, 0.6);
+            border-color: rgba(109, 213, 250, 0.6);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         .metrics-fieldset legend {
@@ -169,12 +189,23 @@ import UtilsModule from './utils.js';
             transition: opacity 0.18s ease, max-height 0.18s ease;
             max-height: 220px;
             opacity: 1;
+            align-items: flex-end;
         }
         .metrics-grid.cols-4 {
             grid-template-columns: repeat(4, 1fr);
         }
         .metrics-grid.cols-5 {
             grid-template-columns: repeat(5, 1fr);
+        }
+        .metrics-grid.cols-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .metrics-flex-row {
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+            justify-content: space-between;
         }
 
         #quelora-dev-bar.collapsed .metrics-grid {
@@ -248,12 +279,38 @@ import UtilsModule from './utils.js';
             padding-top: 10px;
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
-
-        .dev-logs-title {
+        
+        .log-tabs {
+            display: flex;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .log-tabs button {
+            background: transparent;
+            border: none;
+            color: #aaa;
             font-size: 11px;
             font-weight: bold;
-            color: #aaa;
-            margin-bottom: 4px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: color 0.2s ease, background-color 0.2s ease, border-radius 0.2s ease;
+            position: relative;
+            outline: none;
+        }
+        .log-tabs button.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.08);
+            border-radius: 4px 4px 0 0;
+        }
+
+        .log-content-container {
+            position: relative;
+        }
+        .log-content {
+            display: none;
+        }
+        .log-content.active {
+            display: block;
         }
 
         .dev-logs-list {
@@ -278,27 +335,19 @@ import UtilsModule from './utils.js';
             margin-bottom: 2px;
             font-size: 10px;
             line-height: 1.4;
-            color: #aaffaa;
             word-break: break-all;
+        }
+        .log-entry.worker {
+            color: #aaffaa;
+        }
+        .log-entry.observer {
+            color: #ffcc00;
         }
         
         #quelora-dev-bar.collapsed .dev-logs {
             display: none;
         }
-        
-        .quelora-dev-indicator {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background: #ff4757;
-            color: white;
-            font-size: 10px;
-            padding: 2px 6px;
-            border-radius: 3px;
-            z-index: 1000000;
-            font-weight: bold;
-        }
-        
+
         .dev-chart-grid-line {
             position: absolute;
             background-color: rgba(255, 255, 255, 0.1);
@@ -309,7 +358,7 @@ import UtilsModule from './utils.js';
             height: 1px;
         }
         
-        .dev-chart-grid-line.vertical {
+.dev-chart-grid-line.vertical {
             height: 100%;
             width: 1px;
         }
@@ -378,10 +427,6 @@ import UtilsModule from './utils.js';
     // -----------------------
     // DOM elements
     // -----------------------
-    const devIndicator = document.createElement('div');
-    devIndicator.className = 'quelora-dev-indicator';
-    devIndicator.textContent = 'DEV MODE';
-    document.body.appendChild(devIndicator);
 
     const devBar = document.createElement('div');
     devBar.id = 'quelora-dev-bar';
@@ -429,16 +474,38 @@ import UtilsModule from './utils.js';
                 </div>
             </fieldset>
 
-            <fieldset class="metrics-fieldset">
-                <legend>Posts</legend>
-                <div class="metrics-grid">
+            <div class="metrics-row">
+                <fieldset class="metrics-fieldset flex-20" id="posts-fieldset">
+                    <legend>Posts</legend>
                     <div class="metric">
                         <span class="metric-label">Posts Count</span>
                         <span class="metric-value" id="dev-posts-count">0</span>
                     </div>
-                </div>
-            </fieldset>
-            
+                </fieldset>
+                
+                <fieldset class="metrics-fieldset flex-70" id="observers-fieldset">
+                    <legend>Observers</legend>
+                    <div class="metrics-flex-row">
+                        <div class="metric">
+                            <span class="metric-label">Mutation</span>
+                            <span class="metric-value" id="dev-observers-mutation-count">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Intersection</span>
+                            <span class="metric-value" id="dev-observers-intersection-count">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Resize</span>
+                            <span class="metric-value" id="dev-observers-resize-count">0</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Observed</span>
+                            <span class="metric-value" id="dev-observers-elements-count">0</span>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
+
             <fieldset class="metrics-fieldset">
                 <legend>System</legend>
                 <div class="metrics-grid cols-5">
@@ -477,8 +544,18 @@ import UtilsModule from './utils.js';
                 <div id="dev-tooltip" class="tooltip"></div>
             </div>
             <div class="dev-logs">
-                <span class="dev-logs-title">Worker Logs:</span>
-                <div class="dev-logs-list" id="dev-logs-list"></div>
+                <div class="log-tabs">
+                    <button id="worker-log-tab" class="active">Worker Logs</button>
+                    <button id="observer-log-tab">Observer Logs</button>
+                </div>
+                <div class="log-content-container">
+                    <div id="worker-log-content" class="log-content active">
+                        <div class="dev-logs-list" id="worker-logs-list"></div>
+                    </div>
+                    <div id="observer-log-content" class="log-content">
+                        <div class="dev-logs-list" id="observer-logs-list"></div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -509,6 +586,7 @@ import UtilsModule from './utils.js';
     const tooltip = document.getElementById('dev-tooltip');
     const memToggle = document.getElementById('mem-toggle');
     const resToggle = document.getElementById('res-toggle');
+    const observersFieldset = document.getElementById('observers-fieldset');
 
     // -----------------------
     // Helpers: Position & Collapse
@@ -561,15 +639,43 @@ import UtilsModule from './utils.js';
         el.textContent = value;
     }
 
-    function addLog(message) {
-        const logList = document.getElementById('dev-logs-list');
+    function addLog(type, message) {
+        const logList = document.getElementById(`${type}-logs-list`);
+        if (!logList) return;
         const entry = document.createElement('div');
-        entry.className = `log-entry`;
+        entry.className = `log-entry ${type}`;
         entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
         logList.prepend(entry);
         if (logList.children.length > 20) {
             logList.removeChild(logList.lastChild);
         }
+    }
+    
+    function logObserverMutations(mutations) {
+        let childListChanges = 0;
+        let attributeChanges = 0;
+        let otherChanges = 0;
+
+        mutations.forEach(mutation => {
+            switch (mutation.type) {
+                case 'childList':
+                    childListChanges += mutation.addedNodes.length + mutation.removedNodes.length;
+                    break;
+                case 'attributes':
+                    attributeChanges++;
+                    break;
+                default:
+                    otherChanges++;
+                    break;
+            }
+        });
+
+        let message = `Observer triggered: Total changes: ${mutations.length}`;
+        if (childListChanges > 0) message += `, DOM nodes: ${childListChanges}`;
+        if (attributeChanges > 0) message += `, Attributes: ${attributeChanges}`;
+        if (otherChanges > 0) message += `, Other: ${otherChanges}`;
+        
+        addLog('observer', message);
     }
 
     function initChart() {
@@ -726,70 +832,115 @@ import UtilsModule from './utils.js';
         resToggle.addEventListener('change', updateMetrics);
     }
 
-    function updateMetrics() {
-        const threadsContainer = document.querySelector('.community-threads');
-        if (threadsContainer) {
-            const visibleComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="true"]').length;
-            const hiddenComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="false"]:not([data-comment-dehydrated])').length;
-            const dehydratedComments = threadsContainer.querySelectorAll('.community-thread[data-comment-dehydrated]').length;
-            const memoryCount = visibleComments + hiddenComments;
-            
-            // Calculate post count based on EntityModule config
-            let postsCount = 0;
-            const entityConfig = EntityModule.getConfig();
-            if (entityConfig && entityConfig.selector) {
-                const allPosts = document.querySelectorAll(entityConfig.selector);
-                const observedPosts = Array.from(allPosts).filter(post => post.querySelector('.community-interaction-bar'));
-                postsCount = observedPosts.length;
-            }
+    function updateMetrics(fromObserver = false, mutations = null) {
+        const threadsContainer = document.querySelector('.community-threads');
+        if (threadsContainer) {
+            const visibleComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="true"]').length;
+            const hiddenComments = threadsContainer.querySelectorAll('.community-thread[data-comment-visible="false"]:not([data-comment-dehydrated])').length;
+            const dehydratedComments = threadsContainer.querySelectorAll('.community-thread[data-comment-dehydrated]').length;
+            const memoryCount = visibleComments + hiddenComments;
+            
+            // Calculate post count based on EntityModule config
+            let postsCount = 0;
+            const entityConfig = EntityModule.getConfig();
+            if (entityConfig && entityConfig.selector) {
+                const allPosts = document.querySelectorAll(entityConfig.selector);
+                const observedPosts = Array.from(allPosts).filter(post => post.querySelector('.community-interaction-bar'));
+                postsCount = observedPosts.length;
+            }
 
-            // Actualiza los contadores en la barra expandida
-            updateMetric('dev-visible-count', visibleComments);
-            updateMetric('dev-hidden-count', hiddenComments);
-            updateMetric('dev-dehydrated-count', dehydratedComments);
-            updateMetric('dev-memory-count', memoryCount);
-            updateMetric('dev-posts-count', postsCount);
+            // Actualiza los contadores en la barra expandida
+            updateMetric('dev-visible-count', visibleComments);
+            updateMetric('dev-hidden-count', hiddenComments);
+            updateMetric('dev-dehydrated-count', dehydratedComments);
+            updateMetric('dev-memory-count', memoryCount);
+            updateMetric('dev-posts-count', postsCount);
 
-            // Actualiza los contadores en la barra colapsada
-            updateMetric('collapsed-visible-count', visibleComments);
-            updateMetric('collapsed-hidden-count', hiddenComments);
-            updateMetric('collapsed-dehydrated-count', dehydratedComments);
-        }
+            // Actualiza los contadores en la barra colapsada
+            updateMetric('collapsed-visible-count', visibleComments);
+            updateMetric('collapsed-hidden-count', hiddenComments);
+            updateMetric('collapsed-dehydrated-count', dehydratedComments);
+        }
 
-        if (window.performance && window.performance.memory) {
-            const memory = window.performance.memory;
-            const usedMB = (memory.usedJSHeapSize / 1048576).toFixed(2);
-            
-            maxHeapSize = Math.max(maxHeapSize, parseFloat(usedMB));
+        if (UtilsModule && UtilsModule.getRegisteredObservers) {
+            const registeredObservers = UtilsModule.getRegisteredObservers();
+            let mutationCount = 0;
+            let intersectionCount = 0;
+            let resizeCount = 0;
+            
+            // Usa un Set para contar elementos únicos observados
+            const observedElements = new Set();
 
-            updateMetric('dev-used-heap', `${usedMB} MB`);
-            updateMetric('dev-max-heap', `${maxHeapSize.toFixed(2)} MB`);
-            
-            memoryHistory.push(parseFloat(usedMB));
-            if (memoryHistory.length > MAX_CHART_POINTS) {
-                memoryHistory.shift();
-            }
-        }
-        
-        const avgLatency = workerStats.latencies.length ? (workerStats.latencies.reduce((a, b) => a + b) / workerStats.latencies.length).toFixed(2) : '0';
-        const avgSize = workerStats.responseSizes.length ? (workerStats.responseSizes.reduce((a, b) => a + b) / workerStats.responseSizes.length).toFixed(2) : '0';
+            registeredObservers.forEach(observer => {
+                switch (observer.type) {
+                    case 'mutation':
+                        mutationCount++;
+                        break;
+                    case 'intersection':
+                        intersectionCount++;
+                        break;
+                    case 'resize':
+                        resizeCount++;
+                        break;
+                }
+                if (observer.element) {
+                    observedElements.add(observer.element);
+                }
+            });
+            
+            updateMetric('dev-observers-mutation-count', mutationCount);
+            updateMetric('dev-observers-intersection-count', intersectionCount);
+            updateMetric('dev-observers-resize-count', resizeCount);
+            updateMetric('dev-observers-elements-count', observedElements.size);
+            
+            // Indicador visual de actividad
+            if (fromObserver) {
+                observersFieldset.classList.add('active-fieldset');
+                setTimeout(() => {
+                    observersFieldset.classList.remove('active-fieldset');
+                }, 500); // El color se mantiene por 0.5 segundos
+            }
+        }
+        
+        if (mutations && mutations.length > 0) {
+            logObserverMutations(mutations);
+        }
 
-        maxResponseSize = Math.max(maxResponseSize, parseFloat(avgSize));
-        responseSizeHistory.push(parseFloat(avgSize));
-        if (responseSizeHistory.length > 50) {
-            responseSizeHistory.shift();
-        }
+        if (window.performance && window.performance.memory) {
+            const memory = window.performance.memory;
+            const usedMB = (memory.usedJSHeapSize / 1048576).toFixed(2);
+            
+            maxHeapSize = Math.max(maxHeapSize, parseFloat(usedMB));
 
-        updateMetric('dev-worker-calls', workerStats.calls);
-        document.getElementById('dev-worker-avg-latency').textContent = `${avgLatency}ms`;
-        document.getElementById('dev-worker-avg-size').textContent = `${avgSize} KB`;
+            updateMetric('dev-used-heap', `${usedMB} MB`);
+            updateMetric('dev-max-heap', `${maxHeapSize.toFixed(2)} MB`);
+            
+            memoryHistory.push(parseFloat(usedMB));
+            if (memoryHistory.length > MAX_CHART_POINTS) {
+                memoryHistory.shift();
+            }
+        }
+        
+        const avgLatency = workerStats.latencies.length ? (workerStats.latencies.reduce((a, b) => a + b) / workerStats.latencies.length).toFixed(2) : '0';
+        const avgSize = workerStats.responseSizes.length ? (workerStats.responseSizes.reduce((a, b) => a + b) / workerStats.responseSizes.length).toFixed(2) : '0';
 
-        if (memoryChart) {
-            memoryChart.data.memory = memoryHistory;
-            memoryChart.data.responseSizes = responseSizeHistory;
-            memoryChart.draw();
-        }
-    }
+        maxResponseSize = Math.max(maxResponseSize, parseFloat(avgSize));
+        responseSizeHistory.push(parseFloat(avgSize));
+        if (responseSizeHistory.length > 50) {
+            responseSizeHistory.shift();
+        }
+
+        // CORRECCIÓN: Las métricas de Worker se actualizan aquí
+        updateMetric('dev-worker-calls', workerStats.calls);
+        updateMetric('dev-worker-avg-latency', `${avgLatency}ms`);
+        updateMetric('dev-worker-avg-size', `${avgSize} KB`);
+
+        if (memoryChart) {
+            memoryChart.data.memory = memoryHistory;
+            memoryChart.data.responseSizes = responseSizeHistory;
+            memoryChart.draw();
+        }
+    }
     
     // -----------------------
     // Observers & Events
@@ -801,7 +952,7 @@ import UtilsModule from './utils.js';
             return;
         }
         
-        const observer = new MutationObserver(updateMetrics);
+        const observer = new MutationObserver((mutations) => updateMetrics(true, mutations));
         observer.observe(threadsContainer, {
             childList: true,
             subtree: true,
@@ -831,7 +982,7 @@ import UtilsModule from './utils.js';
                         workerStats.responseSizes.shift();
                     }
                     
-                    addLog(`Action: ${message.action} took ${latency.toFixed(2)}ms, Size: ${sizeInKB.toFixed(2)} KB`);
+                    addLog('worker', `Action: ${message.action} took ${latency.toFixed(2)}ms, Size: ${sizeInKB.toFixed(2)} KB`);
 
                     if (message.action === 'createPost') {
                         workerStats.postsCreated++;
@@ -843,6 +994,21 @@ import UtilsModule from './utils.js';
             });
             originalPostMessage.call(this, message, transfer);
         };
+        
+        const workerTab = document.getElementById('worker-log-tab');
+        const observerTab = document.getElementById('observer-log-tab');
+        const workerContent = document.getElementById('worker-log-content');
+        const observerContent = document.getElementById('observer-log-content');
+        
+        function switchTab(activeTab, activeContent) {
+            [workerTab, observerTab].forEach(tab => tab.classList.remove('active'));
+            [workerContent, observerContent].forEach(content => content.classList.remove('active'));
+            activeTab.classList.add('active');
+            activeContent.classList.add('active');
+        }
+
+        workerTab.addEventListener('click', () => switchTab(workerTab, workerContent));
+        observerTab.addEventListener('click', () => switchTab(observerTab, observerContent));
 
         updateMetrics();
         initChart();
@@ -860,14 +1026,6 @@ import UtilsModule from './utils.js';
     let dragOffsetY = 0;
     let currentlyDragging = false;
     let suppressClick = false;
-
-    devBar.addEventListener('click', (ev) => {
-        if (suppressClick) {
-            ev.stopPropagation();
-            ev.preventDefault();
-            suppressClick = false;
-        }
-    }, true);
 
     if (collapseBtn) {
         collapseBtn.addEventListener('click', (e) => {
@@ -903,7 +1061,6 @@ import UtilsModule from './utils.js';
             if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
                 currentlyDragging = true;
                 devBar.style.cursor = 'grabbing';
-                suppressClick = true;
             } else {
                 return;
             }
@@ -929,56 +1086,40 @@ import UtilsModule from './utils.js';
         pointerId = null;
     }
 
-    if (window.PointerEvent) {
-        devBar.addEventListener('pointerdown', (e) => {
-            if (e.pointerType === 'mouse' && e.button !== 0) return;
-            pointerId = e.pointerId;
-            startTracking(e.clientX, e.clientY);
-            try { devBar.setPointerCapture(pointerId); } catch (err) {}
-            const move = (ev) => { if (ev.pointerId === pointerId) pointerMoveHandler(ev.clientX, ev.clientY); };
-            const up = (ev) => {
-                if (ev.pointerId === pointerId) {
-                    endTracking();
-                    document.removeEventListener('pointermove', move, { passive: false });
-                    document.removeEventListener('pointerup', up);
-                    try { devBar.releasePointerCapture(pointerId); } catch (err) {}
-                }
-            };
-            document.addEventListener('pointermove', move, { passive: false });
-            document.addEventListener('pointerup', up);
-        });
-    } else {
-        devBar.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            startTracking(e.clientX, e.clientY);
-            const move = (ev) => pointerMoveHandler(ev.clientX, ev.clientY);
-            const up = () => {
-                endTracking();
-                document.removeEventListener('mousemove', move);
-                document.removeEventListener('mouseup', up);
-            };
-            document.addEventListener('mousemove', move);
-            document.addEventListener('mouseup', up);
-        });
+    devBar.addEventListener('pointerdown', (e) => {
+        // Ignora el evento si el objetivo es uno de los botones de control
+        if (e.target.closest('#dev-collapse-btn, #dev-expand-btn, .log-tabs button')) {
+            return;
+        }
 
-        devBar.addEventListener('touchstart', (e) => {
-            const t = e.touches[0];
-            if (!t) return;
-            startTracking(t.clientX, t.clientY);
-            const move = (ev) => {
-                const tt = ev.touches[0];
-                if (!tt) return;
-                pointerMoveHandler(tt.clientX, tt.clientY);
-            };
-            const up = () => {
+        // Ignora el botón derecho del mouse
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+        pointerId = e.pointerId;
+        startTracking(e.clientX, e.clientY);
+
+        // Se captura el puntero para seguir el movimiento fuera del elemento
+        try { devBar.setPointerCapture(pointerId); } catch (err) {}
+
+        const moveListener = (ev) => {
+            if (ev.pointerId === pointerId) {
+                pointerMoveHandler(ev.clientX, ev.clientY);
+            }
+        };
+
+        const upListener = (ev) => {
+            if (ev.pointerId === pointerId) {
                 endTracking();
-                document.removeEventListener('touchmove', move);
-                document.removeEventListener('touchend', up);
-            };
-            document.addEventListener('touchmove', move, { passive: false });
-            document.addEventListener('touchend', up);
-        }, { passive: true });
-    }
+                document.removeEventListener('pointermove', moveListener);
+                document.removeEventListener('pointerup', upListener);
+                try { devBar.releasePointerCapture(pointerId); } catch (err) {}
+            }
+        };
+
+        // Escucha los eventos de movimiento y liberación en el documento
+        document.addEventListener('pointermove', moveListener);
+        document.addEventListener('pointerup', upListener);
+    });
 
     window.addEventListener('resize', () => updatePositionConstraints(true));
 

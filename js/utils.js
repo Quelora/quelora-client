@@ -105,7 +105,7 @@ function resumeObservers(type) {
 }
 
 function getRegisteredObservers() {
-    return Array.from(observerRegistry.keys());
+    return observerRegistry;
 }
 
 /**
