@@ -405,6 +405,7 @@ async function loadThread(entityId, lastCommentId = null, includeLast = false) {
     if (lastCommentId === null) {
         CommentsModule.attachCommentInputListener(entityId);
         UiModule.createEmojiPickerBarUI();
+        UiModule.resetModalUI();
         UtilsModule.setInputLimit(
             UtilsModule.getConfig(entityId)?.limits?.comment_text
         );

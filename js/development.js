@@ -358,7 +358,7 @@ import UtilsModule from './utils.js';
             height: 1px;
         }
         
-.dev-chart-grid-line.vertical {
+        .dev-chart-grid-line.vertical {
             height: 100%;
             width: 1px;
         }
@@ -828,8 +828,16 @@ import UtilsModule from './utils.js';
             tooltip.classList.remove('active');
         });
         
-        memToggle.addEventListener('change', updateMetrics);
-        resToggle.addEventListener('change', updateMetrics);
+        memToggle.addEventListener('change', () => {
+            if (memoryChart) {
+                memoryChart.draw();
+            }
+        });
+        resToggle.addEventListener('change', () => {
+            if (memoryChart) {
+                memoryChart.draw();
+            }
+        });
     }
 
     function updateMetrics(fromObserver = false, mutations = null) {

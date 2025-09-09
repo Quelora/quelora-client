@@ -627,6 +627,33 @@ const setupModalUI = (bodyContent, blurClass) => {
   }
 };
 
+function resetModalUI() {
+  try {
+    const modal = modalCache.modal || document.querySelector('.quelora-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    const blurClass = modal.dataset.blur;
+    if (blurClass) {
+      const blurContainers = document.querySelectorAll(blurClass);
+      blurContainers.forEach(container => {
+        container.style.removeProperty('filter');
+      });
+    }
+    if (modalCache.modalBody) {
+      modalCache.modalBody.innerHTML = '';
+    }
+    
+    if (modalCache.footer) {
+      modalCache.footer.innerHTML = '';
+    }
+    modal.onclick = null;
+    modal.oncontextmenu = null;
+    modal.removeAttribute('data-blur');
+  } catch (error) {
+    console.error('Error resetting modal:', error);
+  }
+}
+
 function showEditCommentUI(commentElement) {
   try {
     const modal = modalCache.modal || document.querySelector('.quelora-modal');
@@ -2279,6 +2306,7 @@ const UiModule = {
     renderReportedUI,
     setupModalUI,
     showEditCommentUI,
+    resetModalUI,
     showReportCommentUI,
     renderErrorMessageUI,
     renderStatsUI,
