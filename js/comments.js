@@ -2185,11 +2185,8 @@ function replaceGiphyLinks(text) {
   const fragment = document.createDocumentFragment();
   let lastIndex = 0;
 
-  // Regular expression to find:
-  // 1. Markdown format: ![...](giphy|ID|...)
-  // 2. Direct URL from media.giphy.com
-  // 3. Standard URL from giphy.com/gifs
-  const regex = /!\[[^\]]*\]\(giphy\|([a-zA-Z0-9]+)\|[^)]*\)|https?:\/\/media\.giphy\.com\/media\/([a-zA-Z0-9]+)\/giphy\.gif|https?:\/\/giphy\.com\/(?:gifs|stickers)\/(?:[a-zA-Z0-9\-]+-)?([a-zA-Z0-9]+)/g;
+  // Updated regex to make the trailing |... optional
+  const regex = /!\[[^\]]*\]\(giphy\|([a-zA-Z0-9]+)(?:\|[^)]*)?\)|https?:\/\/media\.giphy\.com\/media\/([a-zA-Z0-9]+)\/giphy\.gif|https?:\/\/giphy\.com\/(?:gifs|stickers)\/(?:[a-zA-Z0-9\-]+-)?([a-zA-Z0-9]+)/g;
 
   let match;
   while ((match = regex.exec(text)) !== null) {
@@ -2206,7 +2203,6 @@ function replaceGiphyLinks(text) {
       img.src = `https://media.giphy.com/media/${giphyId}/giphy.gif`;
       img.alt = "GIF from Giphy";
       img.loading = "lazy";
-      // Optional styles to make the image responsive
       img.style.maxWidth = "100%";
       img.style.height = "auto";
       img.style.display = "block";
@@ -2224,7 +2220,6 @@ function replaceGiphyLinks(text) {
 
   return fragment;
 }
-
 /**
  * Decodes HTML entities and removes Zero-Width Space characters.
  * @param {string} text The string to decode and clean.
