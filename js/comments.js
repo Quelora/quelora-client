@@ -1281,7 +1281,12 @@ function createCommentElement(comment, entity, isReply) {
                 comment.text,
                 ProfileModule.getMention
             );
+
+            // Transform URLs
+            comment.processedText =  enrichCommentText(comment.processedText);
         }
+
+
         commentText.appendChild(comment.processedText.cloneNode(true));
 
         // Add elements to main container
@@ -2074,6 +2079,127 @@ async function updateAllCommentLikes() {
         handleError(error, 'CommentsModule.updateAllCommentLikes');
     }
 }
+
+
+/**
+ * Processes a DocumentFragment containing raw comment text. It orchestrates
+ * the decoding of HTML entities, conversion of markdown quotes, and the
+ * creation of hyperlinks from URLs in the text.
+ * @param {DocumentFragment} fragment The input fragment containing raw text nodes.
+ * @returns {DocumentFragment} A new fragment with enriched content, including
+ * <blockquote> elements and <a> tags.
+ */
+function enrichCommentText(fragment) {
+  if (!fragment || !(fragment instanceof DocumentFragment)) {
+    return fragment;
+  }
+
+  const newFragment = document.createDocumentFragment();
+
+  Array.from(fragment.childNodes).forEach((child) => {
+    if (child.nodeType === Node.TEXT_NODE) {
+      const decodedText = decodeHtmlEntities(child.textContent);
+      const quotedFragment = convertMarkdownQuotes(decodedText);
+
+      Array.from(quotedFragment.childNodes).forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          newFragment.appendChild(linkifyWithWarning(node.textContent));
+        } else if (node.nodeName === 'BLOCKQUOTE') {
+          const blockContent = node.textContent;
+          const linkifiedContent = linkifyWithWarning(blockContent);
+          
+          node.textContent = ''; 
+          node.appendChild(linkifiedContent);
+          
+          newFragment.appendChild(node);
+        } else {
+          newFragment.appendChild(node);
+        }
+      });
+    } else {
+      newFragment.appendChild(child.cloneNode(true));
+    }
+  });
+
+  return newFragment;
+}
+
+/**
+ * Scans a string for URLs (both standalone and markdown-style) and
+ * converts them into HTML anchor (<a>) elements with security attributes.
+ * @param {string} text The plain text to search for links.
+ * @returns {DocumentFragment} A fragment containing the text with URLs
+ * replaced by clickable links.
+ */
+function linkifyWithWarning(text) {
+  const fragment = document.createDocumentFragment();
+  let lastIndex = 0;
+
+  const regex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)|(https?:\/\/[^\s<]+)/g;
+
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+    const url = match[2] || match[3];
+    const cleanUrl = url.split("#")[0].split("?")[0];
+    const link = document.createElement("a");
+    link.href = cleanUrl;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "🔗 " + (typeof I18n !== 'undefined' ? I18n.getTranslation("openLink") : "Open link");
+    fragment.appendChild(link);
+    lastIndex = regex.lastIndex;
+  }
+  if (lastIndex < text.length) {
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+
+  return fragment;
+}
+
+/**
+ * Decodes HTML entities and removes Zero-Width Space characters.
+ * @param {string} text The string to decode and clean.
+ * @returns {string} The cleaned string.
+ */
+function decodeHtmlEntities(text) {
+  const textarea = document.createElement("textarea");
+  textarea.innerHTML = text;
+  return textarea.value.replace(/\u200B/g, '');
+}
+
+/**
+ * Parses a string line by line and converts any line starting with the ">"
+ * character into an HTML <blockquote> element.
+ * @param {string} text The text to parse for markdown quotes.
+ * @returns {DocumentFragment} A fragment containing <blockquote> elements
+ * for quoted lines and text nodes for others.
+ */
+function convertMarkdownQuotes(text) {
+  const fragment = document.createDocumentFragment();
+  const lines = text.split(/\r?\n/);
+
+  lines.forEach((line, index) => {
+    if (line.startsWith('>')) {
+      const block = document.createElement('blockquote');
+      block.textContent = line.slice(1).trim();
+      fragment.appendChild(block);
+    } else if (line.trim()) {
+      fragment.appendChild(document.createTextNode(line));
+    }
+
+    if (index < lines.length - 1) {
+      fragment.appendChild(document.createTextNode('\n'));
+    }
+  });
+
+  return fragment;
+}
+
+
+
 
 // ==================== PUBLIC API ====================
 const CommentsModule = {

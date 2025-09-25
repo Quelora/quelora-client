@@ -360,6 +360,29 @@
     font-size: var(--font-size-md);
 }
 
+.quelora-comments .comment-text blockquote,
+.quelora-modal .quelora-to-work .comment-text blockquote {
+  background-color: var(--quelora-light-background-color);
+  border-left: 4px solid var(--quelora-primary-color); 
+  padding: 8px 12px; 
+  margin: 6px 0;
+  font-size: var(--font-size-sm); 
+  line-height: 1.4; 
+  border-radius: 8px; 
+  color: var(--quelora-text-color); 
+  word-break: break-word; 
+  box-shadow: var(--quelora-shadow);
+}
+
+@media (max-width: 480px) {
+  .quelora-comments .comment-text blockquote,
+  .quelora-modal .quelora-to-work .comment-text blockquote {
+    font-size: var(--font-size-xs);
+    padding: 6px 10px;
+    border-left-width: 3px;
+  }
+}
+
 .quelora-comments .comment-text a,
 .quelora-modal .quelora-to-work .comment-text a{
     text-decoration: none;

@@ -180,5 +180,6 @@
     "opinion": "Meinung",
     "positive": "Positiv",
     "negative": "Negativ",
-    "neutral": "Neutral"
+    "neutral": "Neutral",
+    "openLink": "Externen Link öffnen"
 }

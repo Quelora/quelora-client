@@ -179,5 +179,6 @@
     "opinion": "رأي",
     "positive": "إيجابي",
     "negative": "سلبي",
-    "neutral": "محايد"
+    "neutral": "محايد",
+    "openLink": "فتح الرابط الخارجي"
 }

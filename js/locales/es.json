@@ -179,5 +179,6 @@
     "opinion":"Opinión",
     "positive":"Positiva",
     "negative":"Negativa",
-    "neutral":"Neutral"
+    "neutral":"Neutral",
+    "openLink":"Abrir enlace externo"
 }
