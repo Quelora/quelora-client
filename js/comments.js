@@ -2080,14 +2080,13 @@ async function updateAllCommentLikes() {
     }
 }
 
-
 /**
  * Processes a DocumentFragment containing raw comment text. It orchestrates
- * the decoding of HTML entities, conversion of markdown quotes, and the
- * creation of hyperlinks from URLs in the text.
+ * the decoding of HTML entities, conversion of markdown quotes, replacement
+ * of Giphy links, and the creation of hyperlinks from URLs.
  * @param {DocumentFragment} fragment The input fragment containing raw text nodes.
  * @returns {DocumentFragment} A new fragment with enriched content, including
- * <blockquote> elements and <a> tags.
+ * <blockquote>, <img>, and <a> tags.
  */
 function enrichCommentText(fragment) {
   if (!fragment || !(fragment instanceof DocumentFragment)) {
@@ -2101,19 +2100,35 @@ function enrichCommentText(fragment) {
       const decodedText = decodeHtmlEntities(child.textContent);
       const quotedFragment = convertMarkdownQuotes(decodedText);
 
+      // Process the fragment with quotes to add GIFs and links
       Array.from(quotedFragment.childNodes).forEach(node => {
+        // The logic is applied both to text nodes and blockquote contents
+        const processNodeContent = (textContent) => {
+          const finalFragment = document.createDocumentFragment();
+          // 1. First, replace GIFs
+          const giphyFragment = replaceGiphyLinks(textContent);
+
+          // 2. Then, in the resulting text nodes, replace links
+          Array.from(giphyFragment.childNodes).forEach(gifNode => {
+            if (gifNode.nodeType === Node.TEXT_NODE) {
+              finalFragment.appendChild(linkifyWithWarning(gifNode.textContent));
+            } else {
+              // If it is not a text node, it is a Giphy image
+              finalFragment.appendChild(gifNode.cloneNode(true));
+            }
+          });
+          return finalFragment;
+        };
+
         if (node.nodeType === Node.TEXT_NODE) {
-          newFragment.appendChild(linkifyWithWarning(node.textContent));
+          newFragment.appendChild(processNodeContent(node.textContent));
         } else if (node.nodeName === 'BLOCKQUOTE') {
-          const blockContent = node.textContent;
-          const linkifiedContent = linkifyWithWarning(blockContent);
-          
-          node.textContent = ''; 
-          node.appendChild(linkifiedContent);
-          
+          const processedContent = processNodeContent(node.textContent);
+          node.textContent = ''; // Clear the original content
+          node.appendChild(processedContent);
           newFragment.appendChild(node);
         } else {
-          newFragment.appendChild(node);
+          newFragment.appendChild(node.cloneNode(true));
         }
       });
     } else {
@@ -2152,6 +2167,57 @@ function linkifyWithWarning(text) {
     fragment.appendChild(link);
     lastIndex = regex.lastIndex;
   }
+  if (lastIndex < text.length) {
+    fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+  }
+
+  return fragment;
+}
+
+/**
+ * Searches for Giphy strings in a text (in markdown format or direct URL)
+ * and converts them into <img> elements.
+ * @param {string} text The plain text where to search for Giphy links.
+ * @returns {DocumentFragment} A fragment containing the original text
+ * with GIFs replaced by images.
+ */
+function replaceGiphyLinks(text) {
+  const fragment = document.createDocumentFragment();
+  let lastIndex = 0;
+
+  // Regular expression to find:
+  // 1. Markdown format: ![...](giphy|ID|...)
+  // 2. Direct URL from media.giphy.com
+  // 3. Standard URL from giphy.com/gifs
+  const regex = /!\[[^\]]*\]\(giphy\|([a-zA-Z0-9]+)\|[^)]*\)|https?:\/\/media\.giphy\.com\/media\/([a-zA-Z0-9]+)\/giphy\.gif|https?:\/\/giphy\.com\/(?:gifs|stickers)\/(?:[a-zA-Z0-9\-]+-)?([a-zA-Z0-9]+)/g;
+
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    // Add the text that comes before the match
+    if (match.index > lastIndex) {
+      fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
+    }
+
+    // The Giphy ID will be in one of the capturing groups
+    const giphyId = match[1] || match[2] || match[3];
+
+    if (giphyId) {
+      const img = document.createElement("img");
+      img.src = `https://media.giphy.com/media/${giphyId}/giphy.gif`;
+      img.alt = "GIF from Giphy";
+      img.loading = "lazy";
+      // Optional styles to make the image responsive
+      img.style.maxWidth = "100%";
+      img.style.height = "auto";
+      img.style.display = "block";
+      
+      fragment.appendChild(img);
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  // Add the remaining text after the last match
   if (lastIndex < text.length) {
     fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
   }
