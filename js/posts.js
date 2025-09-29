@@ -324,10 +324,7 @@ function attachEventListeners(entityId) {
                     timeoutId = UtilsModule.startTimeout(() => {
                         longPressAction = true;
                         UiModule.likesDrawerUI.open();
-                        workerInstance.postMessage({
-                            action: 'getLikes',
-                            payload: { token, entityId, cid }
-                        });
+                        workerInstance.postMessage({ action: 'getLikes',  payload: { token, entityId, cid } });
                     }, 300);
                     longPressAction = false;
                 });
@@ -358,12 +355,31 @@ function attachEventListeners(entityId) {
             });
         }
 
+        //Like counter
+        const likeCounter = interactionContainer.querySelector('.like-count');
+        if (likeCounter) {
+            likeCounter.addEventListener('click', (e) => {
+                e.stopPropagation();
+                UiModule.likesDrawerUI.open();
+                workerInstance.postMessage({ action: 'getLikes', payload: { token, entityId, cid } });
+            });
+        }
+
         // Comment button
         const commentButton = interactionContainer.querySelector('.comment-icon');
         if (commentButton) {
             const newCommentButton = commentButton.cloneNode(true);
             commentButton.parentNode.replaceChild(newCommentButton, commentButton);
             newCommentButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                loadThread(entityId);
+            });
+        }
+
+        //Comment counter
+        const commentCounter = interactionContainer.querySelector('.comment-count');
+        if (commentCounter) {
+            commentCounter.addEventListener('click', (e) => {
                 e.stopPropagation();
                 loadThread(entityId);
             });

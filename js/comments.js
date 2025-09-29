@@ -1945,6 +1945,19 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
             });
         }
 
+        // Like Counter button handlers
+        const likeCountElement = commentElement.querySelector('.like-count');
+        if (likeCountElement) {
+            likeCountElement.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation(); 
+                const commentId = event.target.closest('.community-thread').getAttribute('data-comment-id');
+                if (commentId) {
+                    fetchGetLikes(entity, commentId);
+                }
+            });
+        }
+
         // View replies button
         const viewRepliesButton = commentElement.querySelector('.view-replies');
         if (viewRepliesButton) {
@@ -2258,9 +2271,6 @@ function convertMarkdownQuotes(text) {
 
   return fragment;
 }
-
-
-
 
 // ==================== PUBLIC API ====================
 const CommentsModule = {

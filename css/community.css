@@ -351,6 +351,7 @@
 .quelora-modal .quelora-to-work .like-count {
     font-size: var(--font-size-xs);
     color: var(--quelora-medium-gray-color);
+    cursor: pointer;
 }
 
 .quelora-comments .comment-text,

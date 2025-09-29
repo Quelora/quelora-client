@@ -1507,9 +1507,9 @@ function updateInteractionCounts(interactionElement, stat) {
             }
         };
 
-        handleInteractionType('like', 'allow_likes', '.like-count', stat.likesCount);
-        handleInteractionType('share', 'allow_shares', '.share-count', stat.sharesCount);
-        handleInteractionType('comment', 'allow_comments', '.comment-count', stat.commentsCount);
+        handleInteractionType('like', 'allow_likes', '.like-count', UtilsModule.formatNumberAbbreviated(stat.likesCount));
+        handleInteractionType('share', 'allow_shares', '.share-count', UtilsModule.formatNumberAbbreviated(stat.sharesCount));
+        handleInteractionType('comment', 'allow_comments', '.comment-count', UtilsModule.formatNumberAbbreviated(stat.commentsCount));
         
         // El manejo de bookmarks es ligeramente diferente ya que no tiene un contador de texto
         const bookmarkIcon = interactionElement.querySelector(".bookmark");
@@ -2098,9 +2098,9 @@ const getCommunityUI = () => {
 * @returns {HTMLElement|null} The .community-threads element or null.
 */
 const getCommunityThreadsUI = () => {
-
+    if (!cachedCommunityThreadsUI) {
         cachedCommunityThreadsUI = document.querySelector('#quelora-comments .community-threads');
-    
+    }
     return cachedCommunityThreadsUI;
 }
 

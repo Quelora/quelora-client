@@ -107,6 +107,7 @@ class Drawer {
     }
 
     createElement() {
+        // ... (Sin cambios en este método)
         const container = document.createElement('div');
         container.id = this.id;
         container.className = `drawer ${this.position} ${this.customClass}`.trim();
@@ -150,98 +151,28 @@ class Drawer {
             this.element.style.visibility = 'hidden';
             this.element.style.pointerEvents = 'none';
             this.emit('closed');
+
+            // ANÁLISIS: Lógica mejorada. Se ejecuta después de que la animación de cierre termina.
+            // Si no hay un drawer activo (porque se acaba de cerrar) y hay otros en la pila,
+            // muestra el anterior.
+            if (!Drawer.activeDrawer && Drawer.drawerStack.length > 0) {
+                const previousDrawer = Drawer.drawerStack.pop();
+                previousDrawer.show(); // 'show' se encargará de reasignar activeDrawer.
+            }
+
             Drawer.updateBodyScrollLock();
         }
     }
 
-    getPositionProperty() {
-        return this.position === 'bottom' ? 'bottom' : this.position === 'right' ? 'right' : 'left';
-    }
+    // ... (Sin cambios en getPositionProperty, getDimension, parseSize, startDragging, onDragging, stopDragging, setHeight)
+    getPositionProperty() { return this.position === 'bottom' ? 'bottom' : this.position === 'right' ? 'right' : 'left'; }
+    getDimension() { return this.position === 'bottom' ? window.innerHeight : window.innerWidth; }
+    parseSize(size, dimension) { if (typeof size === 'number') return size; if (size.includes('%')) return dimension * (parseFloat(size) / 100); return parseFloat(size) || dimension; }
+    startDragging(e) { if (!UtilsModule.isMobile) return; this.isDragging = true; this.startTime = Date.now(); const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX); this.startY = clientPos; const currentPos = parseFloat(this.element.style[this.getPositionProperty()]) || 0; this.startPosition = currentPos; this.currentPosition = currentPos; this.startHeight = parseFloat(this.element.style.height || this.parseSize(this.height, this.getDimension())); this.currentHeight = this.startHeight; this.element.style.transition = 'none'; this.element.classList.add('dragging'); document.addEventListener('mousemove', this._boundOnDragging); document.addEventListener('touchmove', this._boundOnDragging, { passive: false }); document.addEventListener('mouseup', this._boundStopDragging); document.addEventListener('touchend', this._boundStopDragging); }
+    onDragging(e) { if (!this.isDragging) return; e.preventDefault(); const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX); const delta = clientPos - this.startY; const translate = this.position === 'bottom' ? Math.max(delta, -this.parseSize(this.height, this.getDimension())) : Math.max(delta, -this.parseSize(this.height, this.getDimension())); this.element.style.transform = `translateY(${translate}px)`; }
+    stopDragging() { if (!this.isDragging) return; this.isDragging = false; const swipeTime = Date.now() - this.startTime; const dimension = this.getDimension(); const halfDimension = dimension * 0.5; const currentTransform = window.getComputedStyle(this.element).getPropertyValue('transform'); const matrix = new DOMMatrix(currentTransform); const distance = this.position === 'bottom' ? matrix.m42 : matrix.m41; if (UtilsModule.isMobile) { this.element.style.transition = `transform ${this.transitionSpeed} ease, height ${this.transitionSpeed} ease`; } else { this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease`; } if (this.position === 'bottom') { if (distance > halfDimension || swipeTime < 300 && distance > 50) { this.close(); } else if (distance < 0) { this.setHeight(dimension); } else { this.setHeight(halfDimension); } } this.element.classList.remove('dragging'); this.element.style.transform = ''; document.removeEventListener('mousemove', this._boundOnDragging); document.removeEventListener('touchmove', this._boundOnDragging); document.removeEventListener('mouseup', this._boundStopDragging); document.removeEventListener('touchend', this._boundStopDragging); }
+    setHeight(height) { if (UtilsModule.isMobile) { if (this.position === 'bottom') { this.element.style.height = `${height}px`; } else { this.element.style.width = `${height}px`; } this.element.style[this.getPositionProperty()] = '0'; this.currentPosition = 0; this.currentHeight = height; } }
 
-    getDimension() {
-        return this.position === 'bottom' ? window.innerHeight : window.innerWidth;
-    }
-
-    parseSize(size, dimension) {
-        if (typeof size === 'number') return size;
-        if (size.includes('%')) return dimension * (parseFloat(size) / 100);
-        return parseFloat(size) || dimension;
-    }
-
-    startDragging(e) {
-        if (!UtilsModule.isMobile) return;
-        this.isDragging = true;
-        this.startTime = Date.now();
-        const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX);
-        this.startY = clientPos;
-        const currentPos = parseFloat(this.element.style[this.getPositionProperty()]) || 0;
-        this.startPosition = currentPos;
-        this.currentPosition = currentPos;
-        this.startHeight = parseFloat(this.element.style.height || this.parseSize(this.height, this.getDimension()));
-        this.currentHeight = this.startHeight;
-        this.element.style.transition = 'none';
-        this.element.classList.add('dragging');
-        document.addEventListener('mousemove', this._boundOnDragging);
-        document.addEventListener('touchmove', this._boundOnDragging, { passive: false });
-        document.addEventListener('mouseup', this._boundStopDragging);
-        document.addEventListener('touchend', this._boundStopDragging);
-    }
-
-    onDragging(e) {
-        if (!this.isDragging) return;
-        e.preventDefault();
-        const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX);
-        const delta = clientPos - this.startY;
-        const translate = this.position === 'bottom' ? Math.max(delta, -this.parseSize(this.height, this.getDimension())) : Math.max(delta, -this.parseSize(this.height, this.getDimension()));
-        this.element.style.transform = `translateY(${translate}px)`;
-    }
-
-    stopDragging() {
-        if (!this.isDragging) return;
-        this.isDragging = false;
-        const swipeTime = Date.now() - this.startTime;
-        const dimension = this.getDimension();
-        const halfDimension = dimension * 0.5;
-        const currentTransform = window.getComputedStyle(this.element).getPropertyValue('transform');
-        const matrix = new DOMMatrix(currentTransform);
-        const distance = this.position === 'bottom' ? matrix.m42 : matrix.m41;
-        
-        if (UtilsModule.isMobile) {
-            this.element.style.transition = `transform ${this.transitionSpeed} ease, height ${this.transitionSpeed} ease`;
-        } else {
-            this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease`;
-        }
-        
-        if (this.position === 'bottom') {
-            if (distance > halfDimension || swipeTime < 300 && distance > 50) {
-                this.close();
-            } else if (distance < 0) {
-                this.setHeight(dimension);
-            } else {
-                this.setHeight(halfDimension);
-            }
-        }
-        
-        this.element.classList.remove('dragging');
-        this.element.style.transform = '';
-        document.removeEventListener('mousemove', this._boundOnDragging);
-        document.removeEventListener('touchmove', this._boundOnDragging);
-        document.removeEventListener('mouseup', this._boundStopDragging);
-        document.removeEventListener('touchend', this._boundStopDragging);
-    }
-
-    setHeight(height) {
-        if (UtilsModule.isMobile) {
-            if (this.position === 'bottom') {
-                this.element.style.height = `${height}px`;
-            } else {
-                this.element.style.width = `${height}px`;
-            }
-            this.element.style[this.getPositionProperty()] = '0';
-            this.currentPosition = 0;
-            this.currentHeight = height;
-        }
-    }
 
     open() {
         if (Drawer.activeDrawer) {
@@ -295,6 +226,10 @@ class Drawer {
             }
         }
 
+        // FIX: Reasignar el drawer activo cuando se muestra.
+        // Esto es crucial para restaurar el estado correctamente desde la pila.
+        Drawer.activeDrawer = this;
+
         this.element.classList.add('active', 'shadow');
         this.element.classList.remove('no-shadow');
         this.element.style[this.getPositionProperty()] = '0';
@@ -320,10 +255,8 @@ class Drawer {
         
         if (wasActive) {
             Drawer.activeDrawer = null;
-            if (Drawer.drawerStack.length > 0) {
-                const previousDrawer = Drawer.drawerStack.pop();
-                setTimeout(() => previousDrawer.show(), parseFloat(this.transitionSpeed) * 1000);
-            }
+            // ANÁLISIS: Se elimina el setTimeout. La lógica para mostrar
+            // el drawer anterior se movió a 'handleTransitionEnd' para mayor fiabilidad.
         }
         
         if (!fromHistory && history.state && history.state.drawerId === this.id) {
@@ -334,13 +267,19 @@ class Drawer {
 
     destroy() {
         const wasActive = Drawer.activeDrawer === this;
+
+        // FIX: Eliminar la referencia de la pila si existe.
+        // Evita errores de "referencia fantasma".
         const index = Drawer.drawerStack.indexOf(this);
         if (index > -1) Drawer.drawerStack.splice(index, 1);
+
         if (wasActive) {
             Drawer.activeDrawer = null;
             if (Drawer.drawerStack.length > 0) {
                 const previousDrawer = Drawer.drawerStack.pop();
-                previousDrawer.open();
+                // FIX: Usar .show() en lugar de .open().
+                // .open() corrompe el estado, .show() lo restaura correctamente.
+                previousDrawer.show();
             }
         }
         this.element.remove();

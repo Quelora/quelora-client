@@ -139,7 +139,8 @@ async function findEntities() {
                 const encodedOriginalId = encodeURIComponent(originalId);
                 
                 // Determine if we need to hash (only if not using default attribute)
-                const shouldHash = config.entityIdAttribute !== 'data-entity';
+
+                const shouldHash = config.entityIdAttribute != 'data-entity';
                 const finalId = shouldHash 
                     ? await generateHash(originalId) 
                     : originalId;
