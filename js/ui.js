@@ -45,6 +45,7 @@ import ToastModule from './toast.js';
 import AnchorModule from './anchor.js';
 import IconsModule  from './icons.js';
 import StorageModule from './storage.js';
+import { enableQuoteSelection } from './quote.js';
 
 let cachedCommunityUI = null;
 let cachedCommunityThreadsUI = null;
@@ -2273,6 +2274,35 @@ function createElementUI({
     }
 }
 
+/**
+ * Inserts text into the main comment input field (#quelora-input).
+ * It uses the native textContent property for compatibility with contenteditable divs.
+ *
+ * @param {string} textToSend - The text to insert into the input field.
+ * @returns {boolean} True if the text was inserted successfully, false otherwise.
+ */
+function insertTextIntoCommentInputUI(textToSend) {
+    try {
+        const commentInput = getCommentInputUI(); 
+
+        if (!commentInput) {
+            console.error('QUELORA comment input element (#quelora-input) not found.');
+            return false;
+        }
+        if (commentInput.getAttribute('contenteditable') !== 'true') {
+            console.warn('The element #quelora-input is not contenteditable.');
+            return false;
+        }
+        commentInput.textContent = textToSend;
+        ProgressInput("quelora-input", "quelora-input-bar");
+        commentInput.focus();
+        return true;
+    } catch (error) {
+        console.error('Error inserting text into comment input:', error);
+        return false;
+    }
+}
+
 const initializeUI = () => {
     try {
         filterListItemsUI('likes-search', '#quelora-likes-list');
@@ -2280,7 +2310,12 @@ const initializeUI = () => {
         setupSettingsOptions();
         createProfileDropupUI();
         filterListAccountUI();
-
+        const selectorDeCitas = enableQuoteSelection((text, author) => { 
+            const quote = `> ${text} - @${author} \n\n`;
+            insertTextIntoCommentInputUI(quote) 
+        });
+        Drawer.onGlobal('drawerClosed', (drawer) => { selectorDeCitas.hideAndDeselect(); });
+        
     } catch (error) {
         console.error('Error initializing likes search or settings:', error);
     }
@@ -2341,7 +2376,8 @@ const UiModule = {
     getCounterFromDOMUI,
     createEmojiPickerBarUI,
     audioUI,
-    destroyElementsByUI
+    destroyElementsByUI,
+    insertTextIntoCommentInputUI
 };
 
 export default UiModule;

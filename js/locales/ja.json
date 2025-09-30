@@ -181,5 +181,6 @@
     "positive": "肯定的",
     "negative": "否定的",
     "neutral": "中立",
-    "openLink": "外部リンクを開く"
+    "openLink": "外部リンクを開く",
+    "quote": "引用"
 }

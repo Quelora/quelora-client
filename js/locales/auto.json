@@ -181,5 +181,6 @@
     "positive": "Positive",
     "negative": "Negative",
     "neutral": "Neutral",
-    "openLink": "Open external link"
+    "openLink": "Open external link",
+    "quote":"Quote"
 }

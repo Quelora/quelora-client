@@ -1754,8 +1754,10 @@ function attachCommentInputListener(entityId) {
             });
         }
 
-        //AIModule.addAIButton();
-        
+        if (ConfModule.get('ai.report', false)) {
+            AIModule.addAIButton();
+        }
+
     } catch (error) {
         handleError(error, 'CommentsModule.attachCommentInputListener');
     }

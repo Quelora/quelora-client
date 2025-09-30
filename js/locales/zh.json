@@ -181,5 +181,6 @@
     "positive": "积极",
     "negative": "消极",
     "neutral": "中立",
-    "openLink": "打开外部链接"
+    "openLink": "打开外部链接",
+    "quote":"引用"
 }
