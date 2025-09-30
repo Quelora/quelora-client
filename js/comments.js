@@ -1754,7 +1754,7 @@ function attachCommentInputListener(entityId) {
             });
         }
 
-        AIModule.addAIButton();
+        //AIModule.addAIButton();
         
     } catch (error) {
         handleError(error, 'CommentsModule.attachCommentInputListener');

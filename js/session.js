@@ -71,7 +71,6 @@ const Session = (function () {
    * @private
    */
   function loadAuthScripts() {
-    console.log(config);
     if (!googleScriptLoaded && config.googleClientId) {
       const googleScript = document.createElement('script');
       googleScript.src = 'https://accounts.google.com/gsi/client';
