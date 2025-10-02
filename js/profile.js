@@ -216,6 +216,29 @@ const getProfile = async (member) => {
     await loadProfileWithUI('getProfile', { author: member });
 };
 
+/**
+ * Devuelve el idioma preferido del usuario.
+ * Es eficiente para llamadas repetidas ya que utiliza la caché interna (userProfile).
+ *
+ * @returns {Promise<string|null>} El código de idioma (ej. 'es', 'en', 'auto') o null si no está disponible.
+ */
+const getOwnLanguage = async () => {
+    try {
+        // Usa el perfil en memoria si ya está cargado
+        if (!userProfile) {
+            // Llama a la función que maneja la caché de sesión y la desencriptación
+            userProfile = await getOwnProfile();
+        }
+
+        // Accede al idioma, usando 'auto' como valor por defecto si no está definido
+        return userProfile?.settings?.interface?.defaultLanguage || null;
+
+    } catch (error) {
+        handleError(error, 'ProfileModule.getOwnLanguage');
+        return null;
+    }
+};
+
 const clearSearchInputs= async () => {
     document.querySelectorAll('.quelora-community-profile input.search-input').forEach(input => {
         input.value = '';
@@ -279,7 +302,8 @@ const getOwnProfile = async (forceServerFetch = false, maxAttempts = 5, delayMs 
         if (cachedProfile) {
             try {
                 const decryptedProfile = await decryptProfile(cachedProfile, token);
-                return JSON.parse(decryptedProfile);
+                userProfile = JSON.parse(decryptedProfile);
+                return userProfile; 
             } catch (error) {
                 handleError(error, 'ProfileModule.getOwnProfile decrypt');
                 // Clear invalid cached profile to prevent repeated errors
@@ -306,8 +330,8 @@ const getOwnProfile = async (forceServerFetch = false, maxAttempts = 5, delayMs 
                 if (cachedProfile) {
                     try {
                         const decryptedProfile = await decryptProfile(cachedProfile, token);
-                        profile = JSON.parse(decryptedProfile);
-                        return profile;
+                        userProfile = JSON.parse(decryptedProfile);
+                        return userProfile; 
                     } catch (error) {
                         handleError(error, 'ProfileModule.getOwnProfile decrypt retry');
                         // Clear invalid cached profile
@@ -2077,6 +2101,7 @@ const ProfileModule = {
     getMyProfile,
     saveMemberProfile,
     getProfile,
+    getOwnLanguage,
     getMention,
     memberProfiles,
     fetchOwnProfile,

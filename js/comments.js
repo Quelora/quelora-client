@@ -45,6 +45,7 @@ import MentionModule from './mention.js';
 import AnchorModule from './anchor.js';
 import AIModule from './ai.js';
 import CaptchaModule from './captcha.js';
+import { QuoteSelector } from "./quote.js";
 
 // ==================== MODULE CONSTANTS ====================
 const SCROLL_THRESHOLD = 10; 
@@ -1341,9 +1342,22 @@ function createCommentElement(comment, entity, isReply) {
             );
         }
 
+        // Quote button if allowed
+        if (interactionConfig.allow_quote || true) {
+            commentActions.appendChild(
+                UiModule.createElementUI({
+                    tag: 'span',
+                    classes: ['quote-text'],
+                    attributes: { 'data-comment-id': comment._id },
+                    content: '{{quote}}',
+                    translate: true
+                })
+            );
+        }
+
         // Translate button if needed
         if (languageConfig.auto_translate) {
-            const queloraLanguage = ConfModule.get('quelora.language', navigator.language.substring(0, 2));
+            const queloraLanguage = ProfileModule.getOwnLanguage() ?? navigator.language.substring(0, 2);
             if (comment.language !== queloraLanguage) {
                 commentActions.appendChild(
                     UiModule.createElementUI({
@@ -2059,6 +2073,26 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
                     originalComment || commentId,
                     originalComment ? commentId : ''
                 );
+            });
+        }
+
+        // Quote button
+        const quoteButton = commentElement.querySelector('.quote-text');
+
+        if (quoteButton) {
+            quoteButton.addEventListener('click', (event) => {
+                event.stopPropagation(); // Prevent bubbling up to potential comment container clicks
+                
+                // 1. Find the comment-text element related to this comment thread
+                const commentTextElement = commentElement.querySelector('.comment-text');
+                
+                if (commentTextElement) {
+                    const quoteSelector = new QuoteSelector((text, author) => { 
+                        const quote = `> ${text} - @${author}\n\n`;
+                        UiModule.insertTextIntoCommentInputUI(quote);
+                    });
+                    quoteSelector.activateWithElement(commentTextElement);
+                }
             });
         }
     } catch (error) {

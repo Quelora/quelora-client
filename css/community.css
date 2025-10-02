@@ -406,6 +406,7 @@
 
 .quelora-comments .reply-text,
 .quelora-comments .translate-text,
+.quelora-comments .quote-text,
 .quelora-comments .view-replies,
 .quelora-comments .share-text {
     color: var(--quelora-success-color);
@@ -434,11 +435,11 @@
     height: 20px!important;
     color:var(--quelora-primary-color)
 }
-
+/*
 .quelora-comments .view-replies {
     padding-left: var(--spacing-xxxl);
 }
-
+*/
 .quelora-comments .comment-replies {
     padding-left: var(--spacing-xl);
 }

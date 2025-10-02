@@ -45,7 +45,6 @@ import ToastModule from './toast.js';
 import AnchorModule from './anchor.js';
 import IconsModule  from './icons.js';
 import StorageModule from './storage.js';
-import { enableQuoteSelection } from './quote.js';
 
 let cachedCommunityUI = null;
 let cachedCommunityThreadsUI = null;
@@ -2310,11 +2309,8 @@ const initializeUI = () => {
         setupSettingsOptions();
         createProfileDropupUI();
         filterListAccountUI();
-        const selectorDeCitas = enableQuoteSelection((text, author) => { 
-            const quote = `> ${text} - @${author} \n\n`;
-            insertTextIntoCommentInputUI(quote) 
-        });
-        Drawer.onGlobal('drawerClosed', (drawer) => { selectorDeCitas.hideAndDeselect(); });
+
+        //Drawer.onGlobal('drawerClosed', (drawer) => { selectorDeCitas.hideAndDeselect(); });
         
     } catch (error) {
         console.error('Error initializing likes search or settings:', error);
