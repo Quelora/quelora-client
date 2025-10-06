@@ -976,7 +976,12 @@ async function fetchGetLikes(entityId, commentId = null) {
         
         // Add loading indicator
         const likesContainer = UiModule.getLikesListUI();
-        UiModule.addLoadingMessageUI(likesContainer, { type: 'message' });
+        UiModule.addLoadingMessageUI(likesContainer, { 
+            type: 'profile', 
+            position: 'after', 
+            empty: true, 
+            count: 15 
+        });
         
         // Prepare payload
         const payload = { 
@@ -1343,7 +1348,7 @@ function createCommentElement(comment, entity, isReply) {
         }
 
         // Quote button if allowed
-        if (interactionConfig.allow_quote || true) {
+        if (interactionConfig.allow_quotes) {
             commentActions.appendChild(
                 UiModule.createElementUI({
                     tag: 'span',
@@ -1357,7 +1362,7 @@ function createCommentElement(comment, entity, isReply) {
 
         // Translate button if needed
         if (languageConfig.auto_translate) {
-            const queloraLanguage = ProfileModule.getOwnLanguage() ?? navigator.language.substring(0, 2);
+            const queloraLanguage = (ProfileModule.isLogin()) ? ProfileModule.getOwnLanguage() : navigator.language.substring(0, 2);
             if (comment.language !== queloraLanguage) {
                 commentActions.appendChild(
                     UiModule.createElementUI({
@@ -2078,14 +2083,10 @@ async function attachCommentEventListeners(commentElement, comment, entity) {
 
         // Quote button
         const quoteButton = commentElement.querySelector('.quote-text');
-
         if (quoteButton) {
             quoteButton.addEventListener('click', (event) => {
                 event.stopPropagation(); // Prevent bubbling up to potential comment container clicks
-                
-                // 1. Find the comment-text element related to this comment thread
                 const commentTextElement = commentElement.querySelector('.comment-text');
-                
                 if (commentTextElement) {
                     const quoteSelector = new QuoteSelector((text, author) => { 
                         const quote = `> ${text} - @${author}\n\n`;

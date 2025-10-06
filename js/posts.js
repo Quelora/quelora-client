@@ -361,6 +361,14 @@ function attachEventListeners(entityId) {
             likeCounter.addEventListener('click', (e) => {
                 e.stopPropagation();
                 UiModule.likesDrawerUI.open();
+                const loadingItems = likeCounter.textContent > 15 ? 15 : likeCounter.textContent;
+                const likesContainer = UiModule.getLikesListUI();
+                UiModule.addLoadingMessageUI(likesContainer, { 
+                    type: 'profile', 
+                    position: 'after', 
+                    empty: true, 
+                    count: loadingItems 
+                });
                 workerInstance.postMessage({ action: 'getLikes', payload: { token, entityId, cid } });
             });
         }

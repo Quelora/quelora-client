@@ -113,7 +113,7 @@ self.addEventListener('message', (event) => {
             self.postMessage({ action: successAction, payload: data, originalPayload: payload });
 
         } catch (error) {
-         
+
             if (error.message === 'No internet connection.') {
                 self.postMessage({ action: 'offline', payload: { message: error.message } });
             } else if (error.message === 'Invalid token') {

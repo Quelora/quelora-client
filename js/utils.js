@@ -234,7 +234,7 @@ function observeNewEntities() {
             selector = config.selector;
         };
 
-        updateConfig(); // inicializa al inicio
+        updateConfig();
 
         const observer = new MutationObserver((mutations) => {
             if (!selector) updateConfig(); // fallback defensivo

@@ -105,12 +105,19 @@ const createThemeSelector = () => `
     </div>
 `;
 
-const createSearchContainer = (placeholder) => `
+const createSearchContainer = (placeholder, id) => `
     <div class="search-container">
         <span class="quelora-icons-outlined search-icon">search</span>
-        <input type="text" placeholder="${placeholder}" class="search-input" name="search-input">
+        <input 
+            type="text"
+            ${id ? `id="${id}"` : ''}
+            placeholder="${placeholder}" 
+            class="search-input" 
+            name="search-input"
+        >
     </div>
 `;
+
 
 const settingsDrawerUI = new Drawer({
     ...defaultDrawerConfig,
@@ -259,7 +266,7 @@ const likesDrawerUI = new Drawer({
                 <span class="stat-count views-count">0</span>
             </div>
         </div>
-        ${createSearchContainer('{{search}}')}
+        ${createSearchContainer('{{search}}', 'likes-search')}
         <div class="quelora-likes-list" id="quelora-likes-list"></div>`
 });
 
@@ -1367,28 +1374,29 @@ function renderStatsUI(stats) {
 }
 
 function filterListItemsUI(inputId, listSelector) {
-    try {
-        const searchInput = document.getElementById(inputId);
-        const list = document.querySelector(listSelector);
-        if (!searchInput || !list) return;
+    try {
+        const searchInput = document.getElementById(inputId);
+        const list = document.querySelector(listSelector);
+        if (!searchInput || !list) return;
 
-        if (searchInput.dataset.listenerAttached === 'true') return;
-        searchInput.dataset.listenerAttached = 'true';
+        if (searchInput.dataset.listenerAttached === 'true') return;
+        searchInput.dataset.listenerAttached = 'true';
 
-        const handleSearchInput = () => {
-            const searchTerm = searchInput.value.toLowerCase();
-            const items = list.querySelectorAll('li');
-            items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(searchTerm) ? '' : 'none';
-            });
-        };
+        const handleSearchInput = () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            const items = list.querySelectorAll('li');
+            items.forEach(item => {
+                const userInfoElement = item.querySelector('.user-info');
+                const text = userInfoElement ? userInfoElement.textContent.toLowerCase() : '';
+                item.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        };
 
-        searchInput.removeEventListener('input', handleSearchInput);
-        searchInput.addEventListener('input', handleSearchInput);
-    } catch (error) {
-        console.error('Error filtering list items:', error);
-    }
+        searchInput.removeEventListener('input', handleSearchInput);
+        searchInput.addEventListener('input', handleSearchInput);
+    } catch (error) {
+        console.error('Error filtering list items:', error);
+    }
 }
 
 function filterListAccountUI() {

@@ -53,6 +53,7 @@ let originalItemsCache = null;
 
 const _memberProfiles = new Map();
 const tabControllers = new WeakMap();
+const BATCH_LIKES_SIZE = 15;
 
 // ==================== CRYPTO HELPERS ====================
 const deriveKey = async (token, salt) => {
@@ -1641,24 +1642,52 @@ const initializeInteractions = () => {
     setupSearchHandlers();
 };
 
+/**
+* Processes the list of users in batches, rendering the UI asynchronously.
+* This avoids blocking the main thread.
+* @param {Array<Object>} users - The complete list of user objects (likes).
+* @param {HTMLElement} listElement - The <ul> where the items will be inserted.
+* @param {function} createItemFn - Function to create the HTML of an item (createLikeProfileItem).
+*/
+async function processLikesInBatches(users, listElement, createItemFn) {
+    for (let i = 0; i < users.length; i += BATCH_LIKES_SIZE) {
+        const batch = users.slice(i, i + BATCH_LIKES_SIZE);
+        const fragment = document.createDocumentFragment();
+
+        const htmlPromises = batch.map(user => {
+            memberProfiles.set(user.author, user);
+            return createItemFn(user);
+        });
+
+        const htmlBatch = await Promise.all(htmlPromises);
+
+        htmlBatch.forEach(html => {
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = html;
+            if (tempDiv.firstChild) {
+                fragment.appendChild(tempDiv.firstChild);
+            }
+        });
+
+        listElement.appendChild(fragment);
+        await new Promise(resolve => setTimeout(resolve, 50)); 
+    }
+}
+
 const renderProfileListLikes = async (payload) => {
     try {
         const likesContainer = UiModule.getLikesListUI();
         if (!likesContainer) return;
 
-        likesContainer.innerHTML = '';
-
-        // Procesar los datos de likes
         const likesData = payload?.likes || [];
+
         const totalLikes = payload?.totalLikes;
         const viewsCount = payload?.viewsCount;
-
         const likesCountElement = document.querySelector('.likes-count');
         const viewsCountElement = document.querySelector('.views-count');
         const likesCountParent = likesCountElement?.parentElement;
         const viewsCountParent = viewsCountElement?.parentElement;
 
-        // Manejar el contador de likes según las nuevas reglas
         if (likesCountElement) {
             if (typeof totalLikes !== 'undefined') {
                 likesCountElement.textContent = UtilsModule.formatNumberAbbreviated(totalLikes);
@@ -1681,25 +1710,16 @@ const renderProfileListLikes = async (payload) => {
         }
 
         if (!likesData.length) {
+            likesContainer.querySelector('.quelora-loading-message')?.remove();
             likesContainer.innerHTML = createEmptyState('noLikes');
             return;
         }
 
-        const likesList = UiModule.createElementUI({
-            tag: 'ul'
-        });
-
-        let likesHTML = '';
-
-        for (const user of likesData) {
-            const likeItem = await createLikeProfileItem(user);
-            likesHTML += likeItem;
-            memberProfiles.set(user.author, user); // Cachear perfil
-        }
-
-        likesList.innerHTML = likesHTML;
-        likesContainer.appendChild(likesList);
-
+        const likesList = UiModule.createElementUI({ tag: 'ul' });
+        await processLikesInBatches(likesData, likesList, createLikeProfileItem);
+        likesContainer.querySelector('.quelora-loading-message')?.remove();
+        likesContainer.replaceChildren(likesList); 
+        
         attachProfileClickListeners();
         attachFollowButtonListeners();
 
