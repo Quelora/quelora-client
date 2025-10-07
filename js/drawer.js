@@ -5,12 +5,9 @@ class Drawer {
     static historyHandled = false;
     static drawerStack = [];
     
-    // Global event handlers storage
     static globalEventHandlers = {}; 
 
-    // Static method to subscribe to a global event
     static onGlobal(event, callback) {
-        // Input Validation: Ensure the callback is a function before storing it.
         if (typeof callback !== 'function') {
             console.error(`Drawer.onGlobal: The callback provided for event '${event}' is not a function.`);
             return; 
@@ -20,18 +17,14 @@ class Drawer {
         this.globalEventHandlers[event].push(callback);
     }
 
-    // Static method to unsubscribe from a global event
     static offGlobal(event, callbackToRemove) {
         if (!this.globalEventHandlers[event]) return;
         this.globalEventHandlers[event] = this.globalEventHandlers[event].filter(cb => cb !== callbackToRemove);
     }
     
-    // Static method to emit a global event
     static emitGlobal(event, drawerInstance) {
         if (this.globalEventHandlers[event]) {
-            // Pass the drawer instance as an argument
             this.globalEventHandlers[event].forEach(cb => {
-                // The error 'cb is not a function' occurs here if validation is absent/bypassed.
                 try { cb(drawerInstance); } catch (err) { console.error(`Error in global ${event} handler:`, err); }
             });
         }
@@ -139,7 +132,6 @@ class Drawer {
     }
 
     createElement() {
-        // Create the main container element
         const container = document.createElement('div');
         container.id = this.id;
         container.className = `drawer ${this.position} ${this.customClass}`.trim();
@@ -155,7 +147,6 @@ class Drawer {
         container.style.visibility = 'hidden';
         container.style.pointerEvents = 'none';
 
-        // Add close button only for desktop
         const closeBtn = !UtilsModule.isMobile ? `<button class="drawer-close-btn" aria-label="Close">&times;</button>` : '';
         container.innerHTML = `<div class="drawer-header"><div class="t">${this.title}</div>${closeBtn}</div><div class="drawer-content">${this.content}</div>`;
 
@@ -184,17 +175,13 @@ class Drawer {
             this.element.style.visibility = 'hidden';
             this.element.style.pointerEvents = 'none';
             
-            // Emit instance event 'closed'
             this.emit('closed');
             
-            // Emit GLOBAL event 'drawerClosed'
             Drawer.emitGlobal('drawerClosed', this); 
 
-            // Logic to show the previous drawer, runs after the closing animation ends.
-            // If there's no active drawer and the stack is not empty, show the previous one.
             if (!Drawer.activeDrawer && Drawer.drawerStack.length > 0) {
                 const previousDrawer = Drawer.drawerStack.pop();
-                previousDrawer.show(); // 'show' will reassign activeDrawer.
+                previousDrawer.show(); 
             }
 
             Drawer.updateBodyScrollLock();
@@ -227,7 +214,6 @@ class Drawer {
         e.preventDefault(); 
         const clientPos = this.position === 'bottom' ? (e.touches ? e.touches[0].clientY : e.clientY) : (e.touches ? e.touches[0].clientX : e.clientX); 
         const delta = clientPos - this.startY; 
-        // Translate is restricted to avoid pulling the drawer beyond its original position
         const translate = this.position === 'bottom' ? Math.max(delta, -this.parseSize(this.height, this.getDimension())) : Math.max(delta, -this.parseSize(this.height, this.getDimension())); 
         this.element.style.transform = `translateY(${translate}px)`; 
     }
@@ -241,7 +227,6 @@ class Drawer {
         const matrix = new DOMMatrix(currentTransform); 
         const distance = this.position === 'bottom' ? matrix.m42 : matrix.m41; 
         
-        // Re-enable transitions
         if (UtilsModule.isMobile) { 
             this.element.style.transition = `transform ${this.transitionSpeed} ease, height ${this.transitionSpeed} ease`; 
         } else { 
@@ -249,14 +234,11 @@ class Drawer {
         } 
         
         if (this.position === 'bottom') { 
-            // Close if dragged more than halfway or swiped quickly
             if (distance > halfDimension || swipeTime < 300 && distance > 50) { 
                 this.close(); 
             } else if (distance < 0) { 
-                // Restore to full height if dragged up (negative delta)
                 this.setHeight(dimension); 
             } else { 
-                // Restore to halfway (or original)
                 this.setHeight(halfDimension); 
             } 
         } 
@@ -269,7 +251,6 @@ class Drawer {
         document.removeEventListener('touchend', this._boundStopDragging); 
     }
     setHeight(height) { 
-        // Only applies to mobile (bottom/side drawers)
         if (UtilsModule.isMobile) { 
             if (this.position === 'bottom') { 
                 this.element.style.height = `${height}px`; 
@@ -285,9 +266,11 @@ class Drawer {
 
     open() {
         if (Drawer.activeDrawer) {
-            // Push current active drawer to stack and hide it
-            Drawer.drawerStack.push(Drawer.activeDrawer);
-            Drawer.activeDrawer.hide();
+            // Check to prevent pushing the same active drawer instance to the stack
+            if (Drawer.activeDrawer !== this) {
+                Drawer.drawerStack.push(Drawer.activeDrawer);
+                Drawer.activeDrawer.hide();
+            }
         }
 
         Drawer.activeDrawer = this;
@@ -336,7 +319,6 @@ class Drawer {
             }
         }
 
-        // Reassign active drawer when showing.
         Drawer.activeDrawer = this;
 
         this.element.classList.add('active', 'shadow');
@@ -354,7 +336,6 @@ class Drawer {
         this.element.classList.add('no-shadow');
         const dimension = this.parseSize(this.height, this.getDimension());
         
-        // Re-enable transitions for closing animation
         if (UtilsModule.isMobile) {
             this.element.style.transition = `${this.getPositionProperty()} ${this.transitionSpeed} ease, transform ${this.transitionSpeed} ease`;
         } else {
@@ -365,10 +346,8 @@ class Drawer {
         
         if (wasActive) {
             Drawer.activeDrawer = null;
-            // The logic to show the previous drawer was moved to 'handleTransitionEnd'
         }
         
-        // If not closing from a history event and the history state is ours, trigger history.back()
         if (!fromHistory && history.state && history.state.drawerId === this.id) {
             history.back();
         }
@@ -378,7 +357,6 @@ class Drawer {
     destroy() {
         const wasActive = Drawer.activeDrawer === this;
 
-        // Remove reference from the stack if it exists.
         const index = Drawer.drawerStack.indexOf(this);
         if (index > -1) Drawer.drawerStack.splice(index, 1);
 
@@ -386,7 +364,6 @@ class Drawer {
             Drawer.activeDrawer = null;
             if (Drawer.drawerStack.length > 0) {
                 const previousDrawer = Drawer.drawerStack.pop();
-                // Use .show() instead of .open() to restore state correctly.
                 previousDrawer.show();
             }
         }
